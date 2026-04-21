@@ -1,3 +1,4 @@
+import { resolveAcpModelPreset } from "../acp/presets.js";
 import { resolveThinkingDefaultForModel } from "../auto-reply/thinking.shared.js";
 import type { OpenClawConfig } from "../config/config.js";
 import {
@@ -379,6 +380,18 @@ export function resolveConfiguredModelRef(params: {
       const aliasMatch = aliasIndex.byAlias.get(aliasKey);
       if (aliasMatch) {
         return aliasMatch.ref;
+      }
+
+      // ACP presets (e.g. "claude-code", "claude-code-opus") are UI-facing
+      // dispatch directives, not provider/model pairs. When one is set as
+      // the configured default, return the underlying Anthropic model (or
+      // the platform default for the bare "claude-code" preset) so callers
+      // that need a concrete ModelRef get something valid. The actual ACP
+      // dispatch is handled separately by dispatch-from-config.ts.
+      const acpPreset = resolveAcpModelPreset(trimmed);
+      if (acpPreset) {
+        const acpModel = acpPreset.acpxModel ?? params.defaultModel;
+        return { provider: "anthropic", model: acpModel };
       }
 
       // Default to anthropic if no provider is specified, but warn as this is deprecated.
