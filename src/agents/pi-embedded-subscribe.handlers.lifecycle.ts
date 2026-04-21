@@ -86,17 +86,33 @@ export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
     });
   } else {
     ctx.log.debug(`embedded run agent end: runId=${ctx.params.runId} isError=${isError}`);
+    // Forward resolved model/provider attribution so downstream consumers
+    // (chat.message WS events, Responses API SSE) can label the assistant
+    // reply on fresh sends without waiting for a UI refresh to hydrate from
+    // storage. `ctx.state.lastAssistant` is an AssistantMessage built by
+    // `buildAssistantMessage` in stream-message-shared.ts which carries the
+    // resolved provider/model/api used for the run.
+    const assistantModel = isAssistantMessage(lastAssistant) ? lastAssistant.model : undefined;
+    const assistantProvider = isAssistantMessage(lastAssistant)
+      ? lastAssistant.provider
+      : undefined;
     emitAgentEvent({
       runId: ctx.params.runId,
       stream: "lifecycle",
       data: {
         phase: "end",
         endedAt: Date.now(),
+        ...(assistantModel ? { model: assistantModel } : {}),
+        ...(assistantProvider ? { provider: assistantProvider } : {}),
       },
     });
     void ctx.params.onAgentEvent?.({
       stream: "lifecycle",
-      data: { phase: "end" },
+      data: {
+        phase: "end",
+        ...(assistantModel ? { model: assistantModel } : {}),
+        ...(assistantProvider ? { provider: assistantProvider } : {}),
+      },
     });
   }
 

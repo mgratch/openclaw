@@ -89,6 +89,10 @@ const ERROR_PATTERNS = {
     /could not (?:authenticate|validate).*(?:api[_ ]?key|credentials)/i,
     "permission_error",
     "not allowed for this organization",
+    // Burned OAuth refresh tokens — retrying is futile, full re-auth needed.
+    "refresh_token_reused",
+    "OAUTH_REFRESH_TOKEN_BURNED",
+    /invalid_grant.*(?:refresh|token)/i,
   ],
   auth: [
     /invalid[_ ]?api[_ ]?key/,

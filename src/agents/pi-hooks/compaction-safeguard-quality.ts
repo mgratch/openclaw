@@ -58,7 +58,7 @@ export function buildCompactionStructureInstructions(
     "Produce a compact, factual summary with these exact section headings:",
     ...REQUIRED_SUMMARY_SECTIONS,
     identifierSectionInstruction,
-    "Do not omit unresolved asks from the user.",
+    "Do not omit unresolved asks from the user — this includes review comments, action items, specific feedback, and any request the user or an external source has made that has not yet been addressed.",
   ].join("\n");
   const custom = customInstructions?.trim();
   if (!custom) {

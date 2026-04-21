@@ -324,6 +324,10 @@ async function ensureGitRepo(dir: string, isBrandNewWorkspace: boolean) {
   }
 }
 
+// Cache for directories already ensured — avoids redundant fs.mkdir syscalls
+// on every request for the same workspace directory.
+const ensuredDirs = new Set<string>();
+
 export async function ensureAgentWorkspace(params?: {
   dir?: string;
   ensureBootstrapFiles?: boolean;
@@ -339,7 +343,10 @@ export async function ensureAgentWorkspace(params?: {
 }> {
   const rawDir = params?.dir?.trim() ? params.dir.trim() : DEFAULT_AGENT_WORKSPACE_DIR;
   const dir = resolveUserPath(rawDir);
-  await fs.mkdir(dir, { recursive: true });
+  if (!ensuredDirs.has(dir)) {
+    await fs.mkdir(dir, { recursive: true });
+    ensuredDirs.add(dir);
+  }
 
   if (!params?.ensureBootstrapFiles) {
     return { dir };

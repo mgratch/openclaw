@@ -169,20 +169,23 @@ describe("resolveAgentConfig", () => {
         hasSessionModelOverride: false,
       }),
     ).toEqual(["openai/gpt-5.4"]);
+    // When a session model override is active, the configured primary is
+    // promoted onto the front of the fallback chain so override failures
+    // degrade back to the project's original primary before sliding further.
     expect(
       resolveEffectiveModelFallbacks({
         cfg,
         agentId: "linus",
         hasSessionModelOverride: true,
       }),
-    ).toEqual(["openai/gpt-5.4"]);
+    ).toEqual(["anthropic/claude-sonnet-4-6", "openai/gpt-5.4"]);
     expect(
       resolveEffectiveModelFallbacks({
         cfg: cfgNoOverride,
         agentId: "linus",
         hasSessionModelOverride: true,
       }),
-    ).toEqual([]);
+    ).toEqual(["anthropic/claude-sonnet-4-6"]);
 
     const cfgInheritDefaults: OpenClawConfig = {
       agents: {
@@ -207,14 +210,14 @@ describe("resolveAgentConfig", () => {
         agentId: "linus",
         hasSessionModelOverride: true,
       }),
-    ).toEqual(["openai/gpt-5.4"]);
+    ).toEqual(["anthropic/claude-sonnet-4-6", "openai/gpt-5.4"]);
     expect(
       resolveEffectiveModelFallbacks({
         cfg: cfgDisable,
         agentId: "linus",
         hasSessionModelOverride: true,
       }),
-    ).toEqual([]);
+    ).toEqual(["anthropic/claude-sonnet-4-6"]);
   });
 
   it("resolves fallback agent id from explicit agent id first", () => {

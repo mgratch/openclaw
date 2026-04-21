@@ -261,8 +261,24 @@ export function resolveEffectiveModelFallbacks(params: {
   if (!params.hasSessionModelOverride) {
     return agentFallbacksOverride;
   }
+  // Session model override is active: promote the configured primary onto
+  // the front of the fallback chain so a failing override degrades back to
+  // the model the project was originally configured for, before falling
+  // further down the configured fallback list.
   const defaultFallbacks = resolveAgentModelFallbackValues(params.cfg.agents?.defaults?.model);
-  return agentFallbacksOverride ?? defaultFallbacks;
+  const baseFallbacks = agentFallbacksOverride ?? defaultFallbacks;
+  const configuredPrimary = resolveAgentEffectiveModelPrimary(params.cfg, params.agentId);
+  if (!configuredPrimary) {
+    return baseFallbacks;
+  }
+  const trimmed = configuredPrimary.trim();
+  if (!trimmed) {
+    return baseFallbacks;
+  }
+  const deduped = baseFallbacks.filter(
+    (candidate) => typeof candidate !== "string" || candidate.trim() !== trimmed,
+  );
+  return [trimmed, ...deduped];
 }
 
 export function resolveAgentWorkspaceDir(cfg: OpenClawConfig, agentId: string) {

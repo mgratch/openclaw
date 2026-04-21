@@ -155,6 +155,31 @@ function buildVoiceSection(params: { isMinimal: boolean; ttsHint?: string }) {
   return ["## Voice (TTS)", hint, ""];
 }
 
+function buildHistoryChannelsSection(params: {
+  isMinimal: boolean;
+  agentId?: string;
+  readToolName: string;
+}) {
+  if (params.isMinimal) {
+    return [];
+  }
+  const agentPathLabel = params.agentId?.trim()
+    ? `~/.openclaw/agents/${sanitizeForPromptLiteral(params.agentId.trim())}/sessions/*.jsonl`
+    : "~/.openclaw/agents/<agentId>/sessions/*.jsonl";
+  return [
+    "## History Channels",
+    "Pre-compaction and pre-session history is NEVER lost. It is persisted across several parallel channels. Before telling the user that anything is \"lost due to compaction\" or otherwise unrecoverable, consult the relevant channel(s) below and quote what you find:",
+    "",
+    `- This session's transcript (append-only ground truth): ${agentPathLabel} — use \`${params.readToolName}\` or \`sessions_history\`.`,
+    "- Other sessions / sub-agents: `sessions_history` (fetch by session key) and `sessions_list`.",
+    "- Web UI conversation DB (sidebar history): ~/.openclaw/memory/openclaw.sqlite (SQLite; tables: messages, message_children, messages_fts).",
+    "- Cowork desktop conversations (audit mirror): ~/.openclaw/cowork-audit/by-name/<project>/<conv-uuid>/audit.jsonl with sidecar ~/.openclaw/cowork-audit/by-name/<project>/<conv-uuid>.json. Use ~/.openclaw/cowork-audit/detected.tsv (columns: conv_uuid, bucket, raw_first_folder, title) to resolve conversation UUIDs ↔ projects. Project directory names under `by-name/` are human-readable and may not match your agentId 1:1 — list `by-name/` and pick the closest match, or grep `detected.tsv`.",
+    "",
+    "Priority when reconstructing history: (1) sessions_history for in-gateway sessions, (2) the JSONL transcript file for this agent, (3) the Cowork audit mirror for Cowork conversations, (4) the SQLite DB as a last resort. Do not surrender on \"lost\" context until at least one channel has been checked.",
+    "",
+  ];
+}
+
 function buildDocsSection(params: { docsPath?: string; isMinimal: boolean; readToolName: string }) {
   const docsPath = params.docsPath?.trim();
   if (!docsPath || params.isMinimal) {
@@ -411,6 +436,11 @@ export function buildAgentSystemPrompt(params: {
     isMinimal,
     readToolName,
   });
+  const historyChannelsSection = buildHistoryChannelsSection({
+    isMinimal,
+    agentId: params.runtimeInfo?.agentId,
+    readToolName,
+  });
   const workspaceNotes = (params.workspaceNotes ?? []).map((note) => note.trim()).filter(Boolean);
 
   // For "none" mode, return just the basic identity line
@@ -515,6 +545,7 @@ export function buildAgentSystemPrompt(params: {
     ...workspaceNotes,
     "",
     ...docsSection,
+    ...historyChannelsSection,
     params.sandboxInfo?.enabled ? "## Sandbox" : "",
     params.sandboxInfo?.enabled
       ? [
