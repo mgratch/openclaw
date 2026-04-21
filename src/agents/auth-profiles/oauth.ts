@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import nodePath from "node:path";
 import {
   getOAuthApiKey,
   getOAuthProviders,
@@ -113,6 +115,97 @@ function extractErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Patterns that indicate a permanently burned OAuth refresh token.
+ *
+ * When OpenAI (or another provider) returns one of these errors during a
+ * refresh attempt, the stored refresh token has been consumed and can never be
+ * used again. The only recovery path is a full re-authentication.
+ */
+const REFRESH_TOKEN_BURNED_PATTERNS = [
+  "refresh_token_reused",
+  "invalid_grant",
+  "token has been revoked",
+  "token has been expired or revoked",
+  // The pi-ai library swallows the raw 401 error body (which contains
+  // "refresh_token_reused") and re-throws a generic message without the
+  // original error code. OpenAI Codex uses rotating refresh tokens, so any
+  // refresh failure (not a network throw) means the token is burned.
+  // Match the generic pi-ai fallback messages so the UI re-auth popup fires.
+  "failed to refresh openai codex token",
+  "failed to refresh oauth token for openai-codex",
+];
+
+function isRefreshTokenBurnedError(error: unknown): boolean {
+  const message = extractErrorMessage(error);
+  const cause = error instanceof Error && error.cause ? extractErrorMessage(error.cause) : "";
+  const combined = `${message} ${cause}`.toLowerCase();
+  return REFRESH_TOKEN_BURNED_PATTERNS.some((pattern) => combined.includes(pattern));
+}
+
+/**
+ * After a successful token refresh, propagate the new credentials to other
+ * agents that share the same provider + identity but still hold an older
+ * (likely burned) refresh token.
+ *
+ * Best-effort: failures are logged and swallowed so the primary refresh path
+ * is never disrupted.
+ */
+function propagateRefreshedCredentialToOtherAgents(params: {
+  profileId: string;
+  newCredential: OAuthCredential;
+  sourceAgentDir?: string;
+}): void {
+  try {
+    const stateDir =
+      process.env.OPENCLAW_STATE_DIR ||
+      nodePath.join(process.env.HOME || "~", ".openclaw");
+    const agentsDir = nodePath.join(stateDir, "agents");
+    if (!fs.existsSync(agentsDir)) return;
+
+    const agents: string[] = fs.readdirSync(agentsDir);
+    for (const agentName of agents) {
+      // Skip special directories that aren't real agents.
+      if (agentName.startsWith("__") || agentName.startsWith(".")) continue;
+      const agentDir = nodePath.join(agentsDir, agentName, "agent");
+      // Skip the source agent (already has the new credentials)
+      if (params.sourceAgentDir && nodePath.resolve(agentDir) === nodePath.resolve(params.sourceAgentDir)) {
+        continue;
+      }
+      // Skip main agent when source is undefined (main agent already updated)
+      if (!params.sourceAgentDir && agentName === "main") {
+        continue;
+      }
+
+      try {
+        const otherStore = ensureAuthProfileStore(agentDir);
+        const otherCred = otherStore.profiles[params.profileId];
+        if (
+          otherCred?.type === "oauth" &&
+          otherCred.provider === params.newCredential.provider &&
+          // Only propagate if the other agent's token is older (lower or equal expiry)
+          (!Number.isFinite(otherCred.expires) || otherCred.expires <= params.newCredential.expires)
+        ) {
+          otherStore.profiles[params.profileId] = { ...params.newCredential };
+          saveAuthProfileStore(otherStore, agentDir);
+          log.info("propagated refreshed OAuth credentials to sibling agent", {
+            profileId: params.profileId,
+            targetAgent: agentName,
+            expires: new Date(params.newCredential.expires).toISOString(),
+          });
+        }
+      } catch {
+        // Best-effort: don't crash if a sibling agent store is unreadable.
+      }
+    }
+  } catch (err) {
+    log.debug("propagateRefreshedCredentialToOtherAgents failed", {
+      profileId: params.profileId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 type ResolveApiKeyForProfileParams = {
   cfg?: OpenClawConfig;
   store: AuthProfileStore;
@@ -159,10 +252,63 @@ function adoptNewerMainOAuthCredential(params: {
   return null;
 }
 
+/**
+ * In-memory dedup layer for OAuth token refreshes.
+ *
+ * OpenAI (and other providers) issue single-use refresh tokens: each refresh
+ * returns a new access + refresh token pair and immediately invalidates the old
+ * refresh token. When multiple concurrent requests detect an expired token and
+ * each call `refreshOAuthTokenWithLock` sequentially, the second caller can
+ * still hold the stale refresh token in memory and send it to the provider,
+ * triggering a `refresh_token_reused` error.
+ *
+ * This Map ensures that within a single process only one refresh HTTP call is
+ * in-flight per profile. Concurrent callers await the same Promise and receive
+ * the same result (or the same error). The entry is removed once the Promise
+ * settles so future refreshes are not blocked.
+ */
+type RefreshResult = { apiKey: string; newCredentials: OAuthCredentials } | null;
+
+/** @internal Exported for testing only. */
+export const pendingOAuthRefreshes = new Map<string, Promise<RefreshResult>>();
+
+/** @internal Exported for testing only. */
+export function oauthRefreshCacheKey(profileId: string, agentDir?: string): string {
+  return agentDir ? `${profileId}\0${agentDir}` : profileId;
+}
+
 async function refreshOAuthTokenWithLock(params: {
   profileId: string;
   agentDir?: string;
-}): Promise<{ apiKey: string; newCredentials: OAuthCredentials } | null> {
+}): Promise<RefreshResult> {
+  const cacheKey = oauthRefreshCacheKey(params.profileId, params.agentDir);
+
+  const inflight = pendingOAuthRefreshes.get(cacheKey);
+  if (inflight) {
+    log.debug("OAuth refresh dedup: awaiting in-flight refresh", {
+      profileId: params.profileId,
+    });
+    return await inflight;
+  }
+
+  const refreshPromise = performOAuthTokenRefreshWithLock(params);
+  pendingOAuthRefreshes.set(cacheKey, refreshPromise);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    // Only delete if the map still points to our promise (guard against
+    // unlikely interleaving where a later call replaced the entry).
+    if (pendingOAuthRefreshes.get(cacheKey) === refreshPromise) {
+      pendingOAuthRefreshes.delete(cacheKey);
+    }
+  }
+}
+
+async function performOAuthTokenRefreshWithLock(params: {
+  profileId: string;
+  agentDir?: string;
+}): Promise<RefreshResult> {
   const authPath = resolveAuthStorePath(params.agentDir);
   ensureAuthStoreFile(authPath);
 
@@ -199,33 +345,57 @@ async function refreshOAuthTokenWithLock(params: {
     }
 
     const oauthCreds: Record<string, OAuthCredentials> = { [cred.provider]: cred };
-    const result =
-      String(cred.provider) === "chutes"
-        ? await (async () => {
-            const newCredentials = await refreshChutesTokens({
-              credential: cred,
-            });
-            return { apiKey: newCredentials.access, newCredentials };
-          })()
-        : await (async () => {
-            const oauthProvider = resolveOAuthProvider(cred.provider);
-            if (!oauthProvider) {
-              return null;
-            }
-            if (typeof getOAuthApiKey !== "function") {
-              return null;
-            }
-            return await getOAuthApiKey(oauthProvider, oauthCreds);
-          })();
+    let result: RefreshResult;
+    try {
+      result =
+        String(cred.provider) === "chutes"
+          ? await (async () => {
+              const newCredentials = await refreshChutesTokens({
+                credential: cred,
+              });
+              return { apiKey: newCredentials.access, newCredentials };
+            })()
+          : await (async () => {
+              const oauthProvider = resolveOAuthProvider(cred.provider);
+              if (!oauthProvider) {
+                return null;
+              }
+              if (typeof getOAuthApiKey !== "function") {
+                return null;
+              }
+              return await getOAuthApiKey(oauthProvider, oauthCreds);
+            })();
+    } catch (refreshError) {
+      // Detect permanently burned refresh tokens and mark the credential so
+      // we don't keep retrying with a token that will never work again.
+      if (isRefreshTokenBurnedError(refreshError)) {
+        log.warn("OAuth refresh token is permanently burned", {
+          profileId: params.profileId,
+          provider: cred.provider,
+          error: extractErrorMessage(refreshError),
+        });
+      }
+      throw refreshError;
+    }
     if (!result) {
       return null;
     }
-    store.profiles[params.profileId] = {
+    const refreshedCredential: OAuthCredential = {
       ...cred,
       ...result.newCredentials,
       type: "oauth",
     };
+    store.profiles[params.profileId] = refreshedCredential;
     saveAuthProfileStore(store, params.agentDir);
+
+    // Propagate new credentials to sibling agents that share the same
+    // provider/profile so they don't attempt to refresh with the now-burned
+    // old refresh token.
+    propagateRefreshedCredentialToOtherAgents({
+      profileId: params.profileId,
+      newCredential: refreshedCredential,
+      sourceAgentDir: params.agentDir,
+    });
 
     return result;
   });
@@ -480,15 +650,21 @@ export async function resolveApiKeyForProfile(
     }
 
     const message = extractErrorMessage(error);
+    const burned = isRefreshTokenBurnedError(error);
     const hint = await formatAuthDoctorHint({
       cfg,
       store: refreshedStore,
       provider: cred.provider,
       profileId,
     });
+    const burnedSuffix = burned
+      ? " [OAUTH_REFRESH_TOKEN_BURNED] The refresh token has been permanently " +
+        "invalidated. A full re-authentication is required — retrying will not help."
+      : "";
     throw new Error(
       `OAuth token refresh failed for ${cred.provider}: ${message}. ` +
-        "Please try again or re-authenticate." +
+        (burned ? "Re-authentication required." : "Please try again or re-authenticate.") +
+        burnedSuffix +
         (hint ? `\n\n${hint}` : ""),
       { cause: error },
     );
