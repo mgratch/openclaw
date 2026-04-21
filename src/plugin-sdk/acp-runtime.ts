@@ -13,7 +13,12 @@ export {
   unregisterAcpRuntimeBackend,
 } from "../acp/runtime/registry.js";
 export type {
+  AcpHookEventKind,
+  AcpPermissionDecision,
+  AcpPermissionOption,
+  AcpPermissionOptionKind,
   AcpRuntime,
+  AcpRuntimeAgentDoctorReport,
   AcpRuntimeCapabilities,
   AcpRuntimeDoctorReport,
   AcpRuntimeEnsureInput,
@@ -21,7 +26,13 @@ export type {
   AcpRuntimeHandle,
   AcpRuntimeStatus,
   AcpRuntimeTurnInput,
+  AcpSessionSystemKind,
   AcpSessionUpdateTag,
+  AcpToolCallContentBlock,
+  AcpToolCallKind,
+  AcpToolCallLocation,
+  AcpToolCallStructuredPatch,
+  AcpToolCallStructuredPatchHunk,
 } from "../acp/runtime/types.js";
 export { readAcpSessionEntry } from "../acp/runtime/session-meta.js";
 export type { AcpSessionStoreEntry } from "../acp/runtime/session-meta.js";
