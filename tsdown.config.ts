@@ -168,6 +168,9 @@ export default defineConfig([
         "@lancedb/lancedb",
         "@matrix-org/matrix-sdk-crypto-nodejs",
         "matrix-js-sdk",
+        // node-pty ships a native .node binding that rolldown cannot statically
+        // resolve; keep it external so require() happens at runtime.
+        "node-pty",
         ...bundledPluginRuntimeDependencies,
       ],
     },

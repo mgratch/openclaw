@@ -1,0 +1,79 @@
+FROM openclaw:local
+
+USER root
+
+# GitHub CLI + SSHFS dependencies
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      gh \
+      jq \
+      ffmpeg \
+      curl \
+      wget \
+      git \
+      python3 \
+      python3-pip \
+      sshfs \
+      fuse3 \
+      openssh-client \
+      dnsmasq \
+      libcap2-bin \
+      sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Allow node user to run lando-dns.sh as root (needs to write /etc/resolv.conf,
+# which is root-owned and bind-mounted by Docker at runtime so build-time chmod
+# won't persist). Scoped narrowly to just this script.
+RUN echo 'node ALL=(root) NOPASSWD: /usr/local/bin/lando-dns.sh' \
+      > /etc/sudoers.d/node-lando-dns \
+    && chmod 440 /etc/sudoers.d/node-lando-dns
+
+# Allow non-root users to use fuse (needed for sshfs as node user)
+RUN sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf || true
+
+# Allow dnsmasq to bind to port 53 as non-root (for *.lndo.site wildcard DNS)
+RUN setcap cap_net_bind_service+ep /usr/sbin/dnsmasq \
+    && mkdir -p /etc/dnsmasq.d && chown node:node /etc/dnsmasq.d
+
+# Create mount point for dynamically linked host directories
+RUN mkdir -p /mnt/host-projects && chown node:node /mnt/host-projects
+
+# ClawHub CLI
+RUN npm install -g clawhub@latest
+
+# Claude Code — first-class ACP runtime. Draws on the user's Claude
+# subscription (bind-mount ~/.claude via docker-compose.override.yml).
+#
+# acpx's built-in `claude` agent shells out to
+# `@agentclientprotocol/claude-agent-acp`, which in turn spawns
+# `@anthropic-ai/claude-code`. Pre-install BOTH so the first turn does not
+# pay for an on-demand `npx -y` fetch and the image is reproducible without
+# runtime network access. Bump the adapter pin in lockstep with the acpx
+# `ACP_ADAPTER_PACKAGE_RANGES.claude` value (currently `^0.24.2`).
+RUN npm install -g @anthropic-ai/claude-code@latest \
+                   @agentclientprotocol/claude-agent-acp@^0.24.2
+
+# acpx's health probe (extensions/acpx/src/runtime.ts) spawns `claude-code --version`
+# but @anthropic-ai/claude-code only installs a `claude` bin, so alias it.
+RUN ln -sf /usr/local/bin/claude /usr/local/bin/claude-code
+
+# yt-dlp for summarize skill
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp
+
+# Install extra npm deps as root (base image built node_modules with root's
+# pnpm store at /root/.local/share/pnpm/store/v10; running as node would use
+# a different store path and fail with ERR_PNPM_UNEXPECTED_STORE).
+# OpenAI SDK for memory-lancedb embeddings
+RUN cd /app && pnpm add openai --ignore-scripts
+
+# LanceDB for memory plugin
+RUN cd /app && pnpm add @lancedb/lancedb@^0.26.2 --ignore-scripts
+
+# Now drop to non-root for runtime
+USER node
