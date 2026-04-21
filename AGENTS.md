@@ -202,8 +202,9 @@
 ## Commit & Pull Request Guidelines
 
 - Use `$openclaw-pr-maintainer` at `.agents/skills/openclaw-pr-maintainer/SKILL.md` for maintainer PR triage, review, close, search, and landing workflows.
-- This includes auto-close labels, bug-fix evidence gates, GitHub comment/search footguns, and maintainer PR decision flow.
+- This includes auto-close labels, bug-fix evidence gates, line-anchored PR review comments via `gh api`, GitHub comment/search footguns, and maintainer PR decision flow.
 - For the repo's end-to-end maintainer PR workflow, use `$openclaw-pr-maintainer` at `.agents/skills/openclaw-pr-maintainer/SKILL.md`.
+- When posting line-anchored PR review comments via `gh`, read the skill first. Never use `gh pr review --comment` or diff-relative `position`; use `gh api POST .../pulls/{n}/comments` with absolute line numbers.
 
 - `/landpr` lives in the global Codex prompts (`~/.codex/prompts/landpr.md`); when landing or merging any PR, always follow that `/landpr` process.
 - Create commits with `scripts/committer "<msg>" <file...>`; avoid manual `git add`/`git commit` so staging stays scoped.
