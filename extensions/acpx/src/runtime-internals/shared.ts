@@ -8,6 +8,29 @@ export type AcpxHandleState = {
   acpxRecordId?: string;
   backendSessionId?: string;
   agentSessionId?: string;
+  /**
+   * Backend-specific model id last used for this session. Persisted in the
+   * opaque runtimeSessionName so a reconnected runtime can forward the same
+   * `--model` to acpx across process restarts. Per-turn `model` on
+   * `AcpRuntimeTurnInput` takes precedence over this when present.
+   */
+  model?: string;
+  /**
+   * When true, the session's mount baseline is read-only: writes inside the
+   * baseline require user approval via the pty permission policy. Persisted
+   * in the opaque runtimeSessionName so a reconnected runtime still applies
+   * the same policy after a process restart. Per-turn `readOnly` on
+   * `AcpRuntimeTurnInput` takes precedence when present.
+   */
+  readOnly?: boolean;
+  /**
+   * Absolute mount root for the session's auto-approve scope. Tool calls
+   * with target paths inside this root are auto-approved by the pty
+   * permission policy (reads always; writes when !readOnly); anything
+   * outside is surfaced as an approval card. Persisted in runtimeSessionName
+   * alongside {@link readOnly} so the scope survives process restarts.
+   */
+  mountBaselineRoot?: string;
 };
 
 export type AcpxJsonObject = Record<string, unknown>;

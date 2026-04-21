@@ -30,6 +30,10 @@
       "pluginToolsMcpBridge": {
         "type": "boolean"
       },
+      "gatewayToolsBridge": {
+        "type": "boolean",
+        "description": "Enable full access to all gateway MCP servers, plugin tools, and skills from ACP sessions. Superset of pluginToolsMcpBridge."
+      },
       "strictWindowsCmdWrapper": {
         "type": "boolean"
       },

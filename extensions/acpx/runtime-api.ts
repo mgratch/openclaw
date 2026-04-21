@@ -5,7 +5,12 @@ export {
   unregisterAcpRuntimeBackend,
 } from "openclaw/plugin-sdk/acp-runtime";
 export type {
+  AcpHookEventKind,
+  AcpPermissionDecision,
+  AcpPermissionOption,
+  AcpPermissionOptionKind,
   AcpRuntime,
+  AcpRuntimeAgentDoctorReport,
   AcpRuntimeCapabilities,
   AcpRuntimeDoctorReport,
   AcpRuntimeEnsureInput,
@@ -13,7 +18,13 @@ export type {
   AcpRuntimeHandle,
   AcpRuntimeStatus,
   AcpRuntimeTurnInput,
+  AcpSessionSystemKind,
   AcpSessionUpdateTag,
+  AcpToolCallContentBlock,
+  AcpToolCallKind,
+  AcpToolCallLocation,
+  AcpToolCallStructuredPatch,
+  AcpToolCallStructuredPatchHunk,
 } from "openclaw/plugin-sdk/acp-runtime";
 export type {
   OpenClawPluginApi,

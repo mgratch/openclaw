@@ -1,5 +1,9 @@
 import { createInterface } from "node:readline";
+import { access as fsAccess } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join as pathJoin } from "node:path";
 import type {
+  AcpRuntimeAgentDoctorReport,
   AcpRuntimeCapabilities,
   AcpRuntimeDoctorReport,
   AcpRuntime,
@@ -42,11 +46,46 @@ import {
   type AcpxHandleState,
   type AcpxJsonObject,
 } from "./runtime-internals/shared.js";
+import { formatPermissionReply } from "./runtime-internals/permission-prompt.js";
+import type { AcpxPermissionBaseline } from "./runtime-internals/permission-policy.js";
+import {
+  createAcpxPtyDemuxState,
+  processAcpxPtyChunk,
+} from "./runtime-internals/pty-demux.js";
+import { spawnAcpxUnderPty, type PtyProcessHandle } from "./runtime-internals/pty-process.js";
+import { writePromptToTempFile } from "./runtime-internals/prompt-tempfile.js";
+import type { AcpPermissionDecision, AcpPermissionOption } from "../runtime-api.js";
 
 export const ACPX_BACKEND_ID = "acpx";
 
 const ACPX_RUNTIME_HANDLE_PREFIX = "acpx:v1:";
 const DEFAULT_AGENT_FALLBACK = "codex";
+
+/**
+ * OpenClaw uses stable agent identifiers in session keys and UI, but acpx's
+ * built-in agent registry uses shorter names. Map OpenClaw-side aliases to the
+ * acpx built-in name at the CLI boundary. Keep this the ONLY place the
+ * translation happens so logs, session keys, and persisted state all keep the
+ * OpenClaw-side identifier.
+ *
+ * Today: `claude-code` → acpx's `claude` built-in (which routes to
+ * `@agentclientprotocol/claude-agent-acp` and reads subscription auth from
+ * `~/.claude`).
+ */
+const ACPX_AGENT_ALIASES: Readonly<Record<string, string>> = {
+  "claude-code": "claude",
+  // Chunk 13 — preset variants all resolve to the same `claude` acpx agent;
+  // the per-turn model flag (claude-opus-4-6 / claude-sonnet-4-6 / …) is
+  // passed separately via `--model <id>` from the OpenClaw dispatcher.
+  // See src/acp/presets.ts for the canonical preset list.
+  "claude-code-opus": "claude",
+  "claude-code-sonnet": "claude",
+  "claude-code-haiku": "claude",
+};
+
+function toAcpxAgentName(agent: string): string {
+  return ACPX_AGENT_ALIASES[agent] ?? agent;
+}
 const ACPX_EXIT_CODE_PERMISSION_DENIED = 5;
 const ACPX_CAPABILITIES: AcpRuntimeCapabilities = {
   controls: ["session/set_mode", "session/set_config_option", "session/status"],
@@ -193,6 +232,9 @@ export function decodeAcpxRuntimeHandleState(runtimeSessionName: string): AcpxHa
     const acpxRecordId = asOptionalString(parsed.acpxRecordId);
     const backendSessionId = asOptionalString(parsed.backendSessionId);
     const agentSessionId = asOptionalString(parsed.agentSessionId);
+    const model = asOptionalString(parsed.model);
+    const readOnly = parsed.readOnly === true;
+    const mountBaselineRoot = asOptionalString(parsed.mountBaselineRoot);
     if (!name || !agent || !cwd) {
       return null;
     }
@@ -207,11 +249,26 @@ export function decodeAcpxRuntimeHandleState(runtimeSessionName: string): AcpxHa
       ...(acpxRecordId ? { acpxRecordId } : {}),
       ...(backendSessionId ? { backendSessionId } : {}),
       ...(agentSessionId ? { agentSessionId } : {}),
+      ...(model ? { model } : {}),
+      ...(readOnly ? { readOnly: true } : {}),
+      ...(mountBaselineRoot ? { mountBaselineRoot } : {}),
     };
   } catch {
     return null;
   }
 }
+
+/**
+ * Per-session pending state for the pty runTurn path. When the permission
+ * policy surfaces a prompt we park it in `pending` keyed by the synthesized
+ * requestId and wait for `respondToPermission` to resolve the entry. The
+ * `write` closure is captured so the external responder can push `y\n`/`n\n`
+ * into the child without needing a handle to node-pty internals.
+ */
+type AcpxPtyPendingSession = {
+  write: (data: string) => void;
+  pending: Map<string, (reply: AcpPermissionDecision) => void>;
+};
 
 export class AcpxRuntime implements AcpRuntime {
   private healthy = false;
@@ -221,6 +278,12 @@ export class AcpxRuntime implements AcpRuntime {
   private readonly mcpProxyAgentCommandCache = new Map<string, string>();
   private readonly spawnCommandOptions: SpawnCommandOptions;
   private readonly loggedSpawnResolutions = new Set<string>();
+  /**
+   * Map of active pty-driven turns keyed by session name. At most one entry
+   * per session because acpx serializes prompt turns on a single session.
+   * Populated at the top of `runTurnOverPty` and cleared in its `finally`.
+   */
+  private readonly ptyPendingSessions = new Map<string, AcpxPtyPendingSession>();
 
   constructor(
     private readonly config: ResolvedAcpxPluginConfig,
@@ -244,6 +307,10 @@ export class AcpxRuntime implements AcpRuntime {
         this.logSpawnResolution(event);
       },
     };
+    // BUILD-MARKER-2026-04-15-queue-owner-retain-fix
+    this.logger?.warn?.(
+      "acpx runtime constructor [BUILD-MARKER-2026-04-15-queue-owner-retain-fix] — dead+queue-owner-unavailable now retained, not repaired",
+    );
   }
 
   isHealthy(): boolean {
@@ -440,16 +507,15 @@ export class AcpxRuntime implements AcpRuntime {
     if (status === "dead") {
       const summary = summarizeLogText(asOptionalString(detail?.summary) ?? "");
       if (shouldRetainNamedSessionForDeadStatus(detail)) {
-        return {
-          replace: true,
-          replacementEvents: await this.replaceDeadNamedSession({
-            detail,
-            sessionName: params.sessionName,
-            agent: params.agent,
-            cwd: params.cwd,
-            logContext: `status=${status} summary=${summary || "<empty>"}`,
-          }),
-        };
+        // Benign dead state: the queue owner has not spawned yet because no
+        // prompt has run on this freshly-ensured session. Chasing a repair
+        // here invents fresh resume UUIDs that the adapter cannot honor and
+        // loops indefinitely. Trust the just-ensured session; the first
+        // prompt call will spawn the queue owner naturally.
+        this.logger?.debug?.(
+          `acpx ensureSession retaining just-ensured dead session (queue owner will spawn on first prompt): session=${params.sessionName} cwd=${params.cwd} status=${status} summary=${summary || "<empty>"}`,
+        );
+        return { replace: false };
       }
       this.logger?.warn?.(
         `acpx ensureSession replacing dead named session: session=${params.sessionName} cwd=${params.cwd} status=${status} summary=${summary || "<empty>"}`,
@@ -512,14 +578,16 @@ export class AcpxRuntime implements AcpRuntime {
     if (status === "dead") {
       const summary = summarizeLogText(asOptionalString(detail?.summary) ?? "");
       if (shouldRetainNamedSessionForDeadStatus(detail)) {
+        // Benign dead state after ensure failure: the named session exists
+        // but its queue owner has not spawned yet. Reuse the probe events
+        // (which carry the session identifiers) and let the first prompt
+        // spawn the queue owner. See shouldReplaceEnsuredSession for the
+        // matching rationale.
+        this.logger?.debug?.(
+          `acpx ensureSession retaining named session after ensure failure (queue owner will spawn on first prompt): session=${params.sessionName} cwd=${params.cwd} status=${status} summary=${summary || "<empty>"}`,
+        );
         return {
-          events: await this.replaceDeadNamedSession({
-            detail,
-            sessionName: params.sessionName,
-            agent: params.agent,
-            cwd: params.cwd,
-            logContext: `status=${status} summary=${summary || "<empty>"}`,
-          }),
+          events,
           skipPostEnsureReplacement: true,
         };
       }
@@ -561,6 +629,10 @@ export class AcpxRuntime implements AcpRuntime {
     const cwd = asTrimmedString(input.cwd) || this.config.cwd;
     const mode = input.mode;
     const resumeSessionId = asTrimmedString(input.resumeSessionId);
+    // NOTE: input.model is accepted on the runtime contract but not consumed
+    // here — acpx's `--model` flag only affects `prompt` calls, not session
+    // ensure/new/status. Mid-conversation model switching flows through
+    // AcpRuntimeTurnInput.model on each runTurn call instead.
     let events: AcpxJsonObject[];
     let skipPostEnsureReplacement = false;
     if (resumeSessionId) {
@@ -652,6 +724,9 @@ export class AcpxRuntime implements AcpRuntime {
     const backendSessionId = ensuredEvent
       ? asOptionalString(ensuredEvent.acpxSessionId)
       : undefined;
+    const sessionModel = asTrimmedString(input.model) || undefined;
+    const sessionReadOnly = input.readOnly === true;
+    const sessionMountBaselineRoot = asTrimmedString(input.mountBaselineRoot) || undefined;
 
     return {
       sessionKey: input.sessionKey,
@@ -664,6 +739,9 @@ export class AcpxRuntime implements AcpRuntime {
         ...(acpxRecordId ? { acpxRecordId } : {}),
         ...(backendSessionId ? { backendSessionId } : {}),
         ...(agentSessionId ? { agentSessionId } : {}),
+        ...(sessionModel ? { model: sessionModel } : {}),
+        ...(sessionReadOnly ? { readOnly: true } : {}),
+        ...(sessionMountBaselineRoot ? { mountBaselineRoot: sessionMountBaselineRoot } : {}),
       }),
       cwd,
       ...(acpxRecordId ? { acpxRecordId } : {}),
@@ -674,10 +752,33 @@ export class AcpxRuntime implements AcpRuntime {
 
   async *runTurn(input: AcpRuntimeTurnInput): AsyncIterable<AcpRuntimeEvent> {
     const state = this.resolveHandleState(input.handle);
+    const turnModel = asTrimmedString(input.model) || state.model || undefined;
+    // Per-turn readOnly override wins over session-level state; otherwise fall
+    // back to the session's persisted readOnly flag (captured at ensureSession).
+    const turnReadOnly =
+      input.readOnly !== undefined ? input.readOnly : state.readOnly;
+
+    // PTY path: engaged whenever the session carries a mount baseline. The
+    // baseline is what makes the mount-scoped permission policy meaningful —
+    // without it every prompt would surface with reason `no-baseline` anyway,
+    // so there is nothing to gain from paying the pty cost. Non-mounted
+    // sessions keep the existing pipe path unchanged.
+    if (state.mountBaselineRoot) {
+      yield* this.runTurnOverPty({
+        state,
+        input,
+        turnModel,
+        turnReadOnly,
+      });
+      return;
+    }
+
     const args = await this.buildPromptArgs({
       agent: state.agent,
       sessionName: state.name,
       cwd: state.cwd,
+      model: turnModel,
+      ...(turnReadOnly ? { readOnly: true } : {}),
     });
 
     const cancelOnAbort = async () => {
@@ -799,6 +900,298 @@ export class AcpxRuntime implements AcpRuntime {
         input.signal.removeEventListener("abort", onAbort);
       }
     }
+  }
+
+  /**
+   * PTY-based runTurn. Used whenever the session's mount baseline is set so
+   * we can host acpx's interactive `[permission] Allow ...? (y/N)` prompts
+   * and auto-answer or surface them according to the mount-scoped policy.
+   *
+   * Shape:
+   *   1. Compose the prompt text the same way the pipe path does (text +
+   *      optional JSON blocks for attachments) and stage it in a private
+   *      tempfile. acpx rejects stdin prompts under a TTY (cli.js:599), so
+   *      `--file <path>` is the only viable input channel here.
+   *   2. Spawn acpx under node-pty and wire a single merged data handler
+   *      that:
+   *        - line-buffers NDJSON events for parsePromptEventLine and
+   *          pushes them onto an internal queue consumed by this generator,
+   *        - feeds raw chunks to AcpxPermissionPromptMatcher so prompt
+   *          tails are identified even when they straddle chunk boundaries,
+   *        - resolves each match through decideAcpxPermission and either
+   *          writes y\n / n\n back into the pty master, or emits a
+   *          permission_request event and parks the prompt for
+   *          respondToPermission to resolve.
+   *   3. On child exit, drain the queue, emit a trailing `done` or `error`
+   *      event if the child produced neither, and clean up the tempfile
+   *      plus pending bookkeeping in `finally`.
+   */
+  private async *runTurnOverPty(params: {
+    state: AcpxHandleState;
+    input: AcpRuntimeTurnInput;
+    turnModel: string | undefined;
+    turnReadOnly: boolean | undefined;
+  }): AsyncIterable<AcpRuntimeEvent> {
+    const { state, input, turnModel, turnReadOnly } = params;
+    const baseline: AcpxPermissionBaseline | undefined = state.mountBaselineRoot
+      ? {
+          root: state.mountBaselineRoot,
+          // A per-turn readOnly override wins; otherwise the session-level
+          // flag captured at ensureSession drives writability. Mirrors how
+          // `turnReadOnly` is resolved above.
+          writable: !(turnReadOnly === true),
+        }
+      : undefined;
+
+    // Compose prompt text identical to the pipe path so acpx sees byte-for-byte
+    // the same payload regardless of delivery channel.
+    let promptText = input.text;
+    if (input.attachments && input.attachments.length > 0) {
+      const blocks: unknown[] = [];
+      if (input.text) {
+        blocks.push({ type: "text", text: input.text });
+      }
+      for (const attachment of input.attachments) {
+        if (attachment.mediaType.startsWith("image/")) {
+          blocks.push({
+            type: "image",
+            mimeType: attachment.mediaType,
+            data: attachment.data,
+          });
+        }
+      }
+      if (blocks.length > 0) {
+        promptText = JSON.stringify(blocks);
+      }
+    }
+
+    const tempFile = await writePromptToTempFile(promptText);
+    let child: PtyProcessHandle | undefined;
+    let disposeData: (() => void) | undefined;
+    let disposeExit: (() => void) | undefined;
+    let registered = false;
+
+    try {
+      const args = await this.buildPromptArgs({
+        agent: state.agent,
+        sessionName: state.name,
+        cwd: state.cwd,
+        model: turnModel,
+        promptFilePath: tempFile.path,
+        // Intentionally omit readOnly in the pty path: enforcement happens
+        // via the permission policy surfacing write prompts rather than
+        // passing --deny-all to acpx. See buildPromptArgs jsdoc for why.
+      });
+
+      if (input.signal?.aborted) {
+        await this.cancel({ handle: input.handle, reason: "abort-signal" }).catch(() => {});
+        return;
+      }
+
+      child = await spawnAcpxUnderPty(
+        {
+          command: this.config.command,
+          args,
+          cwd: state.cwd,
+        },
+        this.spawnCommandOptions,
+      );
+
+      const pending: AcpxPtyPendingSession = {
+        write: (data) => child!.write(data),
+        pending: new Map(),
+      };
+      this.ptyPendingSessions.set(state.name, pending);
+      registered = true;
+
+      // Event queue wiring. `queue` holds everything the generator will yield;
+      // `__exit` and `__err` sentinels let the data handler push terminal
+      // conditions without racing the async loop. `waiters` holds a single
+      // pending pull() so we only ever wake once per push.
+      type QueueItem =
+        | { kind: "event"; event: AcpRuntimeEvent }
+        | { kind: "exit"; exitCode: number; signal?: number }
+        | { kind: "error"; error: Error };
+      const queue: QueueItem[] = [];
+      let waiter: (() => void) | undefined;
+      const push = (item: QueueItem): void => {
+        queue.push(item);
+        if (waiter) {
+          const w = waiter;
+          waiter = undefined;
+          w();
+        }
+      };
+      const pull = (): Promise<void> =>
+        new Promise<void>((resolve) => {
+          if (queue.length > 0) {
+            resolve();
+            return;
+          }
+          waiter = resolve;
+        });
+
+      const demuxState = createAcpxPtyDemuxState();
+      let requestSeq = 0;
+
+      disposeData = child.onData((chunk) => {
+        const actions = processAcpxPtyChunk({ chunk, state: demuxState, baseline });
+        for (const action of actions) {
+          if (action.kind === "event") {
+            push({ kind: "event", event: action.event });
+            continue;
+          }
+          if (action.kind === "auto-reply") {
+            this.logger?.debug?.(
+              `acpx pty auto-${action.reply === "allow" ? "approve" : "deny"}: title=${action.match.title} reason=${action.reason}`,
+            );
+            child!.write(formatPermissionReply(action.reply));
+            continue;
+          }
+          // Surface: synthesize a requestId and park a resolver. The resolver
+          // writes the y/n reply into the pty master when respondToPermission
+          // is called, so the async generator below only observes the final
+          // permission_response event shape through subsequent acpx output.
+          requestSeq += 1;
+          const requestId = `acpx-prompt-${requestSeq}`;
+          pending.pending.set(requestId, (reply) => {
+            if (reply.behavior === "allow") {
+              child!.write(formatPermissionReply("allow"));
+            } else {
+              child!.write(formatPermissionReply("deny"));
+            }
+          });
+          const options: AcpPermissionOption[] = [
+            { optionId: "allow_once", label: "Allow", kind: "allow_once" },
+            { optionId: "deny", label: "Deny", kind: "deny" },
+          ];
+          push({
+            kind: "event",
+            event: {
+              type: "permission_request",
+              requestId,
+              toolName: action.match.kind ?? "acpx",
+              title: action.match.title,
+              reason: action.reason,
+              options,
+            },
+          });
+        }
+      });
+
+      disposeExit = child.onExit(({ exitCode, signal }) => {
+        push({ kind: "exit", exitCode, signal });
+      });
+
+      const onAbort = () => {
+        void this.cancel({ handle: input.handle, reason: "abort-signal" }).catch((err) => {
+          this.logger?.warn?.(`acpx pty abort-cancel failed: ${String(err)}`);
+        });
+        child?.kill();
+      };
+      if (input.signal) {
+        input.signal.addEventListener("abort", onAbort, { once: true });
+      }
+
+      let sawDone = false;
+      let sawError = false;
+      try {
+        while (true) {
+          if (queue.length === 0) {
+            await pull();
+          }
+          const item = queue.shift();
+          if (!item) {
+            continue;
+          }
+          if (item.kind === "error") {
+            throw item.error;
+          }
+          if (item.kind === "exit") {
+            const exitCode = item.exitCode;
+            const exitedWithFailure = didAcpxProcessExitWithFailure({
+              exitCode,
+              signal: null,
+            });
+            if (exitedWithFailure && !sawError) {
+              yield {
+                type: "error",
+                message: `acpx (pty) exited with code ${exitCode}`,
+              };
+              return;
+            }
+            if (!sawDone && !sawError) {
+              yield { type: "done" };
+            }
+            return;
+          }
+          const ev = item.event;
+          if (ev.type === "done") {
+            if (sawDone) {
+              continue;
+            }
+            sawDone = true;
+          }
+          if (ev.type === "error") {
+            sawError = true;
+          }
+          yield ev;
+        }
+      } finally {
+        if (input.signal) {
+          input.signal.removeEventListener("abort", onAbort);
+        }
+      }
+    } finally {
+      disposeData?.();
+      disposeExit?.();
+      if (registered) {
+        this.ptyPendingSessions.delete(state.name);
+      }
+      try {
+        child?.kill();
+      } catch {
+        // kill races are expected when the child has already exited.
+      }
+      await tempFile.cleanup().catch((err) => {
+        this.logger?.warn?.(`acpx pty tempfile cleanup failed: ${String(err)}`);
+      });
+    }
+  }
+
+  /**
+   * Deliver a user decision from the UI back into a parked acpx interactive
+   * prompt. The pty runner synthesized the `requestId` when it surfaced the
+   * prompt and registered a resolver closure under {@link ptyPendingSessions};
+   * this method looks that resolver up by session name and hands it the
+   * decision, which translates into a `y\n`/`n\n` write on the pty master.
+   *
+   * No-ops (with a warn) when the session is unknown or the requestId was
+   * never surfaced — keeps the control plane forgiving in the face of
+   * reconnects and late clicks.
+   */
+  async respondToPermission(input: {
+    handle: AcpRuntimeHandle;
+    requestId: string;
+    decision: AcpPermissionDecision;
+  }): Promise<void> {
+    const state = this.resolveHandleState(input.handle);
+    const session = this.ptyPendingSessions.get(state.name);
+    if (!session) {
+      this.logger?.warn?.(
+        `acpx respondToPermission: no pty session for ${state.name} (requestId=${input.requestId})`,
+      );
+      return;
+    }
+    const resolver = session.pending.get(input.requestId);
+    if (!resolver) {
+      this.logger?.warn?.(
+        `acpx respondToPermission: unknown requestId ${input.requestId} on session ${state.name}`,
+      );
+      return;
+    }
+    session.pending.delete(input.requestId);
+    resolver(input.decision);
   }
 
   getCapabilities(): AcpRuntimeCapabilities {
@@ -960,9 +1353,101 @@ export class AcpxRuntime implements AcpRuntime {
     }
 
     this.healthy = true;
+    const agentReports = await this.probeKnownAgents();
     return {
       ok: true,
       message: `acpx command available (${this.config.command}, version ${result.versionCheck.version}${this.config.expectedVersion ? `, expected ${this.config.expectedVersion}` : ""})`,
+      ...(agentReports.length > 0 ? { agentReports } : {}),
+    };
+  }
+
+  /**
+   * Probe each OpenClaw-visible agent alias for upstream health (for example
+   * whether `claude-code` has an installed CLI and a populated `~/.claude`
+   * subscription directory). Runs after the base acpx check; failures are
+   * surfaced via AcpRuntimeDoctorReport.agentReports without forcing the
+   * top-level doctor report to fail — callers decide how to render per-agent
+   * warnings alongside the healthy backend state.
+   */
+  private async probeKnownAgents(): Promise<AcpRuntimeAgentDoctorReport[]> {
+    const reports: AcpRuntimeAgentDoctorReport[] = [];
+    for (const openclawAgent of Object.keys(ACPX_AGENT_ALIASES)) {
+      if (openclawAgent === "claude-code") {
+        reports.push(await this.probeClaudeCodeAgent());
+      }
+    }
+    return reports;
+  }
+
+  private async probeClaudeCodeAgent(): Promise<AcpRuntimeAgentDoctorReport> {
+    const details: string[] = [];
+    const claudeHome = pathJoin(homedir(), ".claude");
+    let claudeHomeOk = false;
+    try {
+      await fsAccess(claudeHome);
+      claudeHomeOk = true;
+      details.push(`subscriptionDir=${claudeHome}`);
+    } catch {
+      details.push(`subscriptionDir=${claudeHome} (missing)`);
+    }
+
+    // Verify the CLI is resolvable by invoking `claude-code --version` via the
+    // same spawn path the runtime would use. We don't hard-fail if this is
+    // missing (users may be on a shared container image where the CLI is
+    // installed globally by the Dockerfile layer); the details string gives
+    // operators enough signal to diagnose themselves.
+    const versionResult = await spawnAndCollect(
+      {
+        command: "claude-code",
+        args: ["--version"],
+        cwd: this.config.cwd,
+      },
+      this.spawnCommandOptions,
+    ).catch((error) => ({
+      code: null,
+      signal: null,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error : new Error(String(error)),
+    }));
+    const cliOk =
+      !versionResult.error &&
+      (versionResult.code === 0 || versionResult.code === null) &&
+      !!versionResult.stdout.trim();
+    if (cliOk) {
+      details.push(`cliVersion=${versionResult.stdout.trim()}`);
+    } else if (versionResult.error) {
+      details.push(`cliError=${versionResult.error.message}`);
+    } else {
+      details.push(
+        `cliExit=${versionResult.code ?? "unknown"} stderr=${versionResult.stderr.trim() || "(empty)"}`,
+      );
+    }
+
+    const ok = cliOk && claudeHomeOk;
+    if (ok) {
+      return {
+        agent: "claude-code",
+        ok: true,
+        message: "claude-code CLI and subscription auth look healthy",
+        details,
+      };
+    }
+    const missing: string[] = [];
+    if (!cliOk) {
+      missing.push("claude-code CLI not runnable");
+    }
+    if (!claudeHomeOk) {
+      missing.push(`${claudeHome} missing`);
+    }
+    return {
+      agent: "claude-code",
+      ok: false,
+      code: "ACP_AGENT_UNAVAILABLE",
+      message: `claude-code probe failed: ${missing.join("; ")}`,
+      installCommand:
+        "npm install -g @anthropic-ai/claude-code @agentclientprotocol/claude-agent-acp",
+      details,
     };
   }
 
@@ -1022,14 +1507,34 @@ export class AcpxRuntime implements AcpRuntime {
     agent: string;
     sessionName: string;
     cwd: string;
+    model?: string;
+    readOnly?: boolean;
+    /**
+     * Absolute path to a tempfile containing the composed prompt text. When
+     * set, buildPromptArgs emits `--file <path>` instead of the default
+     * `--file -` (stdin pipe). Required for the pty path because acpx rejects
+     * stdin prompts when stdin is a TTY (cli.js:599, `InvalidArgumentError`).
+     */
+    promptFilePath?: string;
   }): Promise<string[]> {
+    // Legacy pipe path: when readOnly is set we override the configured
+    // permission mode with `--deny-all` so acpx refuses write-adjacent tools.
+    // The pty path does NOT use this branch — it layers its own permission
+    // policy on top of acpx's interactive y/N prompts (see runTurnOverPty)
+    // and intentionally leaves the configured permissionMode in place so read
+    // tools are still auto-approved while writes round-trip through the
+    // policy engine. The kernel EROFS backstop from a read-only SSHFS mount
+    // remains the final line of defense in both paths.
+    const permissionArgs = params.readOnly
+      ? ["--deny-all"]
+      : buildPermissionArgs(this.config.permissionMode);
     const prefix = [
       "--format",
       "json",
       "--json-strict",
       "--cwd",
       params.cwd,
-      ...buildPermissionArgs(this.config.permissionMode),
+      ...permissionArgs,
       "--non-interactive-permissions",
       this.config.nonInteractivePermissions,
     ];
@@ -1037,10 +1542,19 @@ export class AcpxRuntime implements AcpRuntime {
       prefix.push("--timeout", String(this.config.timeoutSeconds));
     }
     prefix.push("--ttl", String(this.queueOwnerTtlSeconds));
+    // Per-turn model override. Mid-conversation switching forwards the
+    // caller-supplied `--model <id>` on each prompt; acpx passes this down to
+    // the underlying ACP adapter (claude-agent-acp, codex-acp, etc.), which
+    // selects the model for that turn only. Omitted when unset so the backend
+    // uses its configured default.
+    if (params.model) {
+      prefix.push("--model", params.model);
+    }
+    const fileArg = params.promptFilePath ?? "-";
     return await this.buildVerbArgs({
       agent: params.agent,
       cwd: params.cwd,
-      command: ["prompt", "--session", params.sessionName, "--file", "-"],
+      command: ["prompt", "--session", params.sessionName, "--file", fileArg],
       prefix,
     });
   }
@@ -1052,12 +1566,13 @@ export class AcpxRuntime implements AcpRuntime {
     prefix?: string[];
   }): Promise<string[]> {
     const prefix = params.prefix ?? ["--format", "json", "--json-strict", "--cwd", params.cwd];
+    const acpxAgent = toAcpxAgentName(params.agent);
     const agentCommand = await this.resolveRawAgentCommand({
-      agent: params.agent,
+      agent: acpxAgent,
       cwd: params.cwd,
     });
     if (!agentCommand) {
-      return [...prefix, params.agent, ...params.command];
+      return [...prefix, acpxAgent, ...params.command];
     }
     return [...prefix, "--agent", agentCommand, ...params.command];
   }

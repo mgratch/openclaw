@@ -13,6 +13,7 @@ export type AcpxNonInteractivePermissionPolicy = (typeof ACPX_NON_INTERACTIVE_PO
 
 export const ACPX_VERSION_ANY = "any";
 export const ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME = "openclaw-plugin-tools";
+export const ACPX_GATEWAY_BRIDGE_MCP_SERVER_NAME = "openclaw-gateway-bridge";
 const ACPX_BIN_NAME = process.platform === "win32" ? "acpx.cmd" : "acpx";
 
 function isAcpxPluginRoot(dir: string): boolean {
@@ -92,6 +93,7 @@ export type AcpxPluginConfig = {
   permissionMode?: AcpxPermissionMode;
   nonInteractivePermissions?: AcpxNonInteractivePermissionPolicy;
   pluginToolsMcpBridge?: boolean;
+  gatewayToolsBridge?: boolean;
   strictWindowsCmdWrapper?: boolean;
   timeoutSeconds?: number;
   queueOwnerTtlSeconds?: number;
@@ -108,6 +110,7 @@ export type ResolvedAcpxPluginConfig = {
   permissionMode: AcpxPermissionMode;
   nonInteractivePermissions: AcpxNonInteractivePermissionPolicy;
   pluginToolsMcpBridge: boolean;
+  gatewayToolsBridge: boolean;
   strictWindowsCmdWrapper: boolean;
   timeoutSeconds?: number;
   queueOwnerTtlSeconds: number;
@@ -159,6 +162,7 @@ const AcpxPluginConfigSchema = z.strictObject({
     })
     .optional(),
   pluginToolsMcpBridge: z.boolean({ error: "pluginToolsMcpBridge must be a boolean" }).optional(),
+  gatewayToolsBridge: z.boolean({ error: "gatewayToolsBridge must be a boolean" }).optional(),
   strictWindowsCmdWrapper: z
     .boolean({ error: "strictWindowsCmdWrapper must be a boolean" })
     .optional(),
@@ -245,21 +249,59 @@ export function resolvePluginToolsMcpServerConfig(
   };
 }
 
+export function resolveGatewayBridgeMcpServerConfig(
+  moduleUrl: string = import.meta.url,
+): McpServerConfig {
+  const pluginRoot = resolveAcpxPluginRoot(moduleUrl);
+  const openClawRoot = resolveOpenClawRoot(pluginRoot);
+  const distEntry = path.join(openClawRoot, "dist", "mcp", "gateway-bridge-serve.js");
+  if (fs.existsSync(distEntry)) {
+    return {
+      command: process.execPath,
+      args: [distEntry],
+    };
+  }
+  const sourceEntry = path.join(openClawRoot, "src", "mcp", "gateway-bridge-serve.ts");
+  return {
+    command: process.execPath,
+    args: ["--import", "tsx", sourceEntry],
+  };
+}
+
 function resolveConfiguredMcpServers(params: {
   mcpServers?: Record<string, McpServerConfig>;
   pluginToolsMcpBridge: boolean;
+  gatewayToolsBridge: boolean;
   moduleUrl?: string;
 }): Record<string, McpServerConfig> {
   const resolved = { ...(params.mcpServers ?? {}) };
-  if (!params.pluginToolsMcpBridge) {
+
+  // gatewayToolsBridge is a superset of pluginToolsMcpBridge — it includes
+  // plugin tools + all gateway MCP servers + skills. When both are true,
+  // only inject the gateway bridge to avoid duplicate tool registrations.
+  if (params.gatewayToolsBridge) {
+    if (resolved[ACPX_GATEWAY_BRIDGE_MCP_SERVER_NAME]) {
+      throw new Error(
+        `mcpServers.${ACPX_GATEWAY_BRIDGE_MCP_SERVER_NAME} is reserved when gatewayToolsBridge=true`,
+      );
+    }
+    resolved[ACPX_GATEWAY_BRIDGE_MCP_SERVER_NAME] = resolveGatewayBridgeMcpServerConfig(
+      params.moduleUrl,
+    );
     return resolved;
   }
-  if (resolved[ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME]) {
-    throw new Error(
-      `mcpServers.${ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME} is reserved when pluginToolsMcpBridge=true`,
+
+  if (params.pluginToolsMcpBridge) {
+    if (resolved[ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME]) {
+      throw new Error(
+        `mcpServers.${ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME} is reserved when pluginToolsMcpBridge=true`,
+      );
+    }
+    resolved[ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME] = resolvePluginToolsMcpServerConfig(
+      params.moduleUrl,
     );
   }
-  resolved[ACPX_PLUGIN_TOOLS_MCP_SERVER_NAME] = resolvePluginToolsMcpServerConfig(params.moduleUrl);
+
   return resolved;
 }
 
@@ -304,9 +346,11 @@ export function resolveAcpxPluginConfig(params: {
       : (configuredExpectedVersion ?? (allowPluginLocalInstall ? ACPX_PINNED_VERSION : undefined));
   const installCommand = buildAcpxLocalInstallCommand(expectedVersion ?? ACPX_PINNED_VERSION);
   const pluginToolsMcpBridge = normalized.pluginToolsMcpBridge === true;
+  const gatewayToolsBridge = normalized.gatewayToolsBridge === true;
   const mcpServers = resolveConfiguredMcpServers({
     mcpServers: normalized.mcpServers,
     pluginToolsMcpBridge,
+    gatewayToolsBridge,
     moduleUrl: params.moduleUrl,
   });
 
@@ -321,6 +365,7 @@ export function resolveAcpxPluginConfig(params: {
     nonInteractivePermissions:
       normalized.nonInteractivePermissions ?? DEFAULT_NON_INTERACTIVE_POLICY,
     pluginToolsMcpBridge,
+    gatewayToolsBridge,
     strictWindowsCmdWrapper:
       normalized.strictWindowsCmdWrapper ?? DEFAULT_STRICT_WINDOWS_CMD_WRAPPER,
     timeoutSeconds: normalized.timeoutSeconds,
