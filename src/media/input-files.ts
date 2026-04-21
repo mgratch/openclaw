@@ -101,6 +101,9 @@ export const DEFAULT_INPUT_FILE_MIMES = [
   "text/html",
   "text/csv",
   "application/json",
+  "application/jsonl",
+  "application/x-ndjson",
+  "application/x-jsonlines",
   "application/pdf",
 ];
 export const DEFAULT_INPUT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;

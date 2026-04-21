@@ -25,6 +25,11 @@ import { loadLanceDbModule } from "./lancedb-runtime.js";
 // Types
 // ============================================================================
 
+// Module-level agent tracking. Shared across all registry instances because
+// the plugin cache creates separate closures per-workspace but the hook runner
+// is global. This ensures the hook-set agentId is visible to all tool closures.
+let currentAgentId = "main";
+
 type MemoryEntry = {
   id: string;
   text: string;
@@ -32,6 +37,7 @@ type MemoryEntry = {
   importance: number;
   category: MemoryCategory;
   createdAt: number;
+  agentId: string;
 };
 
 type MemorySearchResult = {
@@ -83,6 +89,7 @@ class MemoryDB {
           importance: 0,
           category: "other",
           createdAt: 0,
+          agentId: "",
         },
       ]);
       await this.table.delete('id = "__schema__"');
@@ -102,10 +109,12 @@ class MemoryDB {
     return fullEntry;
   }
 
-  async search(vector: number[], limit = 5, minScore = 0.5): Promise<MemorySearchResult[]> {
+  async search(vector: number[], limit = 5, minScore = 0.5, agentId?: string): Promise<MemorySearchResult[]> {
     await this.ensureInitialized();
 
-    const results = await this.table!.vectorSearch(vector).limit(limit).toArray();
+    // Fetch more candidates when filtering by agent (some will be filtered out)
+    const fetchLimit = agentId && agentId !== "main" ? limit * 3 : limit;
+    const results = await this.table!.vectorSearch(vector).limit(fetchLimit).toArray();
 
     // LanceDB uses L2 distance by default; convert to similarity score
     const mapped = results.map((row) => {
@@ -120,12 +129,22 @@ class MemoryDB {
           importance: row.importance as number,
           category: row.category as MemoryEntry["category"],
           createdAt: row.createdAt as number,
+          agentId: (row.agentId as string) || "main",
         },
         score,
       };
     });
 
-    return mapped.filter((r) => r.score >= minScore);
+    let filtered = mapped.filter((r) => r.score >= minScore);
+
+    // Agent scoping: main sees all, project agents see own + main
+    if (agentId && agentId !== "main") {
+      filtered = filtered.filter(
+        (r) => r.entry.agentId === agentId || r.entry.agentId === "main",
+      );
+    }
+
+    return filtered.slice(0, limit);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -315,7 +334,8 @@ export default definePluginEntry({
           const { query, limit = 5 } = params as { query: string; limit?: number };
 
           const vector = await embeddings.embed(query);
-          const results = await db.search(vector, limit, 0.1);
+          // main agent sees all memories; project agents see own + main
+          const results = await db.search(vector, limit, 0.1, currentAgentId);
 
           if (results.length === 0) {
             return {
@@ -327,7 +347,7 @@ export default definePluginEntry({
           const text = results
             .map(
               (r, i) =>
-                `${i + 1}. [${r.entry.category}] ${r.entry.text} (${(r.score * 100).toFixed(0)}%)`,
+                `${i + 1}. [${r.entry.category}] (${r.entry.agentId}) ${r.entry.text} (${(r.score * 100).toFixed(0)}%)`,
             )
             .join("\n");
 
@@ -337,6 +357,7 @@ export default definePluginEntry({
             text: r.entry.text,
             category: r.entry.category,
             importance: r.entry.importance,
+            agentId: r.entry.agentId,
             score: r.score,
           }));
 
@@ -401,11 +422,12 @@ export default definePluginEntry({
             vector,
             importance,
             category,
+            agentId: currentAgentId,
           });
 
           return {
-            content: [{ type: "text", text: `Stored: "${text.slice(0, 100)}..."` }],
-            details: { action: "created", id: entry.id },
+            content: [{ type: "text", text: `Stored (agent=${currentAgentId}): "${text.slice(0, 100)}..."` }],
+            details: { action: "created", id: entry.id, agentId: currentAgentId },
           };
         },
       },
@@ -533,22 +555,32 @@ export default definePluginEntry({
     // Lifecycle Hooks
     // ========================================================================
 
+    // Always track current agent for tool scoping, even without auto-recall
+    api.on("before_agent_start", async (event: any, ctx?: any) => {
+      if (ctx?.agentId) {
+        currentAgentId = ctx.agentId;
+      }
+    });
+
     // Auto-recall: inject relevant memories before agent starts
     if (cfg.autoRecall) {
-      api.on("before_agent_start", async (event) => {
+      api.on("before_agent_start", async (event: any, ctx?: any) => {
+        // currentAgentId already set by the tracking hook above
+
         if (!event.prompt || event.prompt.length < 5) {
           return;
         }
 
         try {
           const vector = await embeddings.embed(event.prompt);
-          const results = await db.search(vector, 3, 0.3);
+          // Scope recall: main sees all, project agents see own + main
+          const results = await db.search(vector, 3, 0.3, currentAgentId);
 
           if (results.length === 0) {
             return;
           }
 
-          api.logger.info?.(`memory-lancedb: injecting ${results.length} memories into context`);
+          api.logger.info?.(`memory-lancedb: injecting ${results.length} memories for agent=${currentAgentId}`);
 
           return {
             prependContext: formatRelevantMemoriesContext(
@@ -563,7 +595,9 @@ export default definePluginEntry({
 
     // Auto-capture: analyze and store important information after agent ends
     if (cfg.autoCapture) {
-      api.on("agent_end", async (event) => {
+      api.on("agent_end", async (event: any, ctx?: any) => {
+        const agentId = ctx?.agentId || currentAgentId;
+
         if (!event.success || !event.messages || event.messages.length === 0) {
           return;
         }
@@ -634,12 +668,13 @@ export default definePluginEntry({
               vector,
               importance: 0.7,
               category,
+              agentId,
             });
             stored++;
           }
 
           if (stored > 0) {
-            api.logger.info(`memory-lancedb: auto-captured ${stored} memories`);
+            api.logger.info(`memory-lancedb: auto-captured ${stored} memories for agent=${agentId}`);
           }
         } catch (err) {
           api.logger.warn(`memory-lancedb: capture failed: ${String(err)}`);
