@@ -51,6 +51,18 @@ describe("resolveGatewayRequestContext", () => {
 
     expect(result.sessionKey).toContain("openresponses-user:alice");
   });
+
+  it("routes ACP preset request models through the preset agent", () => {
+    const result = resolveGatewayRequestContext({
+      req: createReq(),
+      model: "claude-code-opus",
+      sessionPrefix: "openai",
+      defaultMessageChannel: "webchat",
+    });
+
+    expect(result.agentId).toBe("claude-code");
+    expect(result.sessionKey).toMatch(/^agent:claude-code:/);
+  });
 });
 
 describe("resolveTrustedHttpOperatorScopes", () => {

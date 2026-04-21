@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { resolveAcpModelPreset } from "../acp/presets.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import {
   buildAllowedModelSet,
@@ -212,6 +213,11 @@ export function resolveAgentIdFromModel(
     return resolveDefaultAgentId(cfg);
   }
 
+  const acpPreset = resolveAcpModelPreset(raw);
+  if (acpPreset) {
+    return normalizeAgentId(acpPreset.agent);
+  }
+
   const m =
     raw.match(/^openclaw[:/](?<agentId>[a-z0-9][a-z0-9_-]{0,63})$/i) ??
     raw.match(/^agent:(?<agentId>[a-z0-9][a-z0-9_-]{0,63})$/i);
@@ -228,6 +234,7 @@ export async function resolveOpenAiCompatModelOverride(params: {
   model: string | undefined;
 }): Promise<{ modelOverride?: string; errorMessage?: string }> {
   const requestModel = params.model?.trim();
+  const requestPreset = resolveAcpModelPreset(requestModel);
   if (requestModel && !resolveAgentIdFromModel(requestModel)) {
     return {
       errorMessage: "Invalid `model`. Use `openclaw` or `openclaw/<agentId>`.",
@@ -236,7 +243,7 @@ export async function resolveOpenAiCompatModelOverride(params: {
 
   const raw = getHeader(params.req, "x-openclaw-model")?.trim();
   if (!raw) {
-    return {};
+    return requestPreset ? { modelOverride: requestPreset.id } : {};
   }
 
   const cfg = loadConfig();

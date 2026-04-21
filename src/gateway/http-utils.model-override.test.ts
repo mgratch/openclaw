@@ -47,4 +47,16 @@ describe("resolveOpenAiCompatModelOverride", () => {
       errorMessage: "Model 'claude-cli/opus' is not allowed for agent 'main'.",
     });
   });
+
+  it("passes ACP preset request models through as the per-turn override", async () => {
+    await expect(
+      resolveOpenAiCompatModelOverride({
+        req: createReq(),
+        agentId: "claude-code",
+        model: "claude-code-opus",
+      }),
+    ).resolves.toEqual({
+      modelOverride: "claude-code-opus",
+    });
+  });
 });

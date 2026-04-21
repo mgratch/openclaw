@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { ACP_MODEL_PRESETS } from "../acp/presets.js";
 import { listAgentIds, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { loadConfig } from "../config/config.js";
 import type { AuthRateLimiter } from "./auth-rate-limit.js";
@@ -61,6 +62,9 @@ function loadAgentModelIds(): string[] {
   ids.add(`openclaw/${defaultAgentId}`);
   for (const agentId of listAgentIds(cfg)) {
     ids.add(`openclaw/${agentId}`);
+  }
+  for (const preset of ACP_MODEL_PRESETS) {
+    ids.add(preset.id);
   }
   return Array.from(ids);
 }
