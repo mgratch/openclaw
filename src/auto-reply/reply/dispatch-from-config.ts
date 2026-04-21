@@ -1,6 +1,12 @@
 import { resolveSendableOutboundReplyParts } from "openclaw/plugin-sdk/reply-payload";
+import { detectRuntimeFlip, performRuntimeFlip } from "../../acp/control-plane/runtime-flip.js";
+import { isAcpModelPreset } from "../../acp/presets.js";
 import { isParentOwnedBackgroundAcpSession } from "../../acp/session-interaction-mode.js";
-import { resolveSessionAgentId } from "../../agents/agent-scope.js";
+import {
+  resolveAgentEffectiveModelPrimary,
+  resolveAgentWorkspaceDir,
+  resolveSessionAgentId,
+} from "../../agents/agent-scope.js";
 import {
   resolveConversationBindingRecord,
   touchConversationBindingRecord,
@@ -11,7 +17,9 @@ import { parseSessionThreadInfo } from "../../config/sessions/delivery-info.js";
 import { resolveStorePath } from "../../config/sessions/paths.js";
 import { loadSessionStore, resolveSessionStoreEntry } from "../../config/sessions/store.js";
 import type { SessionEntry } from "../../config/sessions/types.js";
+import { readSessionMessages } from "../../gateway/session-utils.fs.js";
 import { logVerbose } from "../../globals.js";
+import { getLogger } from "../../logging/logger.js";
 import { fireAndForgetHook } from "../../hooks/fire-and-forget.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import {
@@ -39,6 +47,7 @@ import {
 } from "../../plugins/conversation-binding.js";
 import { getGlobalHookRunner, getGlobalPluginRegistry } from "../../plugins/hook-runner-global.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
+import { isAcpSessionKey } from "../../sessions/session-key-utils.js";
 import { normalizeTtsAutoMode, resolveConfiguredTtsMode } from "../../tts/tts-config.js";
 import { normalizeMessageChannel } from "../../utils/message-channel.js";
 import type { FinalizedMsgContext } from "../templating.js";
@@ -118,6 +127,7 @@ const isInboundAudioContext = (ctx: FinalizedMsgContext): boolean => {
 const resolveSessionStoreLookup = (
   ctx: FinalizedMsgContext,
   cfg: OpenClawConfig,
+  sessionStoreHint?: { store: Record<string, SessionEntry>; storePath: string },
 ): {
   sessionKey?: string;
   entry?: SessionEntry;
@@ -131,7 +141,11 @@ const resolveSessionStoreLookup = (
   const agentId = resolveSessionAgentId({ sessionKey, config: cfg });
   const storePath = resolveStorePath(cfg.session?.store, { agentId });
   try {
-    const store = loadSessionStore(storePath);
+    // Reuse pre-loaded store from the caller (e.g. chat.send already read it)
+    // instead of reading sessions.json from disk again.
+    const store = sessionStoreHint?.store && sessionStoreHint.storePath === storePath
+      ? sessionStoreHint.store
+      : loadSessionStore(storePath);
     return {
       sessionKey,
       entry: resolveSessionStoreEntry({ store, sessionKey }).existing,
@@ -156,6 +170,8 @@ export async function dispatchReplyFromConfig(params: {
   replyResolver?: typeof import("./get-reply-from-config.runtime.js").getReplyFromConfig;
   /** Optional config override passed to getReplyFromConfig (e.g. per-sender timezone). */
   configOverride?: OpenClawConfig;
+  /** Pre-loaded session store from the caller to avoid re-reading sessions.json. */
+  sessionStoreHint?: { store: Record<string, SessionEntry>; storePath: string };
 }): Promise<DispatchFromConfigResult> {
   const { ctx, cfg, dispatcher } = params;
   const diagnosticsEnabled = isDiagnosticsEnabled(cfg);
@@ -216,7 +232,7 @@ export async function dispatchReplyFromConfig(params: {
     return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
   }
 
-  const sessionStoreEntry = resolveSessionStoreLookup(ctx, cfg);
+  const sessionStoreEntry = resolveSessionStoreLookup(ctx, cfg, params.sessionStoreHint);
   const acpDispatchSessionKey = sessionStoreEntry.sessionKey ?? sessionKey;
   // Restore route thread context only from the active turn or the thread-scoped session key.
   // Do not read thread ids from the normalised session store here: `origin.threadId` can be
@@ -587,12 +603,221 @@ export async function dispatchReplyFromConfig(params: {
     // summaries should be delivered into the topic thread, same as DMs.
     const shouldSendToolSummaries =
       (ctx.ChatType !== "group" || ctx.IsForum === true) && ctx.CommandSource !== "native";
+
+    // Detect runtime flip: if user selected an ACP preset on a non-ACP session,
+    // prepare flip context with replay payload to warm-start the ACP session.
+    const flipAgentId = acpDispatchSessionKey
+      ? resolveSessionAgentId({ sessionKey: acpDispatchSessionKey, config: cfg })
+      : undefined;
+    const storePath = resolveStorePath(cfg.session?.store, { agentId: flipAgentId });
+
+    // If the agent's configured default model is an ACP preset (e.g. "claude-code-opus")
+    // and there is no per-turn modelOverride, inject the preset id as the effective
+    // modelOverride so the existing runtime-flip path handles ACP dispatch for
+    // project-level ACP default models — not just per-turn session overrides.
+    if (acpDispatchSessionKey && !params.replyOptions?.modelOverride && flipAgentId) {
+      const agentModelPrimary = resolveAgentEffectiveModelPrimary(cfg, flipAgentId);
+      if (agentModelPrimary && isAcpModelPreset(agentModelPrimary)) {
+        if (!params.replyOptions) {
+          params.replyOptions = {};
+        }
+        params.replyOptions.modelOverride = agentModelPrimary;
+        getLogger().info(
+          { agentId: flipAgentId, acpPreset: agentModelPrimary },
+          "dispatch-from-config: agent default model is ACP preset, injecting as modelOverride",
+        );
+      }
+    }
+
+    const flipContext =
+      acpDispatchSessionKey && params.replyOptions?.modelOverride
+        ? await detectRuntimeFlip({
+            modelOverride: params.replyOptions.modelOverride,
+            sourceSessionKey: acpDispatchSessionKey,
+            isSourceAcpSession: isAcpSessionKey(acpDispatchSessionKey),
+            readSourceMessages: async () => {
+              let messages = readSessionMessages(acpDispatchSessionKey, storePath);
+              // Fallback: webchat sessions don't have Pi session-store entries —
+              // their canonical transcript is the UI-side jsonl under
+              // <workspace>/ui-transcripts/<shortKey>.jsonl. When Pi store is
+              // empty and the source is a webchat session, hydrate replay from
+              // that file instead so Claude Code preset flips actually receive
+              // prior conversation context.
+              if ((!messages || messages.length === 0) && acpDispatchSessionKey) {
+                try {
+                  const fs = await import("node:fs");
+                  const path = await import("node:path");
+                  const shortKey = acpDispatchSessionKey.includes(":")
+                    ? acpDispatchSessionKey.slice(acpDispatchSessionKey.lastIndexOf(":") + 1)
+                    : acpDispatchSessionKey;
+                  // Try the flipAgentId workspace first, then common fallbacks.
+                  const candidateAgentIds = Array.from(
+                    new Set(
+                      [flipAgentId, "main", "openclaw"].filter(
+                        (x): x is string => typeof x === "string" && x.length > 0,
+                      ),
+                    ),
+                  );
+                  let uiTranscriptPath: string | undefined;
+                  for (const agentId of candidateAgentIds) {
+                    const wsDir = resolveAgentWorkspaceDir(cfg, agentId);
+                    if (!wsDir) continue;
+                    const candidate = path.join(wsDir, "ui-transcripts", `${shortKey}.jsonl`);
+                    if (fs.existsSync(candidate)) {
+                      uiTranscriptPath = candidate;
+                      break;
+                    }
+                  }
+                  if (uiTranscriptPath) {
+                    const raw = fs.readFileSync(uiTranscriptPath, "utf-8");
+                    const parsed: unknown[] = [];
+                    for (const line of raw.split("\n")) {
+                      const trimmed = line.trim();
+                      if (!trimmed) continue;
+                      try {
+                        parsed.push(JSON.parse(trimmed));
+                      } catch {
+                        // skip malformed lines
+                      }
+                    }
+                    messages = parsed;
+                    getLogger().info(
+                      {
+                        path: uiTranscriptPath,
+                        messageCount: parsed.length,
+                        sourceSessionKey: acpDispatchSessionKey,
+                      },
+                      "runtime-flip: hydrated replay from UI transcript fallback",
+                    );
+                  }
+                } catch (err) {
+                  logVerbose(
+                    `runtime-flip: UI transcript fallback read failed: ${err instanceof Error ? err.message : String(err)}`,
+                  );
+                }
+              }
+              // Convert raw messages to unified format for replay
+              type ReplayMsg = {
+                role: "user" | "assistant" | "system";
+                content: string;
+                timestamp?: number;
+              };
+              return messages.flatMap((msg: unknown): ReplayMsg[] => {
+                if (!msg || typeof msg !== "object") {
+                  return [];
+                }
+                const msgObj = msg as Record<string, unknown>;
+                // Handle assistant messages with content array
+                const ts =
+                  typeof msgObj.timestamp === "number" ? msgObj.timestamp : undefined;
+                // UI-transcript fallback stores assistant content as a plain
+                // string rather than a content-block array; accept that shape
+                // too so replay hydration works for webchat source sessions.
+                if (msgObj.role === "assistant" && typeof msgObj.content === "string") {
+                  return [
+                    {
+                      role: "assistant" as const,
+                      content: msgObj.content,
+                      timestamp: ts,
+                    },
+                  ];
+                }
+                if (msgObj.role === "assistant" && Array.isArray(msgObj.content)) {
+                  const textParts = (msgObj.content as unknown[]).filter(
+                    (c: unknown): c is { type: string; text: string } =>
+                      typeof c === "object" &&
+                      c !== null &&
+                      (c as { type?: unknown }).type === "text" &&
+                      typeof (c as { text?: unknown }).text === "string",
+                  );
+                  if (textParts.length === 0) {
+                    return [];
+                  }
+                  return [
+                    {
+                      role: "assistant" as const,
+                      content: textParts.map((c) => c.text).join("\n"),
+                      timestamp: ts,
+                    },
+                  ];
+                }
+                // Handle user/system messages with string content
+                if (
+                  (msgObj.role === "user" || msgObj.role === "system") &&
+                  typeof msgObj.content === "string"
+                ) {
+                  return [
+                    {
+                      role: msgObj.role as "user" | "system",
+                      content: msgObj.content,
+                      timestamp: ts,
+                    },
+                  ];
+                }
+                return [];
+              });
+            },
+          })
+        : null;
+
+    // If flip detected with no warm session, spawn a fresh ACP session + prime it.
+    // The spawn/prime result becomes the sessionKey for ACP dispatch to use.
+    let flippedAcpSessionKey: string | undefined;
+    if (flipContext && !flipContext.warmSessionKey && flipContext.sourceSessionKey) {
+      getLogger().info(
+        {
+          preset: flipContext.preset?.id,
+          sourceSessionKey: flipContext.sourceSessionKey,
+        },
+        "dispatch-from-config: detected runtime flip, performing spawn+prime",
+      );
+      flippedAcpSessionKey =
+        (await performRuntimeFlip({
+          flipContext,
+          cfg,
+          ctx,
+          sourceSessionKey: flipContext.sourceSessionKey,
+        })) ?? undefined;
+      if (flippedAcpSessionKey) {
+        getLogger().info(
+          { preset: flipContext.preset?.id, flippedAcpSessionKey },
+          "dispatch-from-config: flip succeeded, routing to ACP dispatch",
+        );
+      } else {
+        getLogger().warn(
+          { preset: flipContext.preset?.id, sourceSessionKey: flipContext.sourceSessionKey },
+          "dispatch-from-config: flip spawn FAILED, will fall through to non-ACP dispatch",
+        );
+      }
+    }
+
+    // If a flip was detected but no ACP session key is available (spawn failed,
+    // or the flip manager returned passthrough), strip the preset model
+    // override so the downstream non-ACP dispatcher doesn't try to resolve
+    // "claude-code-opus" against a regular provider and crash with
+    // `Unknown model: openai-codex/claude-code-opus`. The fallback chain
+    // promotion in resolveEffectiveModelFallbacks will degrade gracefully
+    // to the session's configured primary + configured fallbacks.
+    if (
+      flipContext?.preset &&
+      !flippedAcpSessionKey &&
+      params.replyOptions &&
+      params.replyOptions.modelOverride &&
+      params.replyOptions.modelOverride === flipContext.preset.id
+    ) {
+      getLogger().warn(
+        { preset: flipContext.preset.id },
+        "dispatch-from-config: stripping unresolved ACP preset override before non-ACP fallthrough",
+      );
+      params.replyOptions.modelOverride = undefined;
+    }
+
     const acpDispatch = await dispatchAcpRuntime.tryDispatchAcpReply({
       ctx,
       cfg,
       dispatcher,
       runId: params.replyOptions?.runId,
-      sessionKey: acpDispatchSessionKey,
+      sessionKey: flippedAcpSessionKey ?? acpDispatchSessionKey,
       abortSignal: params.replyOptions?.abortSignal,
       inboundAudio,
       sessionTtsAuto,
@@ -604,8 +829,11 @@ export async function dispatchReplyFromConfig(params: {
       shouldSendToolSummaries,
       bypassForCommand: bypassAcpForCommand,
       onReplyStart: params.replyOptions?.onReplyStart,
+      onAgentRunStart: params.replyOptions?.onAgentRunStart,
+      onAcpDispatchStart: params.replyOptions?.onAcpDispatchStart,
       recordProcessed,
       markIdle,
+      flipContext,
     });
     if (acpDispatch) {
       return acpDispatch;
@@ -661,6 +889,7 @@ export async function dispatchReplyFromConfig(params: {
       ctx,
       {
         ...params.replyOptions,
+        sessionStoreHint: params.sessionStoreHint,
         typingPolicy: typing.typingPolicy,
         suppressTyping: typing.suppressTyping,
         onToolResult: (payload: ReplyPayload) => {
@@ -743,6 +972,8 @@ export async function dispatchReplyFromConfig(params: {
         shouldSendToolSummaries,
         bypassForCommand: false,
         onReplyStart: params.replyOptions?.onReplyStart,
+        onAgentRunStart: params.replyOptions?.onAgentRunStart,
+        onAcpDispatchStart: params.replyOptions?.onAcpDispatchStart,
         recordProcessed,
         markIdle,
       });

@@ -178,6 +178,26 @@ export async function getReplyFromConfig(
       model = heartbeatRef.ref.model;
       hasResolvedHeartbeatModelOverride = true;
     }
+  } else if (opts?.modelOverride) {
+    // Per-call model override for user-initiated runs (e.g. webchat per-prompt
+    // model picker via chat.send `model` param). Mirrors the heartbeat path
+    // above so resolution semantics (provider/model strings, aliases) stay
+    // consistent. If the override fails to resolve, fall through to the
+    // agent's configured default rather than failing the run — the user
+    // already saw their picked label in the UI; silently using the default
+    // is safer than refusing to answer.
+    const overrideRaw = opts.modelOverride.trim();
+    const overrideRef = overrideRaw
+      ? resolveModelRefFromString({
+          raw: overrideRaw,
+          defaultProvider,
+          aliasIndex,
+        })
+      : null;
+    if (overrideRef) {
+      provider = overrideRef.ref.provider;
+      model = overrideRef.ref.model;
+    }
   }
 
   const workspaceDirRaw = resolveAgentWorkspaceDir(cfg, agentId) ?? DEFAULT_AGENT_WORKSPACE_DIR;
@@ -204,16 +224,20 @@ export async function getReplyFromConfig(
   const finalized = finalizeInboundContext(ctx);
 
   if (!isFastTestEnv) {
-    await applyMediaUnderstandingIfNeeded({
-      ctx: finalized,
-      cfg,
-      agentDir,
-      activeModel: { provider, model },
-    });
-    await applyLinkUnderstandingIfNeeded({
-      ctx: finalized,
-      cfg,
-    });
+    // Run media + link understanding in parallel — they are independent and
+    // both mutate `finalized` context with non-overlapping fields.
+    await Promise.all([
+      applyMediaUnderstandingIfNeeded({
+        ctx: finalized,
+        cfg,
+        agentDir,
+        activeModel: { provider, model },
+      }),
+      applyLinkUnderstandingIfNeeded({
+        ctx: finalized,
+        cfg,
+      }),
+    ]);
   }
   emitPreAgentMessageHooks({
     ctx: finalized,
@@ -231,6 +255,7 @@ export async function getReplyFromConfig(
     ctx: finalized,
     cfg,
     commandAuthorized,
+    sessionStoreHint: opts?.sessionStoreHint,
   });
   let {
     sessionCtx,

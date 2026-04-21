@@ -11,6 +11,7 @@ import {
   resolveAcpDispatchPolicyError,
   resolveAcpDispatchPolicyMessage,
 } from "../../../acp/policy.js";
+import { detectHostProjectMountBaseline } from "../../../acp/runtime/host-mount-access.js";
 import {
   resolveAcpSessionCwd,
   resolveAcpThreadSessionDetailLines,
@@ -487,12 +488,24 @@ export async function handleAcpSpawnAction(
   let initializedMeta: SessionAcpMeta | undefined;
   let initializedRuntime: AcpSpawnRuntimeCloseHandle | undefined;
   try {
+    // Auto-detect the session's project-mount baseline from /proc/mounts when
+    // the cwd lives under /mnt/host-projects/<name>. The baseline drives two
+    // pieces of runtime behavior: (1) the readOnly flag persisted in session
+    // meta mirrors the mount's rw/ro flag, and (2) mountBaselineRoot becomes
+    // the auto-approve scope for the acpx pty permission policy — tool calls
+    // inside the root are auto-approved (reads always; writes only when the
+    // mount is read-write), anything outside the root surfaces an approval
+    // card. Non-host-projects cwds (undefined baseline) leave both fields
+    // untouched and every prompt surfaces.
+    const mountBaseline = await detectHostProjectMountBaseline(spawn.cwd);
     const initialized = await acpManager.initializeSession({
       cfg: params.cfg,
       sessionKey,
       agent: spawn.agentId,
       mode: spawn.mode,
       cwd: spawn.cwd,
+      ...(mountBaseline && !mountBaseline.writable ? { readOnly: true } : {}),
+      ...(mountBaseline ? { mountBaselineRoot: mountBaseline.root } : {}),
     });
     initializedRuntime = {
       runtime: initialized.runtime,

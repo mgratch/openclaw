@@ -67,6 +67,22 @@ export async function handleAcpDoctorAction(
       for (const detail of report.details ?? []) {
         lines.push(`runtimeDoctorDetail: ${detail}`);
       }
+      for (const agentReport of report.agentReports ?? []) {
+        lines.push(
+          `runtimeDoctorAgent: ${agentReport.agent} ${agentReport.ok ? "ok" : "error"} (${agentReport.message})`,
+        );
+        if (agentReport.code) {
+          lines.push(`runtimeDoctorAgentCode: ${agentReport.agent} ${agentReport.code}`);
+        }
+        if (agentReport.installCommand) {
+          lines.push(
+            `runtimeDoctorAgentInstall: ${agentReport.agent} ${agentReport.installCommand}`,
+          );
+        }
+        for (const detail of agentReport.details ?? []) {
+          lines.push(`runtimeDoctorAgentDetail: ${agentReport.agent} ${detail}`);
+        }
+      }
     } catch (error) {
       lines.push(
         `runtimeDoctor: error (${

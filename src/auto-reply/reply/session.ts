@@ -186,6 +186,9 @@ export async function initSessionState(params: {
   ctx: MsgContext;
   cfg: OpenClawConfig;
   commandAuthorized: boolean;
+  /** Pre-loaded session store from the caller to skip the skipCache disk read
+   *  when the session already exists. Falls back to disk for new sessions. */
+  sessionStoreHint?: { store: Record<string, SessionEntry>; storePath: string };
 }): Promise<SessionInitResult> {
   const { ctx, cfg, commandAuthorized } = params;
   const conversationBindingContext = resolveSessionConversationBindingContext(cfg, ctx);
@@ -222,14 +225,20 @@ export async function initSessionState(params: {
   // Stale cache (especially with multiple gateway processes or on Windows where
   // mtime granularity may miss rapid writes) can cause incorrect sessionId
   // generation, leading to orphaned transcript files. See #17971.
+  //
+  // Optimization: if the caller pre-loaded the store (same storePath) within the
+  // same request, reuse it instead of re-reading from disk. The store was read
+  // milliseconds ago in the same request, so staleness risk is negligible.
+  // For genuinely new sessions (key not found in hint), still fall back to disk.
   const sessionStoreLoadStartMs = ingressTimingEnabled ? Date.now() : 0;
-  const sessionStore: Record<string, SessionEntry> = loadSessionStore(storePath, {
-    skipCache: true,
-  });
+  const useHint = params.sessionStoreHint?.storePath === storePath;
+  const sessionStore: Record<string, SessionEntry> = useHint
+    ? params.sessionStoreHint!.store
+    : loadSessionStore(storePath, { skipCache: true });
   if (ingressTimingEnabled) {
     log.info(
       `session-init store-load agent=${agentId} session=${sessionCtxForState.SessionKey ?? "(no-session)"} ` +
-        `elapsedMs=${Date.now() - sessionStoreLoadStartMs} path=${storePath}`,
+        `elapsedMs=${Date.now() - sessionStoreLoadStartMs} path=${storePath} hint=${useHint}`,
     );
   }
   let sessionKey: string | undefined;
@@ -360,7 +369,29 @@ export async function initSessionState(params: {
   if (retiredLegacyMainDelivery) {
     sessionStore[retiredLegacyMainDelivery.key] = retiredLegacyMainDelivery.entry;
   }
-  const entry = sessionStore[sessionKey];
+  // Direct lookup first; if it misses and the key lacks the canonical agent
+  // prefix, try the prefixed form. The gateway's resolveSessionStoreKey always
+  // canonicalizes explicit keys to "agent:<agentId>:<key>", but resolveSessionKey
+  // returns bare explicit keys. Without this fallback, explicit keys (e.g.
+  // "web-ada43ed6") miss the entry stored under "agent:r2c:web-ada43ed6",
+  // causing each turn to create a new UUID session file.
+  let entry = sessionStore[sessionKey];
+  if (
+    !entry &&
+    sessionKey &&
+    sessionKey !== "global" &&
+    sessionKey !== "unknown" &&
+    !sessionKey.startsWith("agent:")
+  ) {
+    const canonicalKey = `agent:${agentId}:${sessionKey}`;
+    const canonicalEntry = sessionStore[canonicalKey];
+    if (canonicalEntry) {
+      // Migrate: adopt the canonical key so all downstream writes (store
+      // persistence, transcript paths) use the same form the gateway expects.
+      entry = canonicalEntry;
+      sessionKey = canonicalKey;
+    }
+  }
   const now = Date.now();
   const isThread = resolveThreadFlag({
     sessionKey,
@@ -599,6 +630,9 @@ export async function initSessionState(params: {
     sessionsDir: path.dirname(storePath),
     fallbackSessionFile,
     activeSessionKey: sessionKey,
+    // Defer the write — the main updateSessionStore call below will include
+    // sessionFile/sessionId changes, avoiding a redundant disk write.
+    deferWrite: true,
   });
   sessionEntry = resolvedSessionFile.sessionEntry;
   if (isNewSession) {

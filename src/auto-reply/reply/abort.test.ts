@@ -562,17 +562,19 @@ describe("abort detection", () => {
       },
     });
 
-    subagentRegistryMocks.listSubagentRunsForRequester.mockReturnValueOnce([
-      {
-        runId: "run-1",
-        childSessionKey: childKey,
-        requesterSessionKey: sessionKey,
-        requesterDisplayKey: "telegram:parent",
-        task: "do work",
-        cleanup: "keep",
-        createdAt: Date.now(),
-      },
-    ]);
+    const childRun: SubagentRunRecord = {
+      runId: "run-1",
+      childSessionKey: childKey,
+      requesterSessionKey: sessionKey,
+      requesterDisplayKey: "telegram:parent",
+      task: "do work",
+      cleanup: "keep",
+      createdAt: Date.now(),
+    };
+    subagentRegistryMocks.listSubagentRunsForRequester.mockReturnValueOnce([childRun]);
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
+      (key) => (key === childKey ? childRun : null),
+    );
 
     const result = await runStopCommand({
       cfg,
@@ -600,33 +602,39 @@ describe("abort detection", () => {
       },
     });
 
+    const depth1Run: SubagentRunRecord = {
+      runId: "run-1",
+      childSessionKey: depth1Key,
+      requesterSessionKey: sessionKey,
+      requesterDisplayKey: "telegram:parent",
+      task: "orchestrator",
+      cleanup: "keep",
+      createdAt: Date.now(),
+    };
+    const depth2Run: SubagentRunRecord = {
+      runId: "run-2",
+      childSessionKey: depth2Key,
+      requesterSessionKey: depth1Key,
+      requesterDisplayKey: depth1Key,
+      task: "leaf worker",
+      cleanup: "keep",
+      createdAt: Date.now(),
+    };
+
     // First call: main session lists depth-1 children
     // Second call (cascade): depth-1 session lists depth-2 children
     // Third call (cascade from depth-2): no further children
     subagentRegistryMocks.listSubagentRunsForRequester
-      .mockReturnValueOnce([
-        {
-          runId: "run-1",
-          childSessionKey: depth1Key,
-          requesterSessionKey: sessionKey,
-          requesterDisplayKey: "telegram:parent",
-          task: "orchestrator",
-          cleanup: "keep",
-          createdAt: Date.now(),
-        },
-      ])
-      .mockReturnValueOnce([
-        {
-          runId: "run-2",
-          childSessionKey: depth2Key,
-          requesterSessionKey: depth1Key,
-          requesterDisplayKey: depth1Key,
-          task: "leaf worker",
-          cleanup: "keep",
-          createdAt: Date.now(),
-        },
-      ])
+      .mockReturnValueOnce([depth1Run])
+      .mockReturnValueOnce([depth2Run])
       .mockReturnValueOnce([]);
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
+      (key) => {
+        if (key === depth1Key) return depth1Run;
+        if (key === depth2Key) return depth2Run;
+        return null;
+      },
+    );
 
     const result = await runStopCommand({
       cfg,
@@ -657,35 +665,41 @@ describe("abort detection", () => {
       },
     });
 
+    const depth1Run: SubagentRunRecord = {
+      runId: "run-1",
+      childSessionKey: depth1Key,
+      requesterSessionKey: sessionKey,
+      requesterDisplayKey: "telegram:parent",
+      task: "orchestrator",
+      cleanup: "keep",
+      createdAt: now - 1_000,
+      endedAt: now - 500,
+      outcome: { status: "ok" },
+    };
+    const depth2Run: SubagentRunRecord = {
+      runId: "run-2",
+      childSessionKey: depth2Key,
+      requesterSessionKey: depth1Key,
+      requesterDisplayKey: depth1Key,
+      task: "leaf worker",
+      cleanup: "keep",
+      createdAt: now - 500,
+    };
+
     // main -> ended depth-1 parent
     // depth-1 parent -> active depth-2 child
     // depth-2 child -> none
     subagentRegistryMocks.listSubagentRunsForRequester
-      .mockReturnValueOnce([
-        {
-          runId: "run-1",
-          childSessionKey: depth1Key,
-          requesterSessionKey: sessionKey,
-          requesterDisplayKey: "telegram:parent",
-          task: "orchestrator",
-          cleanup: "keep",
-          createdAt: now - 1_000,
-          endedAt: now - 500,
-          outcome: { status: "ok" },
-        },
-      ])
-      .mockReturnValueOnce([
-        {
-          runId: "run-2",
-          childSessionKey: depth2Key,
-          requesterSessionKey: depth1Key,
-          requesterDisplayKey: depth1Key,
-          task: "leaf worker",
-          cleanup: "keep",
-          createdAt: now - 500,
-        },
-      ])
+      .mockReturnValueOnce([depth1Run])
+      .mockReturnValueOnce([depth2Run])
       .mockReturnValueOnce([]);
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
+      (key) => {
+        if (key === depth1Key) return depth1Run;
+        if (key === depth2Key) return depth2Run;
+        return null;
+      },
+    );
 
     const result = await runStopCommand({
       cfg,

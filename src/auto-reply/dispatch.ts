@@ -38,6 +38,8 @@ export async function dispatchInboundMessage(params: {
   dispatcher: ReplyDispatcher;
   replyOptions?: Omit<GetReplyOptions, "onToolResult" | "onBlockReply">;
   replyResolver?: typeof import("./reply.js").getReplyFromConfig;
+  /** Pre-loaded session store to avoid re-reading sessions.json in dispatch. */
+  sessionStoreHint?: { store: Record<string, import("../config/sessions/types.js").SessionEntry>; storePath: string };
 }): Promise<DispatchInboundResult> {
   const finalized = finalizeInboundContext(params.ctx);
   return await withReplyDispatcher({
@@ -49,6 +51,7 @@ export async function dispatchInboundMessage(params: {
         dispatcher: params.dispatcher,
         replyOptions: params.replyOptions,
         replyResolver: params.replyResolver,
+        sessionStoreHint: params.sessionStoreHint,
       }),
   });
 }

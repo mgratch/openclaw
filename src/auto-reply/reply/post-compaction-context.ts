@@ -134,11 +134,26 @@ export async function readPostCompactionContext(
     // "Session Startup" sequence explicitly. When custom sections are configured,
     // use generic prose — referencing a hardcoded "Session Startup" sequence
     // would be misleading for deployments that use different section names.
+    //
+    // Recovery hint: pre-compaction content is NEVER lost — it is persisted in
+    // several parallel history channels. Before telling the user anything is
+    // "lost due to compaction", the agent MUST consult these channels. See the
+    // "History Channels" section of the system prompt for paths.
+    const recoveryHint =
+      " Pre-compaction content is NEVER lost — it is persisted in multiple history channels. " +
+      "If the summary above omits specifics (review items, exact prompts, prior decisions, " +
+      "tool output, file paths), do NOT tell the user anything was 'lost due to compaction'. " +
+      "Instead, consult the History Channels listed in your system prompt — use `sessions_history` " +
+      "for other sessions, read this session's JSONL transcript under ~/.openclaw/agents/<agentId>/sessions/, " +
+      "and/or read the Cowork audit mirror under ~/.openclaw/cowork-audit/by-name/<project>/ " +
+      "(use detected.tsv to map conversation UUID → project) before concluding information is unrecoverable.";
     const prose = isDefaultSections
       ? "Session was just compacted. The conversation summary above is a hint, NOT a substitute for your startup sequence. " +
-        "Run your Session Startup sequence — read the required files before responding to the user."
+        "Run your Session Startup sequence — read the required files before responding to the user." +
+        recoveryHint
       : `Session was just compacted. The conversation summary above is a hint, NOT a substitute for your full startup sequence. ` +
-        `Re-read the sections injected below (${displayNames.join(", ")}) and follow your configured startup procedure before responding to the user.`;
+        `Re-read the sections injected below (${displayNames.join(", ")}) and follow your configured startup procedure before responding to the user.` +
+        recoveryHint;
 
     const sectionLabel = isDefaultSections
       ? "Critical rules from AGENTS.md:"

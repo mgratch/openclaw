@@ -27,6 +27,14 @@ export type AcpProjectedDeliveryMeta = {
   toolCallId?: string;
   toolStatus?: string;
   allowEdit?: boolean;
+  /** Backend runtime identifier (for example "claude-code", "claude-cli", "codex-acp"). */
+  runtime?: string;
+  /** Human-facing provider family the runtime belongs to (for example "anthropic", "openai"). */
+  provider?: string;
+  /** Effective model selected for this delivery, if known. */
+  model?: string;
+  /** Opaque backend session handle for correlating follow-up events / resume. */
+  sessionRef?: string;
 };
 
 type ToolLifecycleState = {
@@ -174,7 +182,19 @@ export function createAcpReplyProjector(params: {
   ) => Promise<boolean>;
   provider?: string;
   accountId?: string;
+  /** Backend runtime identifier ("claude-code", "claude-cli", "codex-acp", ...). */
+  runtime?: string;
+  /** Effective model selected for this turn, if known. */
+  model?: string;
+  /** Opaque backend session handle for correlating events across turns. */
+  sessionRef?: string;
 }): AcpReplyProjector {
+  const runtimeMeta: Pick<AcpProjectedDeliveryMeta, "runtime" | "provider" | "model" | "sessionRef"> = {
+    ...(params.runtime ? { runtime: params.runtime } : {}),
+    ...(params.provider ? { provider: params.provider } : {}),
+    ...(params.model ? { model: params.model } : {}),
+    ...(params.sessionRef ? { sessionRef: params.sessionRef } : {}),
+  };
   const settings = resolveAcpProjectionSettings(params.cfg);
   const streaming = resolveAcpStreamingConfig({
     cfg: params.cfg,
@@ -368,6 +388,7 @@ export function createAcpReplyProjector(params: {
     }
 
     const deliveryMeta: AcpProjectedDeliveryMeta = {
+      ...runtimeMeta,
       ...(event.tag ? { tag: event.tag } : {}),
       ...(toolCallId ? { toolCallId } : {}),
       ...(status ? { toolStatus: status } : {}),
@@ -482,6 +503,37 @@ export function createAcpReplyProjector(params: {
         return;
       }
       await emitToolSummary(event);
+      return;
+    }
+
+    if (event.type === "permission_request") {
+      // Messaging-channel breadcrumb only. The real inline approval card
+      // lives in the UI (wired via the agent-event bus in dispatch-acp). We
+      // emit a short system status so Telegram/Discord/Slack surfaces see
+      // that the turn is waiting on a human decision instead of silently
+      // stalling.
+      const title =
+        (event.title ?? event.displayName ?? event.toolName ?? "tool call").trim() ||
+        "tool call";
+      const reason = event.reason ? ` (${event.reason})` : "";
+      await emitSystemStatus(
+        `Waiting for approval: ${title}${reason}`,
+        { tag: "permission_request" },
+        { dedupe: true },
+      );
+      return;
+    }
+
+    if (event.type === "permission_response") {
+      // Short confirmation so the channel transcript reflects the decision.
+      // The UI renders the real decision state from its own store, so this
+      // is intentionally non-authoritative.
+      const verb = event.decision?.behavior === "allow" ? "approved" : "denied";
+      await emitSystemStatus(
+        `Permission ${verb}.`,
+        { tag: "permission_response" },
+        { dedupe: false },
+      );
       return;
     }
 

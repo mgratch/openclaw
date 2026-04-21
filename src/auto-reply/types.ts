@@ -33,6 +33,22 @@ export type GetReplyOptions = {
   imageOrder?: PromptImageOrderEntry[];
   /** Notifies when an agent run actually starts (useful for webchat command handling). */
   onAgentRunStart?: (runId: string) => void;
+  /**
+   * Notifies when an ACP dispatch has *claimed* this turn (dispatch-acp runs
+   * its own streaming + delivery pipeline). When set, the caller (chat.ts)
+   * still broadcasts the final chat event from `deliveredReplies` AND still
+   * appends the assistant message to the Pi transcript — but uses the
+   * {provider, model} hint from this callback to override the default
+   * `openclaw` / `gateway-injected` stamp so the UI badge reflects the real
+   * ACP runtime (e.g. `claude-code` / `claude-code-opus`). Persisting to the
+   * Pi transcript is required because `loadHistory` treats the gateway
+   * transcript as authoritative on refresh; skipping it causes ACP turns to
+   * vanish post-refresh even when SQLite has them.
+   */
+  onAcpDispatchStart?: (
+    runId: string,
+    hint?: { provider?: string; model?: string; api?: string },
+  ) => void;
   onReplyStart?: () => Promise<void> | void;
   /** Called when the typing controller cleans up (e.g., run ended with NO_REPLY). */
   onTypingCleanup?: () => void;
@@ -44,6 +60,15 @@ export type GetReplyOptions = {
   suppressTyping?: boolean;
   /** Resolved heartbeat model override (provider/model string from merged per-agent config). */
   heartbeatModelOverride?: string;
+  /**
+   * Per-call model override for non-heartbeat (user-initiated) runs.
+   * Format is `provider/model` (e.g. `anthropic/claude-opus-4-6`) or a bare
+   * alias resolvable through the agent's catalog. When set and resolvable,
+   * supersedes the agent's configured default model for this single run.
+   * Mirrors the resolution path used by `heartbeatModelOverride` so the same
+   * `resolveModelRefFromString` flow applies.
+   */
+  modelOverride?: string;
   /** Controls bootstrap workspace context injection (default: full). */
   bootstrapContextMode?: "full" | "lightweight";
   /** If true, suppress tool error warning payloads for this run. */
@@ -74,6 +99,8 @@ export type GetReplyOptions = {
   hasRepliedRef?: { value: boolean };
   /** Override agent timeout in seconds (0 = no timeout). Threads through to resolveAgentTimeoutMs. */
   timeoutOverrideSeconds?: number;
+  /** Pre-loaded session store from the caller to skip redundant disk reads. */
+  sessionStoreHint?: { store: Record<string, import("../config/sessions/types.js").SessionEntry>; storePath: string };
 };
 
 export type ReplyPayload = {
