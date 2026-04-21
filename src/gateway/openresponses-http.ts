@@ -812,6 +812,14 @@ export async function handleOpenResponsesHttpRequest(
   let unsubscribe = () => {};
   let finalUsage: Usage | undefined;
   let finalizeRequested: { status: ResponseResource["status"]; text: string } | null = null;
+  // Resolved model/provider forwarded on the lifecycle:end event by
+  // handleAgentEnd. Used to override the request-alias `response.model` on the
+  // final SSE event so clients can render attribution on fresh sends without
+  // waiting for a refresh to hydrate from persisted storage.
+  let resolvedModel: string | undefined;
+  let resolvedProvider: string | undefined;
+  let resolvedRuntime: string | undefined;
+  let resolvedSessionRef: string | undefined;
 
   const maybeFinalize = () => {
     if (closed) {
@@ -856,13 +864,37 @@ export async function handleOpenResponsesHttpRequest(
       item: completedItem,
     });
 
-    const finalResponse = createResponseResource({
-      id: responseId,
-      model,
-      status: finalizeRequested.status,
-      output: [completedItem],
-      usage,
-    });
+    // Prefer the resolved `provider/model` pair for `response.model` so UI
+    // clients render the badge from the final SSE event without needing a
+    // refresh to hydrate from storage. If no resolved pair is available fall
+    // back to the request alias the client sent.
+    const resolvedResponseModel =
+      resolvedProvider && resolvedModel
+        ? `${resolvedProvider}/${resolvedModel}`
+        : resolvedModel || model;
+    const finalResponse: ResponseResource & {
+      openclaw?: { provider?: string; model?: string; runtime?: string; sessionRef?: string };
+    } = {
+      ...createResponseResource({
+        id: responseId,
+        model: resolvedResponseModel,
+        status: finalizeRequested.status,
+        output: [completedItem],
+        usage,
+      }),
+      // Non-standard split attribution for OpenClaw clients that want to
+      // distinguish provider from model without parsing `provider/model`.
+      ...(resolvedProvider || resolvedModel || resolvedRuntime || resolvedSessionRef
+        ? {
+            openclaw: {
+              ...(resolvedProvider ? { provider: resolvedProvider } : {}),
+              ...(resolvedModel ? { model: resolvedModel } : {}),
+              ...(resolvedRuntime ? { runtime: resolvedRuntime } : {}),
+              ...(resolvedSessionRef ? { sessionRef: resolvedSessionRef } : {}),
+            },
+          }
+        : {}),
+    };
 
     rememberResponseSession();
     writeSseEvent(res, { type: "response.completed", response: finalResponse });
@@ -946,6 +978,18 @@ export async function handleOpenResponsesHttpRequest(
     if (evt.stream === "lifecycle") {
       const phase = evt.data?.phase;
       if (phase === "end" || phase === "error") {
+        if (typeof evt.data?.model === "string" && evt.data.model) {
+          resolvedModel = evt.data.model;
+        }
+        if (typeof evt.data?.provider === "string" && evt.data.provider) {
+          resolvedProvider = evt.data.provider;
+        }
+        if (typeof evt.data?.runtime === "string" && evt.data.runtime) {
+          resolvedRuntime = evt.data.runtime;
+        }
+        if (typeof evt.data?.sessionRef === "string" && evt.data.sessionRef) {
+          resolvedSessionRef = evt.data.sessionRef;
+        }
         const finalText = accumulatedText || "No response from OpenClaw.";
         const finalStatus = phase === "error" ? "failed" : "completed";
         requestFinalize(finalStatus, finalText);

@@ -580,7 +580,15 @@ export function createAgentEventHandler({
         timestamp: now,
       },
     };
-    broadcast("chat", payload, { dropIfSlow: true });
+    // Scope chat deltas to the originating connection when recipients are
+    // registered (multi-tab isolation). Falls back to broadcast-to-all for
+    // runs without registered recipients (scheduled/webhook runs).
+    const deltaRecipients = toolEventRecipients.get(clientRunId);
+    if (deltaRecipients && deltaRecipients.size > 0) {
+      broadcastToConnIds("chat", payload, deltaRecipients, { dropIfSlow: true });
+    } else {
+      broadcast("chat", payload, { dropIfSlow: true });
+    }
     nodeSendToSession(sessionKey, "chat", payload);
   };
 
@@ -637,7 +645,12 @@ export function createAgentEventHandler({
         timestamp: now,
       },
     };
-    broadcast("chat", flushPayload, { dropIfSlow: true });
+    const flushRecipients = toolEventRecipients.get(clientRunId);
+    if (flushRecipients && flushRecipients.size > 0) {
+      broadcastToConnIds("chat", flushPayload, flushRecipients, { dropIfSlow: true });
+    } else {
+      broadcast("chat", flushPayload, { dropIfSlow: true });
+    }
     nodeSendToSession(sessionKey, "chat", flushPayload);
     chatRunState.deltaLastBroadcastLen.set(clientRunId, text.length);
     chatRunState.deltaSentAt.set(clientRunId, now);
@@ -651,6 +664,7 @@ export function createAgentEventHandler({
     jobState: "done" | "error",
     error?: unknown,
     stopReason?: string,
+    attribution?: { model?: string; provider?: string },
   ) => {
     const { text, shouldSuppressSilent } = resolveBufferedChatTextState(clientRunId, sourceRunId);
     // Flush any throttled delta so streaming clients receive the complete text
@@ -662,6 +676,8 @@ export function createAgentEventHandler({
     chatRunState.buffers.delete(clientRunId);
     chatRunState.deltaSentAt.delete(clientRunId);
     if (jobState === "done") {
+      const attributionModel = attribution?.model;
+      const attributionProvider = attribution?.provider;
       const payload = {
         runId: clientRunId,
         sessionKey,
@@ -674,10 +690,20 @@ export function createAgentEventHandler({
                 role: "assistant",
                 content: [{ type: "text", text }],
                 timestamp: Date.now(),
+                // Resolved model/provider from the run's AssistantMessage, forwarded
+                // on the lifecycle "end" event. Lets the UI render the model badge
+                // on fresh sends instead of waiting for chat.history hydration.
+                ...(attributionModel ? { model: attributionModel } : {}),
+                ...(attributionProvider ? { provider: attributionProvider } : {}),
               }
             : undefined,
       };
-      broadcast("chat", payload);
+      const finalRecipients = toolEventRecipients.get(clientRunId);
+      if (finalRecipients && finalRecipients.size > 0) {
+        broadcastToConnIds("chat", payload, finalRecipients);
+      } else {
+        broadcast("chat", payload);
+      }
       nodeSendToSession(sessionKey, "chat", payload);
       return;
     }
@@ -688,7 +714,12 @@ export function createAgentEventHandler({
       state: "error" as const,
       errorMessage: error ? formatForLog(error) : undefined,
     };
-    broadcast("chat", payload);
+    const errorRecipients = toolEventRecipients.get(clientRunId);
+    if (errorRecipients && errorRecipients.size > 0) {
+      broadcastToConnIds("chat", payload, errorRecipients);
+    } else {
+      broadcast("chat", payload);
+    }
     nodeSendToSession(sessionKey, "chat", payload);
   };
 
@@ -731,20 +762,41 @@ export function createAgentEventHandler({
     const last = agentRunSeq.get(evt.runId) ?? 0;
     const isToolEvent = evt.stream === "tool";
     const toolVerbose = isToolEvent ? resolveToolVerboseLevel(evt.runId, sessionKey) : "off";
-    // Build tool payload: strip result/partialResult unless verbose=full
+    // Build tool payload: strip result/partialResult unless verbose=full.
+    // Exception: for phase:"update" events (incremental stdout/stderr),
+    // always include a condensed tail so the web UI can show live output.
     const toolPayload =
       isToolEvent && toolVerbose !== "full"
         ? (() => {
             const data = evt.data ? { ...evt.data } : {};
             delete data.result;
-            delete data.partialResult;
+            // For update events, preserve a condensed tail of partialResult
+            // so WS UI clients can display live CLI output.
+            if (data.phase === "update" && data.partialResult != null) {
+              const partial = data.partialResult as
+                | string
+                | { content?: Array<{ text?: string }>; text?: string };
+              const text =
+                typeof partial === "string"
+                  ? partial
+                  : (partial?.content?.[0]?.text ?? partial?.text ?? "");
+              if (typeof text === "string" && text.length > 0) {
+                // Keep only the last ~2000 chars to avoid flooding WS
+                const tail = text.length > 2000 ? text.slice(-2000) : text;
+                data.partialResult = { content: [{ type: "text", text: tail }] };
+              } else {
+                delete data.partialResult;
+              }
+            } else {
+              delete data.partialResult;
+            }
             return sessionKey
               ? { ...eventForClients, sessionKey, data }
               : { ...eventForClients, data };
           })()
         : agentPayload;
     if (last > 0 && evt.seq !== last + 1) {
-      broadcast("agent", {
+      const seqErrPayload = {
         runId: eventRunId,
         stream: "error",
         ts: Date.now(),
@@ -754,7 +806,13 @@ export function createAgentEventHandler({
           expected: last + 1,
           received: evt.seq,
         },
-      });
+      };
+      const seqErrRecipients = toolEventRecipients.get(eventRunId);
+      if (seqErrRecipients && seqErrRecipients.size > 0) {
+        broadcastToConnIds("agent", seqErrPayload, seqErrRecipients);
+      } else {
+        broadcast("agent", seqErrPayload);
+      }
     }
     agentRunSeq.set(evt.runId, evt.seq);
     if (isToolEvent) {
@@ -793,7 +851,13 @@ export function createAgentEventHandler({
         }
       }
     } else {
-      broadcast("agent", agentPayload);
+      // Scope non-tool agent events to originating connection too
+      const agentRecipients = toolEventRecipients.get(evt.runId);
+      if (agentRecipients && agentRecipients.size > 0) {
+        broadcastToConnIds("agent", agentPayload, agentRecipients);
+      } else {
+        broadcast("agent", agentPayload);
+      }
     }
 
     const lifecyclePhase =
@@ -814,6 +878,13 @@ export function createAgentEventHandler({
       } else if (!isAborted && (lifecyclePhase === "end" || lifecyclePhase === "error")) {
         const evtStopReason =
           typeof evt.data?.stopReason === "string" ? evt.data.stopReason : undefined;
+        // Forward resolved model/provider (attached by handleAgentEnd) so the
+        // final chat event carries attribution to the WS client without a
+        // refresh/rehydrate roundtrip.
+        const evtModel = typeof evt.data?.model === "string" ? evt.data.model : undefined;
+        const evtProvider = typeof evt.data?.provider === "string" ? evt.data.provider : undefined;
+        const attribution =
+          evtModel || evtProvider ? { model: evtModel, provider: evtProvider } : undefined;
         if (chatLink) {
           const finished = chatRunState.registry.shift(evt.runId);
           if (!finished) {
@@ -828,6 +899,7 @@ export function createAgentEventHandler({
             lifecyclePhase === "error" ? "error" : "done",
             evt.data?.error,
             evtStopReason,
+            attribution,
           );
         } else {
           emitChatFinal(
@@ -838,6 +910,7 @@ export function createAgentEventHandler({
             lifecyclePhase === "error" ? "error" : "done",
             evt.data?.error,
             evtStopReason,
+            attribution,
           );
         }
       } else if (isAborted && (lifecyclePhase === "end" || lifecyclePhase === "error")) {

@@ -1,8 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CURRENT_SESSION_VERSION, SessionManager } from "@mariozechner/pi-coding-agent";
+import { getAcpSessionManager } from "../../acp/control-plane/manager.js";
+import type { AcpPermissionDecision } from "../../acp/runtime/types.js";
 import { resolveSessionAgentId } from "../../agents/agent-scope.js";
 import { resolveThinkingDefault } from "../../agents/model-selection.js";
+import {
+  isEmbeddedPiRunActive,
+  isEmbeddedPiRunStreaming,
+  queueEmbeddedPiMessage,
+} from "../../agents/pi-embedded.js";
 import { rewriteTranscriptEntriesInSessionFile } from "../../agents/pi-embedded-runner/transcript-rewrite.js";
 import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
@@ -55,7 +62,9 @@ import {
   ErrorCodes,
   errorShape,
   formatValidationErrors,
+  validateAcpPermissionRespondParams,
   validateChatAbortParams,
+  validateChatHistoryFullParams,
   validateChatHistoryParams,
   validateChatInjectParams,
   validateChatSendParams,
@@ -73,7 +82,10 @@ import { formatForLog } from "../ws-log.js";
 import { injectTimestamp, timestampOptsFromConfig } from "./agent-timestamp.js";
 import { setGatewayDedupeEntry } from "./agent-wait-dedupe.js";
 import { normalizeRpcAttachmentsToChatAttachments } from "./attachment-normalize.js";
-import { appendInjectedAssistantMessageToTranscript } from "./chat-transcript-inject.js";
+import {
+  appendInjectedAssistantMessageToTranscript,
+  appendInjectedUserMessageToTranscript,
+} from "./chat-transcript-inject.js";
 import type {
   GatewayRequestContext,
   GatewayRequestHandlerOptions,
@@ -105,6 +117,8 @@ type ChatAbortRequester = {
 const DEFAULT_CHAT_HISTORY_TEXT_MAX_CHARS = 12_000;
 const CHAT_HISTORY_MAX_SINGLE_MESSAGE_BYTES = 128 * 1024;
 const CHAT_HISTORY_OVERSIZED_PLACEHOLDER = "[chat.history omitted: message too large]";
+const CHAT_HISTORY_ABORTED_SUFFIX = "\n\n[Response stopped by user]";
+const CHAT_HISTORY_ABORTED_MAX_CHARS = 500;
 let chatHistoryPlaceholderEmitCount = 0;
 const CHANNEL_AGNOSTIC_SESSION_SCOPES = new Set([
   "main",
@@ -725,11 +739,73 @@ function sanitizeChatHistoryMessages(messages: unknown[], maxChars: number): unk
       changed = true;
       continue;
     }
+    // Truncate aborted assistant messages so partial responses don't stall the model.
+    // The abort handler persists partial text with openclawAbort metadata; without
+    // truncation the next turn sends a massive incomplete response that causes the
+    // model to hang in "Thinking" indefinitely.
+    const truncated = truncateAbortedMessage(message);
+    if (truncated) {
+      changed = true;
+      next.push(truncated);
+      continue;
+    }
+
     const res = sanitizeChatHistoryMessage(message, maxChars);
     changed ||= res.changed;
     next.push(res.message);
   }
   return changed ? next : messages;
+}
+
+/**
+ * Detect messages saved by the abort handler (openclawAbort metadata) and truncate
+ * them to a short prefix + "[Response stopped by user]" marker.  Returns the
+ * truncated message, or `undefined` if this is not an aborted message.
+ */
+function truncateAbortedMessage(message: unknown): Record<string, unknown> | undefined {
+  if (!message || typeof message !== "object") {
+    return undefined;
+  }
+  const entry = message as Record<string, unknown>;
+  // Fast check: must have openclawAbort marker set by chat-transcript-inject.ts
+  const abort = entry.openclawAbort;
+  if (!abort || typeof abort !== "object" || !(abort as Record<string, unknown>).aborted) {
+    return undefined;
+  }
+  // Build a truncated copy preserving role/timestamp/metadata
+  const copy: Record<string, unknown> = { ...entry };
+
+  if (typeof copy.content === "string") {
+    copy.content =
+      copy.content.slice(0, CHAT_HISTORY_ABORTED_MAX_CHARS) + CHAT_HISTORY_ABORTED_SUFFIX;
+  } else if (Array.isArray(copy.content)) {
+    // Collect text blocks, truncate to budget, drop everything else (tool calls, etc.)
+    let remaining = CHAT_HISTORY_ABORTED_MAX_CHARS;
+    const truncatedBlocks: unknown[] = [];
+    for (const block of copy.content) {
+      if (!block || typeof block !== "object") continue;
+      const b = block as Record<string, unknown>;
+      if (b.type === "text" && typeof b.text === "string") {
+        if (remaining <= 0) continue;
+        const slice = (b.text as string).slice(0, remaining);
+        remaining -= slice.length;
+        truncatedBlocks.push({ type: "text", text: slice });
+      }
+      // Skip non-text blocks (thinking, tool calls) from aborted partials
+    }
+    // Append the aborted marker to the last text block (or add a new one)
+    if (truncatedBlocks.length > 0) {
+      const last = truncatedBlocks[truncatedBlocks.length - 1] as Record<string, unknown>;
+      last.text = (last.text as string) + CHAT_HISTORY_ABORTED_SUFFIX;
+    } else {
+      truncatedBlocks.push({ type: "text", text: CHAT_HISTORY_ABORTED_SUFFIX.trim() });
+    }
+    copy.content = truncatedBlocks;
+  }
+
+  // Mark as truncated for debugging (follows existing __openclaw pattern)
+  copy.__openclaw = { truncated: true, reason: "aborted" };
+  return copy;
 }
 
 function buildOversizedHistoryPlaceholder(message?: unknown): Record<string, unknown> {
@@ -874,6 +950,9 @@ function appendAssistantTranscriptMessage(params: {
     origin: AbortOrigin;
     runId: string;
   };
+  providerOverride?: string;
+  modelOverride?: string;
+  apiOverride?: string;
 }): TranscriptAppendResult {
   const transcriptPath = resolveTranscriptPath({
     sessionId: params.sessionId,
@@ -908,6 +987,9 @@ function appendAssistantTranscriptMessage(params: {
     label: params.label,
     idempotencyKey: params.idempotencyKey,
     abortMeta: params.abortMeta,
+    providerOverride: params.providerOverride,
+    modelOverride: params.modelOverride,
+    apiOverride: params.apiOverride,
   });
 }
 
@@ -947,8 +1029,16 @@ function persistAbortedPartials(params: {
   const { storePath, entry } = loadSessionEntry(params.sessionKey);
   for (const snapshot of params.snapshots) {
     const sessionId = entry?.sessionId ?? snapshot.sessionId ?? snapshot.runId;
+    // Truncate aborted partial text before persisting to the transcript.
+    // Without this, the massive incomplete response is loaded verbatim by the
+    // Pi session on the next turn and sent to the model, causing it to stall
+    // indefinitely in "Thinking" because the context is polluted.
+    const truncatedText =
+      snapshot.text.length > CHAT_HISTORY_ABORTED_MAX_CHARS
+        ? snapshot.text.slice(0, CHAT_HISTORY_ABORTED_MAX_CHARS) + CHAT_HISTORY_ABORTED_SUFFIX
+        : snapshot.text + CHAT_HISTORY_ABORTED_SUFFIX;
     const appended = appendAssistantTranscriptMessage({
-      message: snapshot.text,
+      message: truncatedText,
       sessionId,
       storePath,
       sessionFile: entry?.sessionFile,
@@ -1134,10 +1224,12 @@ function nextChatSeq(context: { agentRunSeq: Map<string, number> }, runId: strin
 }
 
 function broadcastChatFinal(params: {
-  context: Pick<GatewayRequestContext, "broadcast" | "nodeSendToSession" | "agentRunSeq">;
+  context: Pick<GatewayRequestContext, "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq">;
   runId: string;
   sessionKey: string;
   message?: Record<string, unknown>;
+  /** When set, scope the broadcast to these connection IDs only. */
+  recipientConnIds?: Set<string>;
 }) {
   const seq = nextChatSeq({ agentRunSeq: params.context.agentRunSeq }, params.runId);
   const strippedEnvelopeMessage = stripEnvelopeFromMessage(params.message) as
@@ -1150,7 +1242,11 @@ function broadcastChatFinal(params: {
     state: "final" as const,
     message: stripInlineDirectiveTagsFromMessageForDisplay(strippedEnvelopeMessage),
   };
-  params.context.broadcast("chat", payload);
+  if (params.recipientConnIds && params.recipientConnIds.size > 0) {
+    params.context.broadcastToConnIds("chat", payload, params.recipientConnIds);
+  } else {
+    params.context.broadcast("chat", payload);
+  }
   params.context.nodeSendToSession(params.sessionKey, "chat", payload);
   params.context.agentRunSeq.delete(params.runId);
 }
@@ -1183,10 +1279,12 @@ function broadcastSideResult(params: {
 }
 
 function broadcastChatError(params: {
-  context: Pick<GatewayRequestContext, "broadcast" | "nodeSendToSession" | "agentRunSeq">;
+  context: Pick<GatewayRequestContext, "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq">;
   runId: string;
   sessionKey: string;
   errorMessage?: string;
+  /** When set, scope the broadcast to these connection IDs only. */
+  recipientConnIds?: Set<string>;
 }) {
   const seq = nextChatSeq({ agentRunSeq: params.context.agentRunSeq }, params.runId);
   const payload = {
@@ -1196,7 +1294,11 @@ function broadcastChatError(params: {
     state: "error" as const,
     errorMessage: params.errorMessage,
   };
-  params.context.broadcast("chat", payload);
+  if (params.recipientConnIds && params.recipientConnIds.size > 0) {
+    params.context.broadcastToConnIds("chat", payload, params.recipientConnIds);
+  } else {
+    params.context.broadcast("chat", payload);
+  }
   params.context.nodeSendToSession(params.sessionKey, "chat", payload);
   params.context.agentRunSeq.delete(params.runId);
 }
@@ -1281,6 +1383,51 @@ export const chatHandlers: GatewayRequestHandlers = {
       thinkingLevel,
       fastMode: entry?.fastMode,
       verboseLevel,
+    });
+  },
+  // ── Full (untruncated) chat history for UI archive/display ──
+  // Unlike chat.history (which applies byte budgets for WS transport and
+  // LLM context), this endpoint returns the complete transcript with only
+  // cursor-based pagination. The persistent record should never be lossy.
+  "chat.history.full": async ({ params, respond }) => {
+    if (!validateChatHistoryFullParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid chat.history.full params: ${formatValidationErrors(validateChatHistoryFullParams.errors)}`,
+        ),
+      );
+      return;
+    }
+    const { sessionKey, offset: rawOffset, limit: rawLimit } = params as {
+      sessionKey: string;
+      offset?: number;
+      limit?: number;
+    };
+    const { cfg, storePath, entry } = loadSessionEntry(sessionKey);
+    const sessionId = entry?.sessionId;
+    const allMessages =
+      sessionId && storePath ? readSessionMessages(sessionId, storePath, entry?.sessionFile) : [];
+    const sanitized = stripEnvelopeFromMessages(allMessages);
+    // chat.history.full is intentionally untruncated — pass Infinity so
+    // sanitizeChatHistoryMessage's per-message maxChars budget is a no-op.
+    // Silent-reply drops and aborted-message truncation still apply.
+    const normalized = sanitizeChatHistoryMessages(sanitized, Number.POSITIVE_INFINITY);
+
+    const offset = rawOffset ?? 0;
+    const limit = Math.min(rawLimit ?? 500, 2000);
+    const page = normalized.slice(offset, offset + limit);
+    const hasMore = offset + limit < normalized.length;
+
+    respond(true, {
+      sessionKey,
+      sessionId,
+      messages: page,
+      total: normalized.length,
+      offset,
+      hasMore,
     });
   },
   "chat.abort": ({ params, respond, context, client }) => {
@@ -1394,6 +1541,12 @@ export const chatHandlers: GatewayRequestHandlers = {
       timeoutMs?: number;
       systemInputProvenance?: InputProvenance;
       systemProvenanceReceipt?: string;
+      /**
+       * Optional per-call model override (provider/model or alias). Resolved
+       * in get-reply.ts via resolveModelRefFromString; unresolvable values
+       * silently fall back to the agent's configured model.
+       */
+      model?: string;
       idempotencyKey: string;
     };
     const explicitOriginResult = normalizeExplicitChatSendOrigin({
@@ -1455,7 +1608,7 @@ export const chatHandlers: GatewayRequestHandlers = {
     // marker injection on the model's image capability. This prevents opaque
     // media:// markers from leaking into prompts for text-only model runs.
     const rawSessionKey = p.sessionKey;
-    const { cfg, entry, canonicalKey: sessionKey } = loadSessionEntry(rawSessionKey);
+    const { cfg, store: sessionStore, storePath: sessionStorePath, entry, canonicalKey: sessionKey } = loadSessionEntry(rawSessionKey);
 
     let parsedMessage = inboundMessage;
     let parsedImages: ChatImageContent[] = [];
@@ -1556,6 +1709,88 @@ export const chatHandlers: GatewayRequestHandlers = {
       }
     }
 
+    // ── Mid-run steering ──────────────────────────────────────────
+    // If there's already an active run for this session that is currently
+    // streaming, attempt to steer (inject) the new user message into the
+    // running agent instead of starting a concurrent run.  The Pi session
+    // will pick up the steered message between agent turns.
+    const sessionId = entry?.sessionId;
+    if (sessionId && !stopCommand) {
+      const hasActiveRun = isEmbeddedPiRunActive(sessionId);
+      const isStreaming = isEmbeddedPiRunStreaming(sessionId);
+      if (hasActiveRun && isStreaming) {
+        const steered = queueEmbeddedPiMessage(sessionId, parsedMessage);
+        if (steered) {
+          // ── Persist steered user message to Pi session JSONL ──────────
+          // The Pi agent's own event pipeline should persist steered user
+          // messages via `_processAgentEvent → sessionManager.appendMessage`,
+          // but an extension error can silently swallow the persistence call
+          // (the promise chain's `.catch(() => {})` eats the error).
+          // Writing the user turn here guarantees it reaches the JSONL.
+          try {
+            const { storePath: steerStorePath, entry: steerEntry } = loadSessionEntry(sessionKey);
+            const steerSessionId = steerEntry?.sessionId ?? entry?.sessionId;
+            if (steerSessionId) {
+              const steerTranscriptPath = resolveTranscriptPath({
+                sessionId: steerSessionId,
+                storePath: steerStorePath,
+                sessionFile: steerEntry?.sessionFile ?? entry?.sessionFile,
+                agentId: resolveSessionAgentId({ sessionKey, config: cfg }),
+              });
+              if (steerTranscriptPath) {
+                const injectResult = appendInjectedUserMessageToTranscript({
+                  transcriptPath: steerTranscriptPath,
+                  message: parsedMessage,
+                  sessionKey: rawSessionKey,
+                  now,
+                });
+                if (!injectResult.ok) {
+                  context.logGateway.warn(
+                    `webchat steer: failed to persist user message to transcript: ${injectResult.error}`,
+                  );
+                }
+              }
+            }
+          } catch (transcriptErr) {
+            context.logGateway.warn(
+              `webchat steer: transcript persistence failed: ${formatForLog(transcriptErr)}`,
+            );
+          }
+
+          // Find the existing run's clientRunId for event scoping
+          let parentRunId: string | undefined;
+          for (const [rid, active] of context.chatAbortControllers) {
+            if (active.sessionKey === rawSessionKey) {
+              parentRunId = rid;
+              break;
+            }
+          }
+          // Broadcast the user message so the UI can display it immediately
+          const connId = typeof client?.connId === "string" ? client.connId : undefined;
+          const steerPayload = {
+            runId: parentRunId ?? clientRunId,
+            sessionKey: rawSessionKey,
+            seq: 0,
+            state: "steered" as const,
+            steeredMessage: parsedMessage,
+            steeredRunId: clientRunId,
+          };
+          if (connId) {
+            context.broadcastToConnIds("chat", steerPayload, new Set([connId]));
+          } else {
+            context.broadcast("chat", steerPayload);
+          }
+          context.nodeSendToSession(rawSessionKey, "chat", steerPayload);
+          respond(true, {
+            runId: clientRunId,
+            status: "steered" as const,
+            parentRunId,
+          });
+          return;
+        }
+      }
+    }
+
     try {
       const abortController = new AbortController();
       context.chatAbortControllers.set(clientRunId, {
@@ -1567,6 +1802,17 @@ export const chatHandlers: GatewayRequestHandlers = {
         ownerConnId: normalizeOptionalText(client?.connId),
         ownerDeviceId: normalizeOptionalText(client?.connect?.device?.id),
       });
+
+      // Register this connection EARLY for per-connId event scoping.
+      // This ensures even non-agent-run responses (command handlers, quick
+      // replies) are scoped to the originating tab, preventing cross-session
+      // contamination when multiple UI tabs are open.
+      const connId = typeof client?.connId === "string" ? client.connId : undefined;
+      const senderConnIds = connId ? new Set([connId]) : undefined;
+      if (connId) {
+        context.registerToolEventRecipient(clientRunId, connId);
+      }
+
       const ackPayload = {
         runId: clientRunId,
         status: "started" as const,
@@ -1732,30 +1978,71 @@ export const chatHandlers: GatewayRequestHandlers = {
       });
 
       let agentRunStarted = false;
+      // Separate from `agentRunStarted`: dispatch-acp owns its own streaming
+      // + transcript semantics, and we must NOT append the fallback
+      // `gateway-injected` assistant message to the Pi transcript on that
+      // path (it clobbers the real ACP provider/model metadata on the UI
+      // badge). We still need the final chat broadcast from `deliveredReplies`
+      // so the UI receives `message.content`, so we fall through the normal
+      // `.then()` block with `agentRunStarted=false` and gate the append
+      // specifically on this flag.
+      let acpDispatchClaimed = false;
+      let acpProviderHint: string | undefined;
+      let acpModelHint: string | undefined;
+      let acpApiHint: string | undefined;
+      const registerRunForConnIds = (runId: string) => {
+        if (!connId) return;
+        if (runId !== clientRunId) {
+          context.registerToolEventRecipient(runId, connId);
+        }
+        for (const [activeRunId, active] of context.chatAbortControllers) {
+          if (activeRunId !== runId && activeRunId !== clientRunId && active.sessionKey === p.sessionKey) {
+            context.registerToolEventRecipient(activeRunId, connId);
+          }
+        }
+      };
       void dispatchInboundMessage({
         ctx,
         cfg,
         dispatcher,
+        sessionStoreHint: { store: sessionStore, storePath: sessionStorePath },
         replyOptions: {
           runId: clientRunId,
           abortSignal: abortController.signal,
           images: parsedImages.length > 0 ? parsedImages : undefined,
           imageOrder: parsedImageOrder.length > 0 ? parsedImageOrder : undefined,
+          // Per-call model override from the chat.send `model` param.
+          // Resolved in get-reply.ts; unresolvable values fall back to the
+          // agent's configured model rather than failing the run.
+          modelOverride: p.model,
+          onAcpDispatchStart: (_runId, hint) => {
+            acpDispatchClaimed = true;
+            acpProviderHint = hint?.provider;
+            acpModelHint = hint?.model;
+            acpApiHint = hint?.api;
+            // Fire user transcript update eagerly so the user prompt is
+            // persisted to the UI transcript on the ACP path the same way
+            // the pre-dispatch eager emit handles the non-ACP path (see
+            // line ~1929). Without this, Defect B repros: webchat user
+            // prompts silently disappear when a runtime flip routes the
+            // turn through dispatch-acp instead of the Pi agent runner.
+            void emitUserTranscriptUpdate();
+            registerRunForConnIds(runId);
+          },
           onAgentRunStart: (runId) => {
             agentRunStarted = true;
             void emitUserTranscriptUpdate();
-            const connId = typeof client?.connId === "string" ? client.connId : undefined;
-            const wantsToolEvents = hasGatewayClientCap(
-              client?.connect?.caps,
-              GATEWAY_CLIENT_CAPS.TOOL_EVENTS,
-            );
-            if (connId && wantsToolEvents) {
-              context.registerToolEventRecipient(runId, connId);
+            if (connId) {
+              // The agent's runId may differ from clientRunId (sub-agents).
+              // Register for the agent's runId too so streaming events are scoped.
+              if (runId !== clientRunId) {
+                context.registerToolEventRecipient(runId, connId);
+              }
               // Register for any other active runs *in the same session* so
               // late-joining clients (e.g. page refresh mid-response) receive
-              // in-progress tool events without leaking cross-session data.
+              // in-progress events without leaking cross-session data.
               for (const [activeRunId, active] of context.chatAbortControllers) {
-                if (activeRunId !== runId && active.sessionKey === p.sessionKey) {
+                if (activeRunId !== runId && activeRunId !== clientRunId && active.sessionKey === p.sessionKey) {
                   context.registerToolEventRecipient(activeRunId, connId);
                 }
               }
@@ -1793,6 +2080,7 @@ export const chatHandlers: GatewayRequestHandlers = {
                 context,
                 runId: clientRunId,
                 sessionKey,
+                recipientConnIds: senderConnIds,
               });
             } else {
               const combinedReply = deliveredReplies
@@ -1804,6 +2092,16 @@ export const chatHandlers: GatewayRequestHandlers = {
                 .trim();
               let message: Record<string, unknown> | undefined;
               if (combinedReply) {
+                // Append to the Pi transcript on BOTH ACP and non-ACP paths.
+                // `loadHistory` in openclaw-ui treats gateway chat.history as
+                // authoritative on refresh and only merges backup messages
+                // strictly OLDER than the gateway's oldest timestamp. If we
+                // skip the append on the ACP path, the ACP assistant turn
+                // vanishes from the Pi JSONL, gateway returns no ACP turns
+                // on refresh, and the UI drops them as "contamination" even
+                // though SQLite has them. The fix for the `gateway-injected`
+                // badge stamp is a provider/model override (threaded in via
+                // `onAcpDispatchStart`), not skipping the append.
                 const { storePath: latestStorePath, entry: latestEntry } =
                   loadSessionEntry(sessionKey);
                 const sessionId = latestEntry?.sessionId ?? entry?.sessionId ?? clientRunId;
@@ -1814,6 +2112,13 @@ export const chatHandlers: GatewayRequestHandlers = {
                   sessionFile: latestEntry?.sessionFile,
                   agentId,
                   createIfMissing: true,
+                  ...(acpDispatchClaimed
+                    ? {
+                        providerOverride: acpProviderHint,
+                        modelOverride: acpModelHint,
+                        apiOverride: acpApiHint,
+                      }
+                    : {}),
                 });
                 if (appended.ok) {
                   message = appended.message;
@@ -1830,6 +2135,13 @@ export const chatHandlers: GatewayRequestHandlers = {
                     // persisted to the transcript due to the append failure.
                     stopReason: "stop",
                     usage: { input: 0, output: 0, totalTokens: 0 },
+                    ...(acpDispatchClaimed
+                      ? {
+                          provider: acpProviderHint ?? "openclaw",
+                          model: acpModelHint ?? "gateway-injected",
+                          api: acpApiHint ?? "openai-responses",
+                        }
+                      : {}),
                   };
                 }
               }
@@ -1838,6 +2150,7 @@ export const chatHandlers: GatewayRequestHandlers = {
                 runId: clientRunId,
                 sessionKey,
                 message,
+                recipientConnIds: senderConnIds,
               });
             }
           } else {
@@ -1884,6 +2197,7 @@ export const chatHandlers: GatewayRequestHandlers = {
             runId: clientRunId,
             sessionKey,
             errorMessage: String(err),
+            recipientConnIds: senderConnIds,
           });
         })
         .finally(() => {
@@ -1974,5 +2288,58 @@ export const chatHandlers: GatewayRequestHandlers = {
     context.nodeSendToSession(sessionKey, "chat", chatPayload);
 
     respond(true, { ok: true, messageId: appended.messageId });
+  },
+  // Resolve an ACP permission_request surfaced by the runtime (e.g. acpx
+  // pty path or a future native ACP bridge). The UI's inline approval card
+  // calls this when the user clicks Allow / Deny / etc.; we forward the
+  // decision to the ACP session manager which routes it to the matching
+  // runtime handle.
+  "acp.permission.respond": async ({ params, respond }) => {
+    if (!validateAcpPermissionRespondParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid acp.permission.respond params: ${formatValidationErrors(validateAcpPermissionRespondParams.errors)}`,
+        ),
+      );
+      return;
+    }
+    const { sessionKey, requestId, decision } = params as {
+      sessionKey: string;
+      requestId: string;
+      decision: unknown;
+    };
+    if (!decision || typeof decision !== "object") {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, "decision must be an object"),
+      );
+      return;
+    }
+    const typedDecision = decision as AcpPermissionDecision;
+    if (typedDecision.behavior !== "allow" && typedDecision.behavior !== "deny") {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, "decision.behavior must be 'allow' or 'deny'"),
+      );
+      return;
+    }
+    const { cfg } = loadSessionEntry(sessionKey);
+    try {
+      await getAcpSessionManager().respondToPermission({
+        cfg,
+        sessionKey,
+        requestId,
+        decision: typedDecision,
+      });
+      respond(true, { ok: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, message));
+    }
   },
 };

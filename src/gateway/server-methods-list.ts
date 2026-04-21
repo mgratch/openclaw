@@ -114,6 +114,7 @@ const BASE_METHODS = [
   "chat.history",
   "chat.abort",
   "chat.send",
+  "acp.permission.respond",
 ];
 
 export function listGatewayMethods(): string[] {

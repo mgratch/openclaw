@@ -113,6 +113,7 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "node.pair.approve",
     "chat.send",
     "chat.abort",
+    "acp.permission.respond",
     "sessions.create",
     "sessions.send",
     "sessions.steer",

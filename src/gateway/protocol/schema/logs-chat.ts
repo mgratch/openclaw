@@ -32,6 +32,20 @@ export const ChatHistoryParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+// Full (untruncated) chat history for UI archive/display — no byte budgets.
+// Supports cursor-based pagination so the UI can fetch the full transcript
+// without blowing up the WebSocket frame.
+export const ChatHistoryFullParamsSchema = Type.Object(
+  {
+    sessionKey: NonEmptyString,
+    /** 0-based message offset; omit or 0 for "start from the beginning". */
+    offset: Type.Optional(Type.Integer({ minimum: 0 })),
+    /** Max messages per page (default 500, hard max 2000). */
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 2000 })),
+  },
+  { additionalProperties: false },
+);
+
 export const ChatSendParamsSchema = Type.Object(
   {
     sessionKey: ChatSendSessionKeyString,
@@ -44,6 +58,15 @@ export const ChatSendParamsSchema = Type.Object(
     originatingThreadId: Type.Optional(Type.String()),
     attachments: Type.Optional(Type.Array(Type.Unknown())),
     timeoutMs: Type.Optional(Type.Integer({ minimum: 0 })),
+    /**
+     * Optional per-call model override. Format is `provider/model` (e.g.
+     * `anthropic/claude-opus-4-6`) or a bare alias resolvable through the
+     * agent's catalog. Mirrors the heartbeat-runner's `heartbeatModelOverride`
+     * pattern for non-heartbeat (user-initiated) runs — see
+     * `auto-reply/reply/get-reply.ts`. Additive; older clients that do not
+     * send this field continue to use the agent's configured model.
+     */
+    model: Type.Optional(NonEmptyString),
     systemInputProvenance: Type.Optional(InputProvenanceSchema),
     systemProvenanceReceipt: Type.Optional(Type.String()),
     idempotencyKey: NonEmptyString,
@@ -55,6 +78,23 @@ export const ChatAbortParamsSchema = Type.Object(
   {
     sessionKey: NonEmptyString,
     runId: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
+/**
+ * Respond to an ACP `permission_request` event that was previously surfaced
+ * from the runtime (see `AcpRuntimeEvent` permission_request variant). The
+ * UI's inline approval card calls this RPC when the user clicks Allow /
+ * Allow Always / Deny / etc. The shape of `decision` matches
+ * `AcpPermissionDecision` — validated loosely as unknown here and refined in
+ * the handler so the gateway schema does not drift from the runtime types.
+ */
+export const AcpPermissionRespondParamsSchema = Type.Object(
+  {
+    sessionKey: NonEmptyString,
+    requestId: NonEmptyString,
+    decision: Type.Unknown(),
   },
   { additionalProperties: false },
 );

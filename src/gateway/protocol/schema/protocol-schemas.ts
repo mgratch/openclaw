@@ -109,8 +109,10 @@ import {
   TickEventSchema,
 } from "./frames.js";
 import {
+  AcpPermissionRespondParamsSchema,
   ChatAbortParamsSchema,
   ChatEventSchema,
+  ChatHistoryFullParamsSchema,
   ChatHistoryParamsSchema,
   ChatInjectParamsSchema,
   ChatSendParamsSchema,
@@ -316,9 +318,11 @@ export const ProtocolSchemas = {
   DeviceTokenRevokeParams: DeviceTokenRevokeParamsSchema,
   DevicePairRequestedEvent: DevicePairRequestedEventSchema,
   DevicePairResolvedEvent: DevicePairResolvedEventSchema,
+  ChatHistoryFullParams: ChatHistoryFullParamsSchema,
   ChatHistoryParams: ChatHistoryParamsSchema,
   ChatSendParams: ChatSendParamsSchema,
   ChatAbortParams: ChatAbortParamsSchema,
+  AcpPermissionRespondParams: AcpPermissionRespondParamsSchema,
   ChatInjectParams: ChatInjectParamsSchema,
   ChatEvent: ChatEventSchema,
   UpdateRunParams: UpdateRunParamsSchema,

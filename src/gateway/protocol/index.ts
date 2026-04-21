@@ -57,9 +57,11 @@ import {
   type ChannelsStatusResult,
   ChannelsStatusResultSchema,
   type ChatAbortParams,
+  AcpPermissionRespondParamsSchema,
   ChatAbortParamsSchema,
   type ChatEvent,
   ChatEventSchema,
+  ChatHistoryFullParamsSchema,
   ChatHistoryParamsSchema,
   type ChatInjectParams,
   ChatInjectParamsSchema,
@@ -454,9 +456,11 @@ export const validateExecApprovalsNodeSetParams = ajv.compile<ExecApprovalsNodeS
   ExecApprovalsNodeSetParamsSchema,
 );
 export const validateLogsTailParams = ajv.compile<LogsTailParams>(LogsTailParamsSchema);
+export const validateChatHistoryFullParams = ajv.compile(ChatHistoryFullParamsSchema);
 export const validateChatHistoryParams = ajv.compile(ChatHistoryParamsSchema);
 export const validateChatSendParams = ajv.compile(ChatSendParamsSchema);
 export const validateChatAbortParams = ajv.compile<ChatAbortParams>(ChatAbortParamsSchema);
+export const validateAcpPermissionRespondParams = ajv.compile(AcpPermissionRespondParamsSchema);
 export const validateChatInjectParams = ajv.compile<ChatInjectParams>(ChatInjectParamsSchema);
 export const validateChatEvent = ajv.compile(ChatEventSchema);
 export const validateUpdateRunParams = ajv.compile<UpdateRunParams>(UpdateRunParamsSchema);
@@ -601,6 +605,7 @@ export {
   CronRunsParamsSchema,
   LogsTailParamsSchema,
   LogsTailResultSchema,
+  ChatHistoryFullParamsSchema,
   ChatHistoryParamsSchema,
   ChatSendParamsSchema,
   ChatInjectParamsSchema,
