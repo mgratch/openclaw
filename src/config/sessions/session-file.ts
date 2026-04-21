@@ -12,6 +12,10 @@ export async function resolveAndPersistSessionFile(params: {
   sessionsDir?: string;
   fallbackSessionFile?: string;
   activeSessionKey?: string;
+  /** When true, skip the updateSessionStore write — the caller is responsible
+   *  for including these changes in a subsequent batched write. This avoids
+   *  redundant disk writes when the caller will immediately write anyway. */
+  deferWrite?: boolean;
 }): Promise<{ sessionFile: string; sessionEntry: SessionEntry }> {
   const { sessionId, sessionKey, sessionStore, storePath } = params;
   const baseEntry = params.sessionEntry ??
@@ -33,16 +37,18 @@ export async function resolveAndPersistSessionFile(params: {
   };
   if (baseEntry.sessionId !== sessionId || baseEntry.sessionFile !== sessionFile) {
     sessionStore[sessionKey] = persistedEntry;
-    await updateSessionStore(
-      storePath,
-      (store) => {
-        store[sessionKey] = {
-          ...store[sessionKey],
-          ...persistedEntry,
-        };
-      },
-      params.activeSessionKey ? { activeSessionKey: params.activeSessionKey } : undefined,
-    );
+    if (!params.deferWrite) {
+      await updateSessionStore(
+        storePath,
+        (store) => {
+          store[sessionKey] = {
+            ...store[sessionKey],
+            ...persistedEntry,
+          };
+        },
+        params.activeSessionKey ? { activeSessionKey: params.activeSessionKey } : undefined,
+      );
+    }
     return { sessionFile, sessionEntry: persistedEntry };
   }
   sessionStore[sessionKey] = persistedEntry;

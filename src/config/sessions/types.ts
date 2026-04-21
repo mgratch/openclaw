@@ -63,6 +63,33 @@ export type AcpSessionRuntimeOptions = {
   timeoutSeconds?: number;
   /** Backend-specific option bag mapped through session/set_config_option. */
   backendExtras?: Record<string, string>;
+  /**
+   * When true, the session is operating against a read-only working directory
+   * and must not mutate files. Auto-detected from SSHFS mount access flags at
+   * spawn time when `cwd` lives under `/mnt/host-projects/<name>`, but also
+   * settable manually for non-SSHFS read-only workflows (reviewing another
+   * agent's worktree, frozen release branches, etc.).
+   *
+   * Enforcement layers:
+   *   1. Kernel backstop: ro SSHFS mounts refuse writes with EROFS regardless.
+   *   2. Runtime: AcpxRuntime's pty-based permission policy auto-approves
+   *      reads inside {@link mountBaselineRoot} and surfaces writes to the
+   *      user via an approval card, so the agent can still request a
+   *      case-by-case exception instead of flat-denying the entire turn.
+   *   3. UI: projector annotates refused tool-call cards with
+   *      `deliveryMeta.sessionReadOnly = true` so the refusal reason is legible.
+   */
+  readOnly?: boolean;
+  /**
+   * Absolute path of the project mount this session is scoped to, typically
+   * the /mnt/host-projects/<name> directory detected at spawn time. Used as
+   * the auto-approve scope for the acpx permission policy: tool calls whose
+   * target path resolves inside this root skip the approval card (reads
+   * always; writes only when {@link readOnly} is false). Prompts whose
+   * target path is outside the root, or whose target is unknown (for example
+   * terminal commands), always surface to the user.
+   */
+  mountBaselineRoot?: string;
 };
 
 export type CliSessionBinding = {
