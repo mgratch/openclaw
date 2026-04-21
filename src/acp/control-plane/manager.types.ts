@@ -46,6 +46,21 @@ export type AcpInitializeSessionInput = {
   resumeSessionId?: string;
   cwd?: string;
   backendId?: string;
+  /** Initial per-session model override persisted in runtimeOptions.model. */
+  model?: string;
+  /**
+   * Initial per-session read-only flag persisted in runtimeOptions.readOnly.
+   * Auto-detected from SSHFS mount flags in handleAcpSpawnAction for cwds under
+   * /mnt/host-projects/<name>, or set manually for other read-only workflows.
+   */
+  readOnly?: boolean;
+  /**
+   * Optional project mount root persisted in runtimeOptions.mountBaselineRoot.
+   * Forms the auto-approve scope for the acpx permission policy together with
+   * {@link readOnly}; usually the same `/mnt/host-projects/<name>` path that
+   * produced the readOnly flag.
+   */
+  mountBaselineRoot?: string;
 };
 
 export type AcpTurnAttachment = {
@@ -62,6 +77,20 @@ export type AcpRunTurnInput = {
   requestId: string;
   signal?: AbortSignal;
   onEvent?: (event: AcpRuntimeEvent) => Promise<void> | void;
+  /**
+   * Optional per-turn backend model override. Forwarded to the underlying
+   * runtime (AcpRuntime.runTurn.model → acpx `--model <id>`) so callers can
+   * switch models mid-conversation without rebuilding the session. Omit to use
+   * the backend's configured default or the session's last-seen model.
+   */
+  model?: string;
+  /**
+   * Optional per-turn read-only override. Forwarded to the underlying runtime
+   * (AcpRuntime.runTurn.readOnly → acpx `--deny-all`) so callers can enforce
+   * read-only semantics without rebuilding the session. Omit to use the
+   * session's persisted runtimeOptions.readOnly.
+   */
+  readOnly?: boolean;
 };
 
 export type AcpCloseSessionInput = {

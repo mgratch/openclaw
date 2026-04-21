@@ -24,7 +24,12 @@ import {
   resolveRuntimeHandleIdentifiersFromIdentity,
   resolveSessionIdentityFromMeta,
 } from "../runtime/session-identity.js";
+import {
+  backfillFromSessionLog,
+  fingerprintEvent,
+} from "./session-log-reader.js";
 import type {
+  AcpPermissionDecision,
   AcpRuntime,
   AcpRuntimeCapabilities,
   AcpRuntimeHandle,
@@ -305,7 +310,12 @@ export class AcpSessionManager {
     return await this.withSessionActor(sessionKey, async () => {
       const backend = this.deps.requireRuntimeBackend(input.backendId || input.cfg.acp?.backend);
       const runtime = backend.runtime;
-      const initialRuntimeOptions = validateRuntimeOptionPatch({ cwd: input.cwd });
+      const initialRuntimeOptions = validateRuntimeOptionPatch({
+        cwd: input.cwd,
+        ...(input.model ? { model: input.model } : {}),
+        ...(input.readOnly ? { readOnly: true } : {}),
+        ...(input.mountBaselineRoot ? { mountBaselineRoot: input.mountBaselineRoot } : {}),
+      });
       const requestedCwd = initialRuntimeOptions.cwd;
       this.enforceConcurrentSessionLimit({
         cfg: input.cfg,
@@ -319,6 +329,11 @@ export class AcpSessionManager {
             mode: input.mode,
             resumeSessionId: input.resumeSessionId,
             cwd: requestedCwd,
+            ...(initialRuntimeOptions.model ? { model: initialRuntimeOptions.model } : {}),
+            ...(initialRuntimeOptions.readOnly ? { readOnly: true } : {}),
+            ...(initialRuntimeOptions.mountBaselineRoot
+              ? { mountBaselineRoot: initialRuntimeOptions.mountBaselineRoot }
+              : {}),
           }),
         fallbackCode: "ACP_SESSION_INIT_FAILED",
         fallbackMessage: "Could not initialize ACP session runtime.",
@@ -777,6 +792,10 @@ export class AcpSessionManager {
                 ? AbortSignal.any([input.signal, internalAbortController.signal])
                 : internalAbortController.signal;
             const eventGate = { open: true };
+            // Chunk 9 — collect fingerprints of back-fillable events we saw
+            // live, so the post-turn acpx-sidecar reader can dedup against
+            // the live stream and only emit anything we missed.
+            const liveFingerprints = new Set<string>();
             const turnPromise = (async () => {
               for await (const event of runtime.runTurn({
                 handle,
@@ -785,6 +804,11 @@ export class AcpSessionManager {
                 mode: input.mode,
                 requestId: input.requestId,
                 signal: combinedSignal,
+                // Per-turn model override. Forwarded to acpx `--model <id>` so
+                // callers can switch models mid-conversation without rebuilding
+                // the session. Omit when unset so the backend uses its default.
+                ...(input.model ? { model: input.model } : {}),
+                ...(input.readOnly !== undefined ? { readOnly: input.readOnly } : {}),
               })) {
                 if (!eventGate.open) {
                   continue;
@@ -809,6 +833,13 @@ export class AcpSessionManager {
                       progressSummary: taskProgressSummary || null,
                     });
                   }
+                }
+                if (
+                  event.type === "hook_event" ||
+                  event.type === "session_system" ||
+                  event.type === "subagent_hop"
+                ) {
+                  liveFingerprints.add(fingerprintEvent(event));
                 }
                 if (input.onEvent) {
                   await input.onEvent(event);
@@ -847,6 +878,25 @@ export class AcpSessionManager {
             this.recordTurnCompletion({
               startedAt: turnStartedAt,
             });
+            // Chunk 9 — post-turn back-fill from acpx's own NDJSON sidecar.
+            // Env-gated (OPENCLAW_ACP_LOG_READER=1) and best-effort: any
+            // hook/system/subagent events the live stream missed are
+            // forwarded through input.onEvent using the same shape callers
+            // already handle. Errors never fail the turn.
+            try {
+              const acpxSessionId = meta?.identity?.acpxSessionId;
+              if (acpxSessionId && input.onEvent) {
+                const onEventForwarder = input.onEvent;
+                await backfillFromSessionLog({
+                  acpxSessionId,
+                  seenFingerprints: liveFingerprints,
+                  onEvent: (ev) => onEventForwarder(ev),
+                  logWarn: (msg) => logVerbose(msg),
+                });
+              }
+            } catch (err) {
+              logVerbose(`[acp] session-log backfill failed: ${String(err)}`);
+            }
             if (taskContext) {
               const terminalResult = resolveBackgroundTaskTerminalResult(taskProgressSummary);
               this.markBackgroundTaskTerminal(taskContext.runId, {
@@ -1218,6 +1268,73 @@ export class AcpSessionManager {
     });
   }
 
+  async respondToPermission(params: {
+    cfg: OpenClawConfig;
+    sessionKey: string;
+    requestId: string;
+    decision: AcpPermissionDecision;
+  }): Promise<void> {
+    const sessionKey = canonicalizeAcpSessionKey(params);
+    if (!sessionKey) {
+      throw new AcpRuntimeError("ACP_SESSION_INIT_FAILED", "ACP session key is required.");
+    }
+    const requestId = params.requestId?.trim();
+    if (!requestId) {
+      throw new AcpRuntimeError(
+        "ACP_TURN_FAILED",
+        "permission requestId is required to resolve an approval.",
+      );
+    }
+    const actorKey = normalizeActorKey(sessionKey);
+    const activeTurn = this.activeTurnBySession.get(actorKey);
+    if (activeTurn) {
+      if (typeof activeTurn.runtime.respondToPermission !== "function") {
+        throw new AcpRuntimeError(
+          "ACP_TURN_FAILED",
+          "Active runtime does not support permission responses.",
+        );
+      }
+      await withAcpRuntimeErrorBoundary({
+        run: async () =>
+          await activeTurn.runtime.respondToPermission!({
+            handle: activeTurn.handle,
+            requestId,
+            decision: params.decision,
+          }),
+        fallbackCode: "ACP_TURN_FAILED",
+        fallbackMessage: "ACP permission response failed.",
+      });
+      return;
+    }
+
+    // No active turn: fall through to the cached runtime handle so late
+    // decisions do not silently drop. The runtime is free to reject an
+    // unknown requestId.
+    const cached = this.getCachedRuntimeState(sessionKey);
+    if (!cached) {
+      throw new AcpRuntimeError(
+        "ACP_TURN_FAILED",
+        "No active ACP runtime is available to answer this permission request.",
+      );
+    }
+    if (typeof cached.runtime.respondToPermission !== "function") {
+      throw new AcpRuntimeError(
+        "ACP_TURN_FAILED",
+        "Cached runtime does not support permission responses.",
+      );
+    }
+    await withAcpRuntimeErrorBoundary({
+      run: async () =>
+        await cached.runtime.respondToPermission!({
+          handle: cached.handle,
+          requestId,
+          decision: params.decision,
+        }),
+      fallbackCode: "ACP_TURN_FAILED",
+      fallbackMessage: "ACP permission response failed.",
+    });
+  }
+
   async closeSession(input: AcpCloseSessionInput): Promise<AcpCloseSessionResult> {
     const sessionKey = canonicalizeAcpSessionKey({
       cfg: input.cfg,
@@ -1365,6 +1482,11 @@ export class AcpSessionManager {
             mode,
             ...(resumeSessionId ? { resumeSessionId } : {}),
             cwd,
+            ...(runtimeOptions.model ? { model: runtimeOptions.model } : {}),
+            ...(runtimeOptions.readOnly ? { readOnly: true } : {}),
+            ...(runtimeOptions.mountBaselineRoot
+              ? { mountBaselineRoot: runtimeOptions.mountBaselineRoot }
+              : {}),
           }),
         fallbackCode: "ACP_SESSION_INIT_FAILED",
         fallbackMessage: "Could not initialize ACP session runtime.",

@@ -145,6 +145,8 @@ export function validateRuntimeOptionPatch(
     "permissionProfile",
     "timeoutSeconds",
     "backendExtras",
+    "readOnly",
+    "mountBaselineRoot",
   ]);
   for (const key of Object.keys(rawPatch)) {
     if (!allowedKeys.has(key)) {
@@ -186,6 +188,31 @@ export function validateRuntimeOptionPatch(
       next.timeoutSeconds = undefined;
     } else {
       next.timeoutSeconds = validateRuntimeTimeoutSecondsInput(rawPatch.timeoutSeconds);
+    }
+  }
+  if (Object.hasOwn(rawPatch, "readOnly")) {
+    if (rawPatch.readOnly === undefined) {
+      next.readOnly = undefined;
+    } else if (typeof rawPatch.readOnly !== "boolean") {
+      failInvalidOption("readOnly must be a boolean.");
+    } else {
+      next.readOnly = rawPatch.readOnly;
+    }
+  }
+  if (Object.hasOwn(rawPatch, "mountBaselineRoot")) {
+    if (rawPatch.mountBaselineRoot === undefined) {
+      next.mountBaselineRoot = undefined;
+    } else if (typeof rawPatch.mountBaselineRoot !== "string") {
+      failInvalidOption("mountBaselineRoot must be a string.");
+    } else {
+      const trimmed = rawPatch.mountBaselineRoot.trim();
+      if (!trimmed) {
+        next.mountBaselineRoot = undefined;
+      } else if (!trimmed.startsWith("/")) {
+        failInvalidOption("mountBaselineRoot must be an absolute path.");
+      } else {
+        next.mountBaselineRoot = trimmed;
+      }
     }
   }
   if (Object.hasOwn(rawPatch, "backendExtras")) {
@@ -238,6 +265,8 @@ export function normalizeRuntimeOptions(
     .filter(([key, value]) => Boolean(key && value)) as Array<[string, string]>;
   const backendExtras =
     backendExtrasEntries.length > 0 ? Object.fromEntries(backendExtrasEntries) : undefined;
+  const readOnly = options?.readOnly === true ? true : undefined;
+  const mountBaselineRoot = normalizeText(options?.mountBaselineRoot);
   return {
     ...(runtimeMode ? { runtimeMode } : {}),
     ...(model ? { model } : {}),
@@ -245,6 +274,8 @@ export function normalizeRuntimeOptions(
     ...(permissionProfile ? { permissionProfile } : {}),
     ...(typeof timeoutSeconds === "number" ? { timeoutSeconds } : {}),
     ...(backendExtras ? { backendExtras } : {}),
+    ...(readOnly ? { readOnly: true } : {}),
+    ...(mountBaselineRoot ? { mountBaselineRoot } : {}),
   };
 }
 
