@@ -141,3 +141,57 @@ changelog/fragments/
 
 # Local scratch workspace
 .tmp/
+
+# acpx node_modules (bind-mounted into gateway container, not source)
+acpx-node-modules/
+
+# Gateway build artifacts and patch backups
+docker-compose.override.yml.bak-*
+*.unpatched
+*.unpatched-cyber
+*.orig
+_tmp_*
+patch-baselines-pre-rebuild/
+exportToHTML/
+claude-agent-acp-local/
+
+# Bundled JS artifacts (produced by patch-gateway-bundles.sh)
+gateway-cli-*.js
+gateway-cli-*.js.bak
+pi-embedded-*.js
+pi-embedded-*.js.bak
+reply-*.js
+reply-*.js.bak
+input-files-*.js
+input-files-*.js.bak
+extensions-acpx-index.js
+
+# Local docker-compose variants (auto-generated or local-only)
+docker-compose.browsers.yml
+docker-compose.zap.yml
+docker-compose.override.snippet.yml
+docker-compose.override.yml.old
+docker-compose.override.yml.pre-sshfs
+
+# Dockerfile backups
+Dockerfile.custom.bak
+Dockerfile.custom.pre-sshfs
+
+# Scratch/working files at repo root
+memory-lancedb-index.ts
+memory-lancedb-index.ts.new
+openclaw.json.backup.*.json
+webchat-config-trace.txt
+vitest.config.ts.timestamp-*.mjs
+.input-files-bundle-name
+.pi-ai-store-path
+
+# pi-ai provider patch backups
+pi-ai-providers/*.js.old
+pi-ai-providers/*.js.new.bak
+
+# Broken local symlink
+personal
+
+# Abandoned early-project workspace (Feb 2026, superseded by ~/.openclaw/workspace)
+workspace/
