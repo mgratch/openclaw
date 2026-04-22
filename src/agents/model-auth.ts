@@ -16,6 +16,7 @@ import {
   type AuthProfileStore,
   ensureAuthProfileStore,
   listProfilesForProvider,
+  markAuthProfileFailure,
   resolveApiKeyForProfile,
   resolveAuthProfileOrder,
   resolveAuthStorePathForDisplay,
@@ -33,6 +34,7 @@ import {
   type ResolvedProviderAuth,
 } from "./model-auth-runtime-shared.js";
 import { normalizeProviderId } from "./model-selection.js";
+import { isAuthPermanentErrorMessage } from "./pi-embedded-helpers/failover-matches.js";
 
 export { ensureAuthProfileStore, resolveAuthProfileOrder } from "./auth-profiles.js";
 export { requireApiKey, resolveAwsSdkEnvVarName } from "./model-auth-runtime-shared.js";
@@ -366,7 +368,21 @@ export async function resolveApiKeyForProvider(params: {
         return result;
       }
     } catch (err) {
-      log.debug?.(`auth profile "${candidate}" failed for provider "${provider}": ${String(err)}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      log.debug?.(`auth profile "${candidate}" failed for provider "${provider}": ${errMsg}`);
+
+      // Record the failure to the usage stats system so auth_permanent
+      // backoff kicks in for burned tokens and similar permanent errors.
+      const reason = isAuthPermanentErrorMessage(errMsg) ? "auth_permanent" : "auth";
+      markAuthProfileFailure({
+        store,
+        profileId: candidate,
+        reason,
+        cfg,
+        agentDir: params.agentDir,
+      }).catch((markErr) => {
+        log.debug?.(`failed to record auth failure for profile "${candidate}": ${String(markErr)}`);
+      });
     }
   }
 

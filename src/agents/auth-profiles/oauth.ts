@@ -158,18 +158,24 @@ function propagateRefreshedCredentialToOtherAgents(params: {
 }): void {
   try {
     const stateDir =
-      process.env.OPENCLAW_STATE_DIR ||
-      nodePath.join(process.env.HOME || "~", ".openclaw");
+      process.env.OPENCLAW_STATE_DIR || nodePath.join(process.env.HOME || "~", ".openclaw");
     const agentsDir = nodePath.join(stateDir, "agents");
-    if (!fs.existsSync(agentsDir)) return;
+    if (!fs.existsSync(agentsDir)) {
+      return;
+    }
 
     const agents: string[] = fs.readdirSync(agentsDir);
     for (const agentName of agents) {
       // Skip special directories that aren't real agents.
-      if (agentName.startsWith("__") || agentName.startsWith(".")) continue;
+      if (agentName.startsWith("__") || agentName.startsWith(".")) {
+        continue;
+      }
       const agentDir = nodePath.join(agentsDir, agentName, "agent");
       // Skip the source agent (already has the new credentials)
-      if (params.sourceAgentDir && nodePath.resolve(agentDir) === nodePath.resolve(params.sourceAgentDir)) {
+      if (
+        params.sourceAgentDir &&
+        nodePath.resolve(agentDir) === nodePath.resolve(params.sourceAgentDir)
+      ) {
         continue;
       }
       // Skip main agent when source is undefined (main agent already updated)
@@ -348,7 +354,7 @@ async function performOAuthTokenRefreshWithLock(params: {
     let result: RefreshResult;
     try {
       result =
-        String(cred.provider) === "chutes"
+        cred.provider === "chutes"
           ? await (async () => {
               const newCredentials = await refreshChutesTokens({
                 credential: cred,
@@ -369,10 +375,28 @@ async function performOAuthTokenRefreshWithLock(params: {
       // Detect permanently burned refresh tokens and mark the credential so
       // we don't keep retrying with a token that will never work again.
       if (isRefreshTokenBurnedError(refreshError)) {
-        log.warn("OAuth refresh token is permanently burned", {
+        log.warn("OAuth refresh token is permanently burned — clearing credential", {
           profileId: params.profileId,
           provider: cred.provider,
           error: extractErrorMessage(refreshError),
+        });
+        // Clear the refresh token and expire the credential so no subsequent
+        // request retries with the same burned token. The user must
+        // re-authenticate to get a fresh token pair.
+        const burnedCredential: OAuthCredential = {
+          ...cred,
+          refresh: "",
+          expires: 0,
+          type: "oauth",
+        };
+        store.profiles[params.profileId] = burnedCredential;
+        saveAuthProfileStore(store, params.agentDir);
+        // Also propagate the burned state to sibling agents so they stop
+        // retrying independently.
+        propagateRefreshedCredentialToOtherAgents({
+          profileId: params.profileId,
+          newCredential: burnedCredential,
+          sourceAgentDir: params.agentDir,
         });
       }
       throw refreshError;
