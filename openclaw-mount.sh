@@ -97,13 +97,67 @@ cmd_list() {
     for dir in "$MOUNT_BASE"/*/; do
         [ -d "$dir" ] || continue
         name=$(basename "$dir")
+        dir_nos="${dir%/}"
+        active=false
+        remote=""
+        access=""
         if mountpoint -q "$dir" 2>/dev/null; then
-            remote=$(grep " ${dir}" /proc/mounts 2>/dev/null | awk '{print $1}' | sed "s/^${SSH_USER}@${SSH_HOST}://" || echo "unknown")
-            ro_flag=$(grep " ${dir}" /proc/mounts 2>/dev/null | grep -o '\bro\b' || echo "rw")
-            if [ "$first" = true ]; then first=false; else printf ','; fi
-            printf '{"name":"%s","host_path":"%s","access":"%s","active":true}' "$name" "$remote" "$ro_flag"
+            active=true
+            # Parse /proc/mounts in one awk pass. Fields: $1=source $2=target $3=fstype $4=options
+            # Match the target exactly (after unescaping /proc/mounts' octal sequences),
+            # strip SSH user@host: prefix, detect ro/rw via options field.
+            # /proc/mounts escapes spaces/tabs/newlines/backslashes as \040 \011 \012 \134 —
+            # these are invalid JSON escapes, so we unescape to the real character
+            # before emitting, otherwise JSON.parse on the consumer side blows up.
+            line=$(awk -v t="$dir_nos" -v u="${SSH_USER}@${SSH_HOST}:" '
+                # POSIX-awk-safe octal unescape for /proc/mounts style \NNN sequences.
+                # strtonum() is a gawk extension — busybox/mawk lack it and throw,
+                # which combined with set -e kills the script silently mid-output.
+                function unescape(s,   out, c, i, oct, d1, d2, d3, n) {
+                    out = ""
+                    i = 1
+                    while (i <= length(s)) {
+                        c = substr(s, i, 1)
+                        if (c == "\\" && i + 3 <= length(s)) {
+                            oct = substr(s, i + 1, 3)
+                            if (oct ~ /^[0-3][0-7][0-7]$/) {
+                                d1 = substr(oct, 1, 1) + 0
+                                d2 = substr(oct, 2, 1) + 0
+                                d3 = substr(oct, 3, 1) + 0
+                                n = d1 * 64 + d2 * 8 + d3
+                                out = out sprintf("%c", n)
+                                i += 4
+                                continue
+                            }
+                        }
+                        out = out c
+                        i += 1
+                    }
+                    return out
+                }
+                $2 == t {
+                    src = unescape($1)
+                    sub("^" u, "", src)
+                    opts = $4
+                    mode = "rw"
+                    n = split(opts, parts, ",")
+                    for (i = 1; i <= n; i++) if (parts[i] == "ro") { mode = "ro"; break }
+                    printf "%s\t%s", src, mode
+                    exit
+                }
+            ' /proc/mounts 2>/dev/null)
+            if [ -n "$line" ]; then
+                remote=$(printf '%s' "$line" | cut -f1)
+                access=$(printf '%s' "$line" | cut -f2)
+            else
+                remote="unknown"
+                access="rw"
+            fi
+        fi
+        if [ "$first" = true ]; then first=false; else printf ','; fi
+        if [ "$active" = true ]; then
+            printf '{"name":"%s","host_path":"%s","access":"%s","active":true}' "$name" "$remote" "$access"
         else
-            if [ "$first" = true ]; then first=false; else printf ','; fi
             printf '{"name":"%s","host_path":"","access":"","active":false}' "$name"
         fi
     done

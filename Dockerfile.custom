@@ -75,5 +75,14 @@ RUN cd /app && pnpm add openai --ignore-scripts
 # LanceDB for memory plugin
 RUN cd /app && pnpm add @lancedb/lancedb@^0.26.2 --ignore-scripts
 
+# Bake openclaw-mount into the image. A single-file bind-mount at this path
+# wedges Docker Desktop's virtiofs layer under iterative edits (symptoms:
+# "-?????????" stat, md5 drift, read hangs). Shipping in the image makes
+# the script immutable at runtime — update by rebuilding `openclaw:custom`.
+COPY openclaw-mount.sh /usr/local/bin/openclaw-mount
+# Explicit 755 (not `+x`) — the host source is mode 0700, which COPY preserves,
+# and `+x` leaves other/group without read, breaking script execution for node user.
+RUN chmod 755 /usr/local/bin/openclaw-mount
+
 # Now drop to non-root for runtime
 USER node
