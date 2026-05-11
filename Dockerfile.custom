@@ -43,6 +43,14 @@ RUN setcap cap_net_bind_service+ep /usr/sbin/dnsmasq \
 # Create mount point for dynamically linked host directories
 RUN mkdir -p /mnt/host-projects && chown node:node /mnt/host-projects
 
+# Pre-create /home/node/.config as node-owned. Without this, Docker's bind-mount
+# of ~/.config/github-copilot at runtime auto-creates the parent /home/node/.config
+# as root:root, which silently breaks the override.yml startup script's
+# `mkdir -p /home/node/.config/gh && printf > .../hosts.yml` (perm denied → file
+# never written → gh has no file-based auth fallback when Claude Code's Bash
+# tool strips GITHUB_TOKEN/GH_TOKEN from subprocess env).
+RUN mkdir -p /home/node/.config && chown node:node /home/node/.config
+
 # ClawHub CLI
 RUN npm install -g clawhub@latest
 
@@ -65,6 +73,17 @@ RUN ln -sf /usr/local/bin/claude /usr/local/bin/claude-code
 # yt-dlp for summarize skill
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
     chmod a+rx /usr/local/bin/yt-dlp
+
+# GitHub Copilot CLI (the standalone agentic `copilot` binary, not the old
+# `gh copilot` extension). Used by the copilot-review-loop skill for
+# stdout-only PR audits — see ~/.openclaw/skills/copilot-review-loop/SKILL.md.
+#
+# Auth flows from the bind-mounted ~/.copilot/ + ~/.config/github-copilot/
+# in docker-compose.override.yml — no per-container login needed.
+# The wrapper at ~/.openclaw/bin/copilot-review-pr.sh unsets GH_TOKEN /
+# GITHUB_TOKEN before invoking copilot so the OAuth session-store wins
+# over the container's classic-PAT GITHUB_TOKEN env var.
+RUN npm install -g @github/copilot@latest
 
 # Install extra npm deps as root (base image built node_modules with root's
 # pnpm store at /root/.local/share/pnpm/store/v10; running as node would use

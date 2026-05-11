@@ -45,6 +45,58 @@ cmd_mount() {
         exit 1
     fi
 
+    # Collision check against /proc/mounts: refuse to mount the same remote source
+    # under a different mount point with conflicting access. Defense-in-depth for the
+    # registry-layer check in openclaw-ui inlineMiddleware.js (link-folder handler).
+    # Background: 2026-05-08 BB-MAT hollow-out — a parallel rw mount of the same
+    # host path bypassed the user-intended ro mount even though FUSE honored each
+    # mount's own flag. See memory bb_mat_hollow_out_incident.
+    target_src="${SSH_USER}@${SSH_HOST}:${host_path}"
+    collision=$(awk -v t="$target_src" '
+        function unescape(s,   out, c, i, oct, d1, d2, d3, n) {
+            out = ""
+            i = 1
+            while (i <= length(s)) {
+                c = substr(s, i, 1)
+                if (c == "\\" && i + 3 <= length(s)) {
+                    oct = substr(s, i + 1, 3)
+                    if (oct ~ /^[0-3][0-7][0-7]$/) {
+                        d1 = substr(oct, 1, 1) + 0
+                        d2 = substr(oct, 2, 1) + 0
+                        d3 = substr(oct, 3, 1) + 0
+                        n = d1 * 64 + d2 * 8 + d3
+                        out = out sprintf("%c", n)
+                        i += 4
+                        continue
+                    }
+                }
+                out = out c
+                i += 1
+            }
+            return out
+        }
+        $3 == "fuse.sshfs" && unescape($1) == t {
+            mode = "rw"
+            n = split($4, parts, ",")
+            for (i = 1; i <= n; i++) if (parts[i] == "ro") { mode = "ro"; break }
+            printf "%s\t%s\n", mode, unescape($2)
+            exit
+        }
+    ' /proc/mounts 2>/dev/null)
+
+    if [ -n "$collision" ]; then
+        existing_mode=$(printf '%s' "$collision" | cut -f1)
+        existing_target=$(printf '%s' "$collision" | cut -f2)
+        if [ "$existing_mode" = "ro" ] && [ "$access" = "rw" ]; then
+            echo "{\"ok\":false,\"error\":\"Host path '${host_path}' is already mounted read-only at '${existing_target}'. Refusing read-write mount.\",\"conflicting_mount\":{\"target\":\"${existing_target}\",\"access\":\"${existing_mode}\"}}"
+            exit 1
+        fi
+        if [ "$existing_target" != "$mount_point" ]; then
+            echo "{\"ok\":false,\"error\":\"Host path '${host_path}' is already mounted at '${existing_target}' (access ${existing_mode}). Refusing duplicate mount at '${mount_point}'.\",\"conflicting_mount\":{\"target\":\"${existing_target}\",\"access\":\"${existing_mode}\"}}"
+            exit 1
+        fi
+    fi
+
     # Create mount point
     mkdir -p "$mount_point"
 
