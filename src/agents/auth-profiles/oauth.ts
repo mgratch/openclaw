@@ -9,6 +9,7 @@ import {
 import { loadConfig, type OpenClawConfig } from "../../config/config.js";
 import { coerceSecretRef } from "../../config/types.secrets.js";
 import { withFileLock } from "../../infra/file-lock.js";
+import { loadJsonFile } from "../../infra/json-file.js";
 import {
   formatProviderAuthProfileApiKeyWithPlugin,
   refreshProviderOAuthCredentialWithPlugin,
@@ -325,7 +326,15 @@ async function performOAuthTokenRefreshWithLock(params: {
       return null;
     }
 
-    if (Date.now() < cred.expires) {
+    // 2026-04-30: refresh proactively with a 60s buffer so concurrent
+    // processes don't all hit expiry simultaneously and race on the rotation.
+    // ChatGPT's refresh tokens are one-shot — when N parallel processes each
+    // notice the token expired in the same second, the first wins and the
+    // others get `refresh_token_reused`. By rotating slightly early we shift
+    // every individual process's "must refresh" decision out of the same
+    // second, and the file lock + single-flight Map can serialize cleanly.
+    const REFRESH_BUFFER_MS = 60_000;
+    if (Date.now() + REFRESH_BUFFER_MS < cred.expires) {
       return {
         apiKey: await buildOAuthApiKey(cred.provider, cred),
         newCredentials: cred,
@@ -375,6 +384,51 @@ async function performOAuthTokenRefreshWithLock(params: {
       // Detect permanently burned refresh tokens and mark the credential so
       // we don't keep retrying with a token that will never work again.
       if (isRefreshTokenBurnedError(refreshError)) {
+        // 2026-04-30: Before declaring the credential burned, re-read the
+        // auth-profiles.json directly from disk (bypassing all in-process
+        // caches). If another process already rotated the refresh token
+        // successfully, the disk-side `refresh` will differ from what we
+        // tried — that means our error is a stale-token race, not a real
+        // burn. In that case, adopt the disk-side credential and retry once
+        // before propagating the burned state.
+        const diskRaw = loadJsonFile(authPath) as
+          | { profiles?: Record<string, unknown> }
+          | undefined;
+        const diskCredRaw = diskRaw?.profiles?.[params.profileId];
+        const diskCred =
+          diskCredRaw &&
+          typeof diskCredRaw === "object" &&
+          (diskCredRaw as { type?: string }).type === "oauth"
+            ? (diskCredRaw as OAuthCredential)
+            : null;
+        const diskRefresh = diskCred?.refresh ?? "";
+        const triedRefresh = cred.refresh ?? "";
+        if (
+          diskCred &&
+          diskRefresh &&
+          diskRefresh !== triedRefresh &&
+          (!Number.isFinite(cred.expires) || (diskCred.expires ?? 0) > cred.expires)
+        ) {
+          log.info(
+            "OAuth refresh raced — disk has newer credential from another process; adopting and retrying",
+            {
+              profileId: params.profileId,
+              provider: cred.provider,
+              triedExpires: cred.expires,
+              diskExpires: diskCred.expires,
+            },
+          );
+          // Update our in-memory store snapshot to reflect what's on disk.
+          store.profiles[params.profileId] = diskCred;
+          // Note: we deliberately do NOT call saveAuthProfileStore here —
+          // disk is already authoritative; saving would be a no-op write
+          // that bumps mtime needlessly.
+          return {
+            apiKey: await buildOAuthApiKey(diskCred.provider, diskCred),
+            newCredentials: diskCred,
+          };
+        }
+
         log.warn("OAuth refresh token is permanently burned — clearing credential", {
           profileId: params.profileId,
           provider: cred.provider,
