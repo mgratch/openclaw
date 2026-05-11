@@ -137,6 +137,10 @@ import {
   runAttemptContextEngineBootstrap,
 } from "./attempt.context-engine-helpers.js";
 import {
+  shouldAttemptEmptyFinalTurnRetry,
+  WRAP_UP_PROMPT,
+} from "./attempt.empty-final-turn.js";
+import {
   buildAfterTurnRuntimeContext,
   prependSystemPromptAddition,
   resolveAttemptFsWorkspaceOnly,
@@ -1425,6 +1429,10 @@ export async function runEmbeddedAttempt(
 
       let promptError: unknown = null;
       let promptErrorSource: "prompt" | "compaction" | null = null;
+      // Hoisted out of the try block so the return result (after the finally)
+      // can surface these for empty-final-turn analytics + UI watchdog wiring.
+      let wrapUpAttempted = false;
+      let emptyFinalTurn = false;
       const prePromptMessageCount = activeSession.messages.length;
       try {
         const promptStartedAt = Date.now();
@@ -1731,6 +1739,73 @@ export async function runEmbeddedAttempt(
         messagesSnapshot = snapshotSelection.messagesSnapshot;
         sessionIdUsed = snapshotSelection.sessionIdUsed;
 
+        // EMPTY-FINAL-TURN RECOVERY (incident: web-5a60fa8b spinning forever after
+        // a successful tool run). When the model finishes a turn with tool calls
+        // but no final text part, `assistantTexts` stays empty, no assistant row
+        // gets persisted, and the openclaw-ui spinner hangs because nothing marks
+        // the turn complete with a visible reply. Detect that case and ask the
+        // model exactly once for a short closing reply. Reuses
+        // `activeSession.prompt(...)` so the same provider-agnostic streaming +
+        // hook + persistence pipeline carries the recovered text — no parallel
+        // wiring per provider. `wrapUpAttempted` is closure-scoped so it cannot
+        // recurse.
+        if (
+          shouldAttemptEmptyFinalTurnRetry({
+            aborted,
+            yieldAborted,
+            promptError,
+            timedOutDuringCompaction,
+            clientToolCallDetected,
+            yieldDetected,
+            assistantTextsLength: assistantTexts.length,
+            toolMetasLength: toolMetas.length,
+            messagesSnapshotLength: messagesSnapshot.length,
+            prePromptMessageCount,
+          })
+        ) {
+          wrapUpAttempted = true;
+          log.info(
+            `empty-final-turn detected; running wrap-up retry: ` +
+              `runId=${params.runId} sessionId=${params.sessionId} ` +
+              `toolMetas=${toolMetas.length} msgGrowth=${messagesSnapshot.length - prePromptMessageCount}`,
+          );
+          try {
+            await abortable(activeSession.prompt(WRAP_UP_PROMPT));
+          } catch (err) {
+            if (isRunnerAbortError(err)) {
+              // User cancel during wrap-up — take the abort precedence path.
+              aborted = true;
+              log.debug(
+                `wrap-up retry aborted: runId=${params.runId} sessionId=${params.sessionId}`,
+              );
+            } else {
+              // Don't promote wrap-up failures to promptError — the original
+              // attempt succeeded; we tried best-effort to recover the reply.
+              log.warn(
+                `wrap-up retry failed: runId=${params.runId} err=${describeUnknownError(err)}`,
+              );
+            }
+          }
+          // Refresh the snapshot so downstream context-engine, agent_end hook,
+          // and the returned messagesSnapshot reflect the wrap-up's effect.
+          if (!aborted) {
+            messagesSnapshot = activeSession.messages.slice();
+            sessionIdUsed = activeSession.sessionId;
+          }
+          emptyFinalTurn = !aborted && assistantTexts.length === 0;
+          if (emptyFinalTurn) {
+            log.warn(
+              `wrap-up retry produced no text; UI watchdog will surface a recovery card: ` +
+                `runId=${params.runId} sessionId=${params.sessionId}`,
+            );
+          } else if (!aborted) {
+            log.info(
+              `wrap-up retry recovered final text: ` +
+                `runId=${params.runId} chars=${assistantTexts.join("").length}`,
+            );
+          }
+        }
+
         if (promptError && promptErrorSource === "prompt" && !compactionOccurredThisAttempt) {
           try {
             sessionManager.appendCustomEntry("openclaw:prompt-error", {
@@ -1802,6 +1877,12 @@ export async function runEmbeddedAttempt(
                 success: !aborted && !promptError,
                 error: promptError ? describeUnknownError(promptError) : undefined,
                 durationMs: Date.now() - promptStartedAt,
+                // Additive fields for the empty-final-turn recovery path.
+                // Analytics plugins can distinguish "model spoke first try" from
+                // "needed a wrap-up retry" from "even wrap-up retry came back
+                // empty" using these.
+                wrapUpAttempted,
+                emptyFinalTurn,
               },
               {
                 runId: params.runId,
@@ -1906,6 +1987,14 @@ export async function runEmbeddedAttempt(
         ),
         attemptUsage: getUsageTotals(),
         compactionCount: getCompactionCount(),
+        // Empty-final-turn recovery state (additive, optional fields). Allows
+        // the outer run loop and the UI bridge to distinguish "model spoke
+        // first try" (both false) from "needed wrap-up retry and recovered"
+        // (wrapUpAttempted=true, emptyFinalTurn=false) from "even the wrap-up
+        // retry came back empty" (both true) — the UI watchdog renders the
+        // recovery card on the last case.
+        wrapUpAttempted,
+        emptyFinalTurn,
         // Client tool call detected (OpenResponses hosted tools)
         clientToolCall: clientToolCallDetected ?? undefined,
         yieldDetected: yieldDetected || undefined,

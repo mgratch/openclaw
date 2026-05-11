@@ -26,6 +26,7 @@ Docs: https://docs.openclaw.ai
 - Agents/failover: classify AbortError and stream-abort messages as timeout so Ollama NDJSON stream aborts stop showing `reason=unknown` in model fallback logs. (#58324) Thanks @yelog
 - Exec approvals: route Slack, Discord, and Telegram approvals through the shared channel approval-capability path so native approval auth, delivery, and `/approve` handling stay aligned across channels while preserving Telegram session-key agent filtering. (#58634) thanks @gumadeiras
 - Matrix/runtime: resolve the verification/bootstrap runtime from a distinct packaged Matrix entry so global npm installs stop failing on crypto bootstrap with missing-module or recursive runtime alias errors. (#59249) Thanks @gumadeiras.
+- Runner/empty-final-turn: detect attempts that finished tool work successfully but produced no final assistant text and run a one-shot wrap-up retry asking the model for a closing summary, so the UI no longer hangs on a bare user prompt with no reply card. The retry outcome is surfaced to plugins via additive `wrapUpAttempted` / `emptyFinalTurn` fields on the `agent_end` hook event.
 
 ## 2026.4.2
 

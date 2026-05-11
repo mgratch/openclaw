@@ -2155,6 +2155,17 @@ export type PluginHookAgentEndEvent = {
   success: boolean;
   error?: string;
   durationMs?: number;
+  /**
+   * Empty-final-turn recovery state. Set when the run loop detected that the
+   * model produced tool calls but no final text and ran a one-shot wrap-up
+   * continuation to elicit a closing reply. Useful for analytics plugins that
+   * want to distinguish:
+   *   - normal turn (both fields false / absent)
+   *   - "needed a nudge but recovered" (wrapUpAttempted=true, emptyFinalTurn=false)
+   *   - "model went silent even after the nudge" (both true)
+   */
+  wrapUpAttempted?: boolean;
+  emptyFinalTurn?: boolean;
 };
 
 // Compaction hooks
