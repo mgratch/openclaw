@@ -36,7 +36,47 @@ export function estimateBase64DecodedBytes(base64: string): number {
   return Math.max(0, estimated);
 }
 
-const BASE64_CHARS_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+/**
+ * Iterative, no-engine-stack base64-charset validator.
+ *
+ * 2026-04-29: replaced the previous `/^[A-Za-z0-9+/]+={0,2}$/.test(value)`
+ * regex (BASE64_CHARS_RE) with this character scan. The regex looks
+ * O(n) but V8's RegExp engine pushes internal quantifier-unwinding state
+ * onto the call stack for `+` and `={0,2}` patterns; large enough inputs
+ * (~10 MB+) overflow before completing. Reproduced via openresponses
+ * `[openresponses] request parsing failed: RangeError: Maximum call stack
+ * size exceeded` on a 12-image upload, with the recursing site located in
+ * canonicalizeBase64() → BASE64_CHARS_RE.test().
+ *
+ * Twin of the same fix in src/gateway/chat-attachments.ts:isValidBase64.
+ */
+function isBase64Charset(cleaned: string): boolean {
+  let padCount = 0;
+  let nonPadCount = 0;
+  for (let i = 0; i < cleaned.length; i += 1) {
+    const ch = cleaned.charCodeAt(i);
+    if (padCount > 0) {
+      if (ch !== 0x3d /* '=' */) return false;
+      padCount += 1;
+      if (padCount > 2) return false;
+      continue;
+    }
+    if (ch === 0x3d /* '=' */) { padCount = 1; continue; }
+    // A-Z, a-z, 0-9, '+', '/'
+    if (
+      (ch >= 0x41 && ch <= 0x5a) ||
+      (ch >= 0x61 && ch <= 0x7a) ||
+      (ch >= 0x30 && ch <= 0x39) ||
+      ch === 0x2b ||
+      ch === 0x2f
+    ) {
+      nonPadCount += 1;
+      continue;
+    }
+    return false;
+  }
+  return nonPadCount > 0;
+}
 
 /**
  * Normalize and validate a base64 string.
@@ -44,7 +84,7 @@ const BASE64_CHARS_RE = /^[A-Za-z0-9+/]+={0,2}$/;
  */
 export function canonicalizeBase64(base64: string): string | undefined {
   const cleaned = base64.replace(/\s+/g, "");
-  if (!cleaned || cleaned.length % 4 !== 0 || !BASE64_CHARS_RE.test(cleaned)) {
+  if (!cleaned || cleaned.length % 4 !== 0 || !isBase64Charset(cleaned)) {
     return undefined;
   }
   return cleaned;

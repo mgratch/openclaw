@@ -545,12 +545,34 @@ function sanitizeChatHistoryContentBlock(
     changed = true;
   }
   const type = typeof entry.type === "string" ? entry.type : "";
-  if (type === "image" && typeof entry.data === "string") {
+  // Strip inline base64 image data — both legacy flat format and Anthropic
+  // API format ({type: "image", source: {type: "base64", data: "..."}}).
+  // Without this, chat.history.full can return multi-MB payloads that hang
+  // the browser when parsing the WebSocket response.
+  if (
+    (type === "image" || type === "input_image") &&
+    typeof entry.data === "string"
+  ) {
     const bytes = Buffer.byteLength(entry.data, "utf8");
     delete entry.data;
     entry.omitted = true;
     entry.bytes = bytes;
     changed = true;
+  }
+  if (
+    (type === "image" || type === "input_image") &&
+    entry.source &&
+    typeof entry.source === "object"
+  ) {
+    const src = { ...(entry.source as Record<string, unknown>) };
+    if (typeof src.data === "string" && (src.data as string).length > 1000) {
+      const bytes = Buffer.byteLength(src.data as string, "utf8");
+      delete src.data;
+      entry.source = src;
+      entry.omitted = true;
+      entry.bytes = bytes;
+      changed = true;
+    }
   }
   return { block: changed ? entry : block, changed };
 }
@@ -1683,7 +1705,12 @@ export const chatHandlers: GatewayRequestHandlers = {
 
       try {
         const parsed = await parseMessageWithAttachments(inboundMessage, normalizedAttachments, {
-          maxBytes: 5_000_000,
+          // 2026-04-29: bumped 5 MB → 1 GB to match host openclaw.json
+          // `gateway.http.endpoints.responses.files.maxBytes` and the
+          // WS `MAX_PAYLOAD_BYTES = 1 GB` patch. Large attachments get
+          // offloaded to the media store at OFFLOAD_THRESHOLD_BYTES = 2 MB
+          // before reaching the model.
+          maxBytes: 1024 * 1024 * 1024,
           log: context.logGateway,
           supportsImages,
         });
@@ -1697,6 +1724,25 @@ export const chatHandlers: GatewayRequestHandlers = {
         // Map them to different HTTP status codes so callers can retry server
         // faults without treating them as bad requests.
         const isServerFault = err instanceof MediaOffloadError;
+        // 2026-04-29: log full stack + payload metadata for ANY caught error.
+        // Previously the wire protocol discarded the stack; web-d5d33f10's
+        // RangeError on cold-load chat.send only surfaced as
+        // "RangeError: Maximum call stack size exceeded" with no recursing
+        // function visible. This makes the offending site obvious next time.
+        try {
+          const stack = err instanceof Error ? err.stack : undefined;
+          context.logGateway.error?.(
+            `chat.send: parseMessageWithAttachments threw — ` +
+              `sessionKey=${sessionKey} ` +
+              `messageBytes=${inboundMessage.length} ` +
+              `attachmentCount=${normalizedAttachments.length} ` +
+              `attachmentBytes=${normalizedAttachments.reduce((s, a) => s + (typeof a.content === "string" ? a.content.length : 0), 0)} ` +
+              `error=${String(err)}`,
+          );
+          if (stack) context.logGateway.error?.(stack);
+        } catch {
+          // never let logging break the response path
+        }
         respond(
           false,
           undefined,
@@ -2015,7 +2061,7 @@ export const chatHandlers: GatewayRequestHandlers = {
           // Resolved in get-reply.ts; unresolvable values fall back to the
           // agent's configured model rather than failing the run.
           modelOverride: p.model,
-          onAcpDispatchStart: (_runId, hint) => {
+          onAcpDispatchStart: (runId, hint) => {
             acpDispatchClaimed = true;
             acpProviderHint = hint?.provider;
             acpModelHint = hint?.model;

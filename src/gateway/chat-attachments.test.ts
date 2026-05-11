@@ -140,19 +140,22 @@ describe("parseMessageWithAttachments", () => {
 });
 
 describe("shared attachment validation", () => {
-  it("rejects invalid base64 content for both builder and parser", async () => {
-    const bad: ChatAttachment = {
-      type: "image",
-      mimeType: "image/png",
-      fileName: "dot.png",
-      content: "%not-base64%",
-    };
+  it.each(["%not-base64%", "===="])(
+    "rejects invalid base64 content %j for both builder and parser",
+    async (content) => {
+      const bad: ChatAttachment = {
+        type: "image",
+        mimeType: "image/png",
+        fileName: "dot.png",
+        content,
+      };
 
-    expect(() => buildMessageWithAttachments("x", [bad])).toThrow(/base64/i);
-    await expect(
-      parseMessageWithAttachments("x", [bad], { log: { warn: () => {} } }),
-    ).rejects.toThrow(/base64/i);
-  });
+      expect(() => buildMessageWithAttachments("x", [bad])).toThrow(/base64/i);
+      await expect(
+        parseMessageWithAttachments("x", [bad], { log: { warn: () => {} } }),
+      ).rejects.toThrow(/base64/i);
+    },
+  );
 
   it("rejects images over limit for both builder and parser without decoding base64", async () => {
     const big = "A".repeat(10_000);

@@ -390,7 +390,9 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
         });
         try {
           const parsed = await parseMessageWithAttachments(message, normalizedAttachments, {
-            maxBytes: 5_000_000,
+            // 2026-04-29: bumped 5 MB → 1 GB; see chat-attachments.ts default
+            // for the rationale (alignment with openclaw.json + WS patch).
+            maxBytes: 1024 * 1024 * 1024,
             log: ctx.logGateway,
             supportsImages,
           });

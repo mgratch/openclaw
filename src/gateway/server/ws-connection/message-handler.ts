@@ -1238,10 +1238,18 @@ export function attachGatewayWsMessageHandler(params: {
         });
       })().catch((err) => {
         logGateway.error(`request handler failed: ${formatForLog(err)}`);
+        // 2026-04-29: also dump full stack for stack-overflow diagnostics —
+        // formatForLog truncates and we lose the recursion site otherwise.
+        if (err instanceof Error && err.stack) {
+          logGateway.error(`stack:\n${err.stack}`);
+        }
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));
       });
     } catch (err) {
       logGateway.error(`parse/handle error: ${String(err)}`);
+      if (err instanceof Error && err.stack) {
+        logGateway.error(`stack:\n${err.stack}`);
+      }
       logWs("out", "parse-error", { connId, error: formatForLog(err) });
       if (!getClient()) {
         close();

@@ -140,10 +140,43 @@ function isValidBase64(value: string): boolean {
   if (value.length === 0 || value.length % 4 !== 0) {
     return false;
   }
-  // A full O(n) regex scan is safe: no overlapping quantifiers, fails linearly.
-  // Prevents adversarial payloads padded with megabytes of whitespace from
-  // bypassing length thresholds.
-  return /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+  // 2026-04-29: replaced `/^[A-Za-z0-9+/]+={0,2}$/.test(value)` with a manual
+  // character scan after the previous regex tripped V8's stack on a 13.5 MB
+  // attachment, killing chat.send with `RangeError: Maximum call stack
+  // size exceeded` (reproduced on web-d5d33f10, captured via instrumented
+  // chat.send catch in 2026-04-29 work). The regex is asymptotically O(n)
+  // but V8's RegExp engine still pushes internal quantifier state onto the
+  // engine stack for `+` / `={0,2}` patterns; large enough inputs blow it.
+  // A charCodeAt loop has no engine stack — only loop iteration count,
+  // bounded by string.length and Number.MAX_SAFE_INTEGER, not stack frames.
+  let padCount = 0;
+  let nonPadCount = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value.charCodeAt(i);
+    if (padCount > 0) {
+      // Only `=` allowed once we've seen padding, and only up to two of them.
+      if (ch !== 0x3d /* '=' */) return false;
+      padCount += 1;
+      if (padCount > 2) return false;
+      continue;
+    }
+    if (ch === 0x3d /* '=' */) { padCount = 1; continue; }
+    // A-Z, a-z, 0-9, '+', '/'
+    if (
+      (ch >= 0x41 && ch <= 0x5a) ||
+      (ch >= 0x61 && ch <= 0x7a) ||
+      (ch >= 0x30 && ch <= 0x39) ||
+      ch === 0x2b ||
+      ch === 0x2f
+    ) {
+      nonPadCount += 1;
+      continue;
+    }
+    return false;
+  }
+  // Preserve the old regex's requirement that at least one real base64
+  // character precede optional padding. This rejects strings like "====".
+  return nonPadCount > 0;
 }
 
 /**
@@ -292,7 +325,14 @@ export async function parseMessageWithAttachments(
   attachments: ChatAttachment[] | undefined,
   opts?: { maxBytes?: number; log?: AttachmentLog; supportsImages?: boolean },
 ): Promise<ParsedMessageWithImages> {
-  const maxBytes = opts?.maxBytes ?? 5_000_000;
+  // 2026-04-29: bumped default from 5 MB → 1 GB to match the host config
+  // `gateway.http.endpoints.responses.files.maxBytes` and the WS-layer
+  // `MAX_PAYLOAD_BYTES = 1 GB` patch. Anything ≥ OFFLOAD_THRESHOLD_BYTES
+  // (2 MB) is saved to the media store and replaced with an opaque
+  // `media://inbound/<id>` URI before reaching the model, so this outer
+  // cap mainly bounds the in-memory base64 decode buffer; 1 GB matches
+  // the body parser's worst case.
+  const maxBytes = opts?.maxBytes ?? 1024 * 1024 * 1024;
   const log = opts?.log;
 
   if (!attachments || attachments.length === 0) {
