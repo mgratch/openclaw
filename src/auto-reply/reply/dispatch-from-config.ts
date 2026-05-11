@@ -436,7 +436,12 @@ export async function dispatchReplyFromConfig(params: {
     fireAndForgetHook(
       hookRunner.runMessageReceived(
         toPluginMessageReceivedEvent(hookContext),
-        toPluginMessageContext(hookContext),
+        // 2026-04-30: forward sessionKey so the archive plugin doesn't need
+        // a process-wide active-session tracker (#64). agentId is parsed
+        // from sessionKey downstream.
+        toPluginMessageContext(hookContext, {
+          sessionKey: sessionKey ?? undefined,
+        }),
       ),
       "dispatch-from-config: message_received plugin hook failed",
     );

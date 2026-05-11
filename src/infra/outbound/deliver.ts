@@ -393,7 +393,13 @@ function createMessageSentEmitter(params: {
       fireAndForgetHook(
         params.hookRunner!.runMessageSent(
           toPluginMessageSentEvent(canonical),
-          toPluginMessageContext(canonical),
+          // 2026-04-30: forward sessionKey so the archive plugin can route
+          // by message metadata instead of a process-wide active-session
+          // tracker (#64). sessionKeyForInternalHooks is the same value the
+          // internal-hook bridge already uses for routing.
+          toPluginMessageContext(canonical, {
+            sessionKey: params.sessionKeyForInternalHooks ?? undefined,
+          }),
         ),
         "deliverOutboundPayloads: message_sent plugin hook failed",
         (message) => {

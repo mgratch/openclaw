@@ -618,7 +618,15 @@ export async function handleOpenResponsesHttpRequest(
       }
     }
   } catch (err) {
+    // 2026-04-29: also log the full stack so future recursion bugs in
+    // image/file extraction (canonicalizeBase64, normalizeInputImage,
+    // PDF rendering, sniffMime, etc.) surface their offending function
+    // instead of being swallowed as "request parsing failed: RangeError:
+    // Maximum call stack size exceeded" with no further detail.
     logWarn(`openresponses: request parsing failed: ${String(err)}`);
+    if (err instanceof Error && err.stack) {
+      logWarn(`openresponses: stack:\n${err.stack}`);
+    }
     sendJson(res, 400, {
       error: { message: "invalid request", type: "invalid_request_error" },
     });
@@ -971,6 +979,31 @@ export async function handleOpenResponsesHttpRequest(
         output_index: 0,
         content_index: 0,
         delta: content,
+      });
+      return;
+    }
+
+    // 2026-04-30: forward extended-thinking deltas as a dedicated SSE event
+    // so the UI can render them in <ThinkingBlock>. dispatch-acp emits these
+    // on stream:"thinking" with phase:"delta" + text:<chunk> (Claude Code
+    // ACP path) — without this branch, thinking content streamed by Opus
+    // /Sonnet ACP turns is silently dropped on the SSE side, even though
+    // the gateway log shows "thought delta arrived" lines.
+    if (evt.stream === "thinking") {
+      const phase = evt.data?.phase;
+      if (phase !== "delta") {
+        return;
+      }
+      const text = typeof evt.data?.text === "string" ? evt.data.text : "";
+      if (!text) {
+        return;
+      }
+      writeSseEvent(res, {
+        type: "response.reasoning_text.delta",
+        item_id: outputItemId,
+        output_index: 0,
+        content_index: 0,
+        delta: text,
       });
       return;
     }

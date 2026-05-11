@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { resolveAcpModelPreset } from "../acp/presets.js";
+import { isAcpModelPreset, resolveAcpModelPreset } from "../acp/presets.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import {
   buildAllowedModelSet,
@@ -235,15 +235,36 @@ export async function resolveOpenAiCompatModelOverride(params: {
 }): Promise<{ modelOverride?: string; errorMessage?: string }> {
   const requestModel = params.model?.trim();
   const requestPreset = resolveAcpModelPreset(requestModel);
-  if (requestModel && !resolveAgentIdFromModel(requestModel)) {
+
+  // Body `model` field may be one of:
+  //   - "openclaw" / "openclaw/<agentId>" / "agent:<agentId>" — agent routing
+  //   - an ACP preset id (e.g. "claude-code-opus") — preset routing, defined
+  //     in src/acp/presets.ts
+  // 2026-04-29: presets used to fail this check because they are not in
+  // the agent-routing form, which surfaced as HTTP 400 "Invalid `model`"
+  // for any preset selection from the UI ModelPicker via /v1/responses.
+  if (requestModel && !resolveAgentIdFromModel(requestModel) && !requestPreset) {
     return {
-      errorMessage: "Invalid `model`. Use `openclaw` or `openclaw/<agentId>`.",
+      errorMessage:
+        "Invalid `model`. Use `openclaw`, `openclaw/<agentId>`, or a registered ACP preset id.",
     };
   }
 
   const raw = getHeader(params.req, "x-openclaw-model")?.trim();
   if (!raw) {
     return requestPreset ? { modelOverride: requestPreset.id } : {};
+  }
+
+  // ACP preset ids in the override header bypass the provider/model
+  // allowlist. Presets are not provider/model pairs — they are routing
+  // identifiers handled by resolvePerTurnAcpModel/dispatch-acp at run time,
+  // which validates preset.agent vs session.agent independently. Without
+  // this branch the parser tagged "claude-code-opus" with the agent's
+  // default provider (anthropic) and produced "anthropic/claude-code-opus",
+  // which fails the allowlist for any agent that doesn't explicitly list
+  // that synthetic key.
+  if (isAcpModelPreset(raw)) {
+    return { modelOverride: raw };
   }
 
   const cfg = loadConfig();

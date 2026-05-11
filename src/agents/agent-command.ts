@@ -1,5 +1,6 @@
 import { getAcpSessionManager } from "../acp/control-plane/manager.js";
 import { resolveAcpAgentPolicyError, resolveAcpDispatchPolicyError } from "../acp/policy.js";
+import { isAcpModelPreset } from "../acp/presets.js";
 import { toAcpRuntimeError } from "../acp/runtime/errors.js";
 import { resolveAcpSessionCwd } from "../acp/runtime/session-identifiers.js";
 import {
@@ -597,7 +598,20 @@ async function agentCommandInternal(
       const entry = sessionEntry;
       const overrideProvider = sessionEntry.providerOverride?.trim() || defaultProvider;
       const overrideModel = sessionEntry.modelOverride?.trim();
-      if (overrideModel) {
+      // ACP presets are routing identifiers, not provider/model pairs.
+      // They are validly persisted to modelOverride (see the matching
+      // guard in gateway/sessions-patch.ts) and consumed at run time by
+      // dispatch-acp::resolvePerTurnAcpModel. Without this short-circuit,
+      // the allowlist check below treats them as stale (because the
+      // synthetic key e.g. "acp/claude-code-opus" or
+      // "anthropic/claude-code-opus" is not in the allowlist) and
+      // auto-clears them on the very next chat.send — which permanently
+      // unsticks the user's ACP preset selection moments after they
+      // pick it. Skip the validation when it's a preset; dispatch-acp
+      // handles routing on read.
+      if (overrideModel && isAcpModelPreset(overrideModel)) {
+        // intentional no-op: leave the ACP preset in place.
+      } else if (overrideModel) {
         const normalizedOverride = normalizeModelRef(overrideProvider, overrideModel);
         const key = modelKey(normalizedOverride.provider, normalizedOverride.model);
         if (!allowAnyModel && !allowedModelKeys.has(key)) {
@@ -619,7 +633,14 @@ async function agentCommandInternal(
 
     const storedProviderOverride = sessionEntry?.providerOverride?.trim();
     const storedModelOverride = sessionEntry?.modelOverride?.trim();
-    if (storedModelOverride) {
+    if (storedModelOverride && isAcpModelPreset(storedModelOverride)) {
+      // ACP preset stored as modelOverride: don't try to translate it
+      // into a concrete provider/model pair here. The agent default
+      // provider/model stay in effect (the ACP preset will route
+      // through dispatch-acp on read, which spawns a fresh ACP session
+      // with the preset's acpxModel). Same rationale as the explicit
+      // override block below.
+    } else if (storedModelOverride) {
       const candidateProvider = storedProviderOverride || defaultProvider;
       const normalizedStored = normalizeModelRef(candidateProvider, storedModelOverride);
       const key = modelKey(normalizedStored.provider, normalizedStored.model);
@@ -630,24 +651,45 @@ async function agentCommandInternal(
     }
     const providerForAuthProfileValidation = provider;
     if (hasExplicitRunOverride) {
-      const explicitRef = explicitModelOverride
-        ? explicitProviderOverride
-          ? normalizeModelRef(explicitProviderOverride, explicitModelOverride)
-          : parseModelRef(explicitModelOverride, provider)
-        : explicitProviderOverride
-          ? normalizeModelRef(explicitProviderOverride, model)
-          : null;
-      if (!explicitRef) {
-        throw new Error("Invalid model override.");
+      // ACP presets ("claude-code", "claude-code-opus", …) are routing
+      // identifiers, not provider/model pairs. They get translated to acpx
+      // --model flags by dispatch-acp at run time (via the runtime-flip
+      // path in dispatch-from-config.ts). Bypass the provider/model
+      // allowlist for them — mirrors the equivalent guard in
+      // gateway/http-utils.ts::resolveOpenAiCompatModelOverride. Without
+      // this, an explicit ACP preset override (e.g. "claude-code-opus")
+      // gets parsed as `<defaultProvider>/<presetId>` and rejected against
+      // the agent's allowlist, even when the preset matches the agent's
+      // own primary. Provider/model stay at the agent default — the
+      // preset itself drives ACP dispatch on a separate code path.
+      if (
+        explicitModelOverride &&
+        !explicitProviderOverride &&
+        isAcpModelPreset(explicitModelOverride)
+      ) {
+        // intentionally a no-op: leave provider/model at defaults; the
+        // preset propagates via replyOptions.modelOverride to the ACP
+        // dispatcher.
+      } else {
+        const explicitRef = explicitModelOverride
+          ? explicitProviderOverride
+            ? normalizeModelRef(explicitProviderOverride, explicitModelOverride)
+            : parseModelRef(explicitModelOverride, provider)
+          : explicitProviderOverride
+            ? normalizeModelRef(explicitProviderOverride, model)
+            : null;
+        if (!explicitRef) {
+          throw new Error("Invalid model override.");
+        }
+        const explicitKey = modelKey(explicitRef.provider, explicitRef.model);
+        if (!allowAnyModel && !allowedModelKeys.has(explicitKey)) {
+          throw new Error(
+            `Model override "${sanitizeForLog(explicitRef.provider)}/${sanitizeForLog(explicitRef.model)}" is not allowed for agent "${sessionAgentId}".`,
+          );
+        }
+        provider = explicitRef.provider;
+        model = explicitRef.model;
       }
-      const explicitKey = modelKey(explicitRef.provider, explicitRef.model);
-      if (!allowAnyModel && !allowedModelKeys.has(explicitKey)) {
-        throw new Error(
-          `Model override "${sanitizeForLog(explicitRef.provider)}/${sanitizeForLog(explicitRef.model)}" is not allowed for agent "${sessionAgentId}".`,
-        );
-      }
-      provider = explicitRef.provider;
-      model = explicitRef.model;
     }
     if (sessionEntry) {
       const authProfileId = sessionEntry.authProfileOverride;

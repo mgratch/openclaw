@@ -19,12 +19,29 @@
  */
 
 import { appendFile, mkdir } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import type { AcpRuntimeEvent } from "./types.js";
 import { parseAgentSessionKey } from "../../sessions/session-key-utils.js";
 import { resolveSessionTranscriptPath } from "../../config/sessions/paths.js";
 import { logVerbose } from "../../globals.js";
+
+/**
+ * 2026-04-30: Webchat session keys (e.g. `web-05005d10`) are not
+ * agent-scoped — `parseAgentSessionKey` returns null for them. Without a
+ * fallback, every webchat ACP turn would silently no-op the sidecar,
+ * making it impossible to debug Claude Code → ACP event streams from the
+ * UI. Falls back to `~/.openclaw/workspace/acp-sidecars/<sanitized>.acp.jsonl`
+ * so every turn lands somewhere readable on disk.
+ */
+function fallbackSidecarPath(sessionKey: string): string {
+  const stateDir = process.env.OPENCLAW_STATE_DIR
+    ? process.env.OPENCLAW_STATE_DIR
+    : path.join(os.homedir(), ".openclaw");
+  const sanitized = sessionKey.replace(/[^a-zA-Z0-9_\-:.]/g, "_").slice(0, 200) || "_unknown";
+  return path.join(stateDir, "workspace", "acp-sidecars", `${sanitized}.acp.jsonl`);
+}
 
 export type AcpNdjsonSidecar = {
   /** Append one event. Never throws — errors are logged and swallowed. */
@@ -62,6 +79,15 @@ export function createAcpNdjsonSidecar(
       resolved = transcriptPath.endsWith(".jsonl")
         ? transcriptPath.slice(0, -".jsonl".length) + ".acp.jsonl"
         : `${transcriptPath}.acp.jsonl`;
+    } else {
+      // 2026-04-30: webchat sessions have non-agent-scoped keys
+      // (e.g. `web-05005d10`). Fall back to a workspace-rooted directory
+      // so every ACP turn lands somewhere readable, instead of silently
+      // no-op'ing the sidecar and losing all debug visibility.
+      resolved = fallbackSidecarPath(sessionKey);
+      console.log(
+        `[acp-ndjson] non-agent-scoped session key "${sessionKey}" — using fallback path ${resolved}`,
+      );
     }
   } catch (err) {
     logVerbose(

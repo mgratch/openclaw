@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isAcpModelPreset } from "../acp/presets.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import type { ModelCatalogEntry } from "../agents/model-catalog.js";
 import {
@@ -382,34 +383,67 @@ export async function applySessionsPatchToStore(params: {
       if (!trimmed) {
         return invalid("invalid model: empty");
       }
-      if (!params.loadGatewayModelCatalog) {
-        return {
-          ok: false,
-          error: errorShape(ErrorCodes.UNAVAILABLE, "model catalog unavailable"),
-        };
+      // ACP presets ("claude-code", "claude-code-opus", …) are routing
+      // identifiers, not provider/model pairs. They MUST be persisted to
+      // the session entry as the bare preset id so dispatch-acp can pick
+      // them up at run time and route through the ACP runtime. Running
+      // them through resolveAllowedModelRef silently rewrites them into
+      // their underlying anthropic/<acpxModel> form (e.g.
+      // "claude-code-opus" → "anthropic/claude-opus-4-7"); if that
+      // resolved model isn't in the agent's allowlist or catalog, the
+      // resolver fuzzy-falls-back to a different anthropic model (e.g.
+      // claude-opus-4-6) and persists THAT as the modelOverride —
+      // permanently pinning the session to the non-ACP runtime even
+      // though the user picked an ACP preset.
+      //
+      // Mirrors the equivalent guards in
+      // gateway/http-utils.ts::resolveOpenAiCompatModelOverride and
+      // agents/agent-command.ts (per-run override path). All three call
+      // sites must agree: ACP presets bypass the allowlist + persist
+      // raw. The persisted entry uses providerOverride="acp" as a
+      // synthetic provider tag so the dispatcher can recognize it on
+      // read-back without re-running resolution. (model-overrides.ts's
+      // applyModelOverrideToSessionEntry treats providerOverride as
+      // opaque metadata, so the synthetic value is safe.)
+      if (isAcpModelPreset(trimmed)) {
+        applyModelOverrideToSessionEntry({
+          entry: next,
+          selection: {
+            provider: "acp",
+            model: trimmed,
+            isDefault: false,
+          },
+        });
+      } else {
+        if (!params.loadGatewayModelCatalog) {
+          return {
+            ok: false,
+            error: errorShape(ErrorCodes.UNAVAILABLE, "model catalog unavailable"),
+          };
+        }
+        const catalog = await params.loadGatewayModelCatalog();
+        const resolved = resolveAllowedModelRef({
+          cfg,
+          catalog,
+          raw: trimmed,
+          defaultProvider: resolvedDefault.provider,
+          defaultModel: subagentModelHint ?? resolvedDefault.model,
+        });
+        if ("error" in resolved) {
+          return invalid(resolved.error);
+        }
+        const isDefault =
+          resolved.ref.provider === resolvedDefault.provider &&
+          resolved.ref.model === resolvedDefault.model;
+        applyModelOverrideToSessionEntry({
+          entry: next,
+          selection: {
+            provider: resolved.ref.provider,
+            model: resolved.ref.model,
+            isDefault,
+          },
+        });
       }
-      const catalog = await params.loadGatewayModelCatalog();
-      const resolved = resolveAllowedModelRef({
-        cfg,
-        catalog,
-        raw: trimmed,
-        defaultProvider: resolvedDefault.provider,
-        defaultModel: subagentModelHint ?? resolvedDefault.model,
-      });
-      if ("error" in resolved) {
-        return invalid(resolved.error);
-      }
-      const isDefault =
-        resolved.ref.provider === resolvedDefault.provider &&
-        resolved.ref.model === resolvedDefault.model;
-      applyModelOverrideToSessionEntry({
-        entry: next,
-        selection: {
-          provider: resolved.ref.provider,
-          model: resolved.ref.model,
-          isDefault,
-        },
-      });
     }
   }
 

@@ -155,11 +155,17 @@ export function buildCanonicalSentMessageHookContext(params: {
 
 export function toPluginMessageContext(
   canonical: CanonicalInboundMessageHookContext | CanonicalSentMessageHookContext,
+  // 2026-04-30: optional metadata that lets archive plugins route by message
+  // metadata instead of relying on a process-level active-session tracker
+  // (which leaked across concurrent webchat sessions — ticket #64).
+  extras?: { sessionKey?: string; agentId?: string },
 ): PluginHookMessageContext {
   return {
     channelId: canonical.channelId,
     accountId: canonical.accountId,
     conversationId: canonical.conversationId,
+    sessionKey: extras?.sessionKey,
+    agentId: extras?.agentId,
   };
 }
 

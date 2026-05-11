@@ -954,6 +954,40 @@ describe("agentCommand", () => {
     }
   });
 
+  it("bypasses the model allowlist for ACP preset overrides (claude-code-opus)", async () => {
+    // Regression: per-prompt ACP preset overrides (e.g. the UI ModelPicker
+    // sending `claude-code-opus`) were being parsed as
+    // `<defaultProvider>/<presetId>` and rejected against the agent's
+    // allowlist — even when the preset matched the agent's own primary.
+    // ACP presets are routing identifiers (resolved by dispatch-acp at
+    // run time), not provider/model pairs, and must bypass this check
+    // mirroring the equivalent guard in
+    // gateway/http-utils.ts::resolveOpenAiCompatModelOverride.
+    await withTempHome(async (home) => {
+      const store = path.join(home, "sessions.json");
+      mockConfig(home, store, {
+        models: {
+          "openai/gpt-4.1-mini": {},
+        },
+      });
+
+      // Should NOT throw: claude-code-opus is an ACP preset.
+      await agentCommand(
+        {
+          message: "use an acp preset override",
+          sessionKey: "agent:main:subagent:acp-preset-override",
+          model: "claude-code-opus",
+        },
+        runtime,
+      );
+
+      // Provider/model should stay at the agent's default (the preset
+      // drives ACP dispatch on a separate code path, not the agent
+      // run's provider/model).
+      expectLastRunProviderModel("anthropic", "claude-opus-4-5");
+    });
+  });
+
   it("keeps stored auth profile overrides during one-off cross-provider runs", async () => {
     await withTempHome(async (home) => {
       const store = path.join(home, "sessions.json");

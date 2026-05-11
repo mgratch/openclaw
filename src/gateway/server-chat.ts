@@ -93,6 +93,19 @@ function isSilentReplyLeadFragment(text: string): boolean {
   return SILENT_REPLY_TOKEN.startsWith(normalized);
 }
 
+// 2026-04-30: minimum overlap before we'll dedup. Single-character (or
+// very short) overlaps with common stream punctuation — backticks, dots,
+// spaces, newlines — are coincidence, not provider duplication. The
+// classic failure was openai-codex emitting a closing ``` fence split
+// across two stream chunks (e.g. base ends with "``", next delta starts
+// with "`\n…"); the old logic would match the lone backtick as a 1-char
+// overlap and drop it, producing a 2-backtick close that fails to
+// terminate the fenced code block in markdown. A minimum overlap of 8
+// is long enough to be unambiguous (no English token coincides over 8
+// chars across an unrelated stream boundary) without breaking the
+// genuine retry/replay dedup scenario the function was written for.
+const MIN_OVERLAP_FOR_DEDUP = 8;
+
 function appendUniqueSuffix(base: string, suffix: string): string {
   if (!suffix) {
     return base;
@@ -104,7 +117,7 @@ function appendUniqueSuffix(base: string, suffix: string): string {
     return base;
   }
   const maxOverlap = Math.min(base.length, suffix.length);
-  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+  for (let overlap = maxOverlap; overlap >= MIN_OVERLAP_FOR_DEDUP; overlap -= 1) {
     if (base.slice(-overlap) === suffix.slice(0, overlap)) {
       return base + suffix.slice(overlap);
     }
@@ -853,6 +866,14 @@ export function createAgentEventHandler({
     } else {
       // Scope non-tool agent events to originating connection too
       const agentRecipients = toolEventRecipients.get(evt.runId);
+      // 2026-04-30 DIAG: log every non-tool agent broadcast so we can
+      // verify thinking events reach the right WS clients. Demote once
+      // verified end-to-end.
+      console.log(
+        `[server-chat] non-tool agent broadcast stream=${evt.stream} runId=${evt.runId} recipients=${
+          agentRecipients?.size ?? 0
+        } sessionKey=${sessionKey ?? "(none)"}`,
+      );
       if (agentRecipients && agentRecipients.size > 0) {
         broadcastToConnIds("agent", agentPayload, agentRecipients);
       } else {

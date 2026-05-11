@@ -2193,6 +2193,12 @@ export type PluginHookMessageContext = {
   channelId: string;
   accountId?: string;
   conversationId?: string;
+  // 2026-04-30: sessionKey and agentId added so hooks can route archive
+  // entries by message metadata instead of relying on an active-session
+  // tracker (which leaked across concurrent webchat sessions, causing
+  // cross-session contamination — see ticket #64).
+  sessionKey?: string;
+  agentId?: string;
 };
 
 export type PluginHookInboundClaimContext = PluginHookMessageContext & {

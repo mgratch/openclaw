@@ -6,7 +6,7 @@ import {
 } from "../../acp/control-plane/runtime-flip.js";
 import { createSubagentEnricher } from "../../acp/control-plane/subagent-enricher.js";
 import { resolveAcpAgentPolicyError, resolveAcpDispatchPolicyError } from "../../acp/policy.js";
-import { resolvePerTurnAcpModel } from "../../acp/presets.js";
+import { resolveAcpModelPresetFlexible, resolvePerTurnAcpModel } from "../../acp/presets.js";
 import { formatAcpRuntimeErrorText } from "../../acp/runtime/error-text.js";
 import { toAcpRuntimeError } from "../../acp/runtime/errors.js";
 import { createAcpNdjsonSidecar } from "../../acp/runtime/ndjson-sidecar.js";
@@ -16,6 +16,11 @@ import {
   resolveSessionIdentityFromMeta,
 } from "../../acp/runtime/session-identity.js";
 import { readAcpSessionEntry } from "../../acp/runtime/session-meta.js";
+import {
+  buildAcpContextPreamble,
+  markAcpContextPreambleDelivered,
+  shouldInjectAcpContextPreamble,
+} from "../../acp/context-preamble.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { TtsAutoMode } from "../../config/types.tts.js";
 import { logVerbose } from "../../globals.js";
@@ -355,6 +360,13 @@ export async function tryDispatchAcpReply(params: {
     return null;
   }
 
+  // 2026-04-30: DIAG — unconditionally log dispatch-acp entry so we can
+  // confirm webchat ACP turns route through THIS function. Demote to
+  // logVerbose once thinking is verified working end-to-end.
+  console.log(
+    `[dispatch-acp] entered: sessionKey=${sessionKey} runId=${params.runId ?? "(none)"} flipContext=${params.flipContext ? "yes" : "no"} MAX_THINKING_TOKENS=${process.env.MAX_THINKING_TOKENS ?? "(unset)"}`,
+  );
+
   const acpManager = getAcpSessionManager();
 
   // Handle runtime flip: use warm session key if available (back-switch to same preset).
@@ -434,6 +446,21 @@ export async function tryDispatchAcpReply(params: {
   });
 
   const acpDispatchStartedAt = Date.now();
+  // 2026-04-30: hoisted so the finally block can restore MAX_THINKING_TOKENS
+  // regardless of whether runTurn succeeds, throws, or never reaches the
+  // mutation point. `mutated` is set to true only after the env actually
+  // changed, so we don't restore the wrong value on early bail-outs.
+  let thinkingEnvSnapshot: { mutated: boolean; previous: string | undefined } = {
+    mutated: false,
+    previous: undefined,
+  };
+  // 2026-04-30 (#96): the OpenClaw context preamble is now ALSO injected
+  // as systemPrompt.append (durable across turns + survives compaction)
+  // via the OPENCLAW_SYSTEM_PROMPT_APPEND_FILE env var read by the patched
+  // claude-agent-acp/dist/acp-agent.js. That env var is set statically in
+  // docker-compose.override.yml — no per-turn mutation needed. The
+  // user-message preamble below is kept as a fallback for non-Claude-Code
+  // ACP backends (codex-acp, etc.) that don't read our env-var patch.
   try {
     const dispatchPolicyError = resolveAcpDispatchPolicyError(params.cfg);
     if (dispatchPolicyError) {
@@ -498,13 +525,41 @@ export async function tryDispatchAcpReply(params: {
       params.flipContext.replayPayload.messages.length > 0
         ? params.flipContext.replayPayload
         : undefined;
-    const effectivePromptText = replayForFirstTurn
+    // 2026-04-30 (#94): inject the OpenClaw runtime context preamble on the
+    // first turn of every fresh acpx process, including post-flip. The
+    // spawned ACP agent has no host-environment knowledge by default —
+    // without this it will forget about memory, skills, plugins, and the
+    // gateway's tool surface. We gate on an in-memory tracker keyed by
+    // `(sessionKey, runtimeSessionName)`; runtime-flip mints a new
+    // runtimeSessionName, so a flipped session automatically re-injects on
+    // its next dispatch. Skip injection on attachment-only turns (no text):
+    // prepending a long context block to a bare image upload reads as
+    // noise; the next text turn will deliver the preamble instead.
+    const hasPromptText = promptText.trim().length > 0;
+    const contextPreambleNeeded =
+      hasPromptText &&
+      shouldInjectAcpContextPreamble({
+        sessionKey: canonicalSessionKey,
+        runtimeSessionName: readyMeta?.runtimeSessionName,
+      });
+    const contextPreamble = contextPreambleNeeded ? buildAcpContextPreamble() : "";
+
+    const baseEffectivePrompt = replayForFirstTurn
       ? `${constructReplayPrompt(replayForFirstTurn)}\n---\n\nCurrent user message:\n\n${promptText}`
       : promptText;
+    const effectivePromptText = contextPreamble
+      ? `${contextPreamble}${baseEffectivePrompt}`
+      : baseEffectivePrompt;
     if (replayForFirstTurn) {
       logVerbose(
         `dispatch-acp: prepending replay of ${replayForFirstTurn.messages.length} messages ` +
           `(~${replayForFirstTurn.approxChars} chars) to first turn of flipped session`,
+      );
+    }
+    if (contextPreamble) {
+      logVerbose(
+        `dispatch-acp: injecting OpenClaw context preamble (~${contextPreamble.length} chars) ` +
+          `for fresh acpx process on session=${canonicalSessionKey}`,
       );
     }
 
@@ -567,6 +622,50 @@ export async function tryDispatchAcpReply(params: {
       );
     }
     const perTurnModel = presetResolution.model;
+
+    // 2026-04-30 — Per-turn extended-thinking budget override. When the
+    // resolved preset declares `maxThinkingTokens`, set MAX_THINKING_TOKENS
+    // on the process env BEFORE runTurn so the acpx subprocess (and via it
+    // @zed-industries/claude-agent-acp at acp-agent.js:849) sees the right
+    // budget for THIS preset. When the preset explicitly omits it (e.g.
+    // claude-code-haiku — no thinking support), we unset the env var so the
+    // SDK doesn't try to enable thinking on a model that can't use it.
+    //
+    // Restored in `finally` (env snapshot hoisted above) so concurrent
+    // turns running with different presets don't leak budgets. The env-var
+    // path is gateway-wide by design (the docker-compose default applies
+    // when no preset is explicit); per-preset overrides happen here.
+    // 2026-04-30: presetResolution.preset is undefined when the session's
+    // stored model is the acpx flag value (e.g. "claude-opus-4-7") rather
+    // than the preset id (e.g. "claude-code-opus"). That happens for fresh
+    // sessions spawned by a preset before the user overrides the model.
+    // resolveAcpModelPresetFlexible falls back to acpxModel matching so
+    // we recover the preset reference for thinking-budget purposes.
+    const effectivePreset =
+      presetResolution.preset ?? resolveAcpModelPresetFlexible(rawPerTurnModel);
+    const presetThinkingBudget = effectivePreset?.maxThinkingTokens;
+    if (effectivePreset) {
+      thinkingEnvSnapshot = {
+        mutated: true,
+        previous: process.env.MAX_THINKING_TOKENS,
+      };
+      if (typeof presetThinkingBudget === "number" && presetThinkingBudget > 0) {
+        process.env.MAX_THINKING_TOKENS = String(presetThinkingBudget);
+        // Intentionally console.log (not logVerbose) so this fires without
+        // OPENCLAW_VERBOSE — diagnostic for confirming the per-preset path
+        // ran. Demote to logVerbose once the feature is stable.
+        console.log(
+          `[dispatch-acp] enabling extended thinking for preset ${effectivePreset.id} (MAX_THINKING_TOKENS=${presetThinkingBudget}, resolvedFrom=${presetResolution.preset ? "id" : "acpxModel"})`,
+        );
+      } else {
+        // Preset explicitly disables thinking (e.g. haiku) — clear so the
+        // SDK doesn't try to enable it from a stale gateway-wide default.
+        delete process.env.MAX_THINKING_TOKENS;
+        console.log(
+          `[dispatch-acp] extended thinking disabled for preset ${effectivePreset.id}`,
+        );
+      }
+    }
 
     // Chunk 8 — per-turn NDJSON sidecar. Captures every raw AcpRuntimeEvent
     // to `<transcript>.acp.jsonl` for lossless replay/debugging, independent
@@ -675,6 +774,15 @@ export async function tryDispatchAcpReply(params: {
           typeof event.text === "string" &&
           event.text.length > 0
         ) {
+          // 2026-04-30: DIAG — confirm thought events actually arrive from
+          // claude-agent-acp. If this never logs, the SDK isn't emitting
+          // thinking_delta despite MAX_THINKING_TOKENS being set, which
+          // means the bug is upstream (subscription tier, model, env not
+          // reaching the spawned process). Demote to logVerbose once
+          // verified.
+          console.log(
+            `[dispatch-acp] thought delta arrived: ${event.text.length} chars, runId=${params.runId.trim()}`,
+          );
           emitAgentEvent({
             runId: params.runId.trim(),
             sessionKey: canonicalSessionKey,
@@ -875,6 +983,15 @@ export async function tryDispatchAcpReply(params: {
     logVerbose(
       `acp-dispatch: session=${sessionKey} outcome=ok latencyMs=${Date.now() - acpDispatchStartedAt} queueDepth=${acpStats.turns.queueDepth} activeRuntimes=${acpStats.runtimeCache.activeSessions}`,
     );
+    // 2026-04-30 (#94): record successful preamble delivery so subsequent
+    // turns on this same acpx process don't re-inject. Runtime-flip mints a
+    // new `runtimeSessionName`, so a flipped session re-injects naturally.
+    if (contextPreamble) {
+      markAcpContextPreambleDelivered({
+        sessionKey: canonicalSessionKey,
+        runtimeSessionName: readyMeta?.runtimeSessionName,
+      });
+    }
     params.recordProcessed("completed", { reason: "acp_dispatch" });
     params.markIdle("message_completed");
     return { queuedFinal, counts };
@@ -918,5 +1035,18 @@ export async function tryDispatchAcpReply(params: {
     });
     params.markIdle("message_completed");
     return { queuedFinal, counts };
+  } finally {
+    // 2026-04-30: restore MAX_THINKING_TOKENS to its pre-dispatch value so
+    // concurrent ACP turns dispatched with different presets don't observe
+    // each other's thinking budgets. Only touches the env if WE mutated it
+    // (preset path); turns dispatched without a preset leave the gateway
+    // default in place untouched.
+    if (thinkingEnvSnapshot.mutated) {
+      if (thinkingEnvSnapshot.previous === undefined) {
+        delete process.env.MAX_THINKING_TOKENS;
+      } else {
+        process.env.MAX_THINKING_TOKENS = thinkingEnvSnapshot.previous;
+      }
+    }
   }
 }

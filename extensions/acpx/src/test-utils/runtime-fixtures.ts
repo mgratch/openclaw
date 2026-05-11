@@ -387,6 +387,7 @@ export async function createMockRuntimeFixture(params?: {
     permissionMode: params?.permissionMode ?? "approve-all",
     nonInteractivePermissions: "fail",
     pluginToolsMcpBridge: false,
+    gatewayToolsBridge: false,
     strictWindowsCmdWrapper: true,
     queueOwnerTtlSeconds: params?.queueOwnerTtlSeconds ?? 0.1,
     mcpServers: params?.mcpServers ?? {},

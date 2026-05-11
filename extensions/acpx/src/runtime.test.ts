@@ -28,6 +28,7 @@ beforeAll(async () => {
       permissionMode: "approve-reads",
       nonInteractivePermissions: "fail",
       pluginToolsMcpBridge: false,
+      gatewayToolsBridge: false,
       strictWindowsCmdWrapper: true,
       queueOwnerTtlSeconds: 0.1,
       mcpServers: {},
