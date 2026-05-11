@@ -219,10 +219,24 @@ export function isContextOverflowError(errorMessage?: string): boolean {
     lower.includes("request_too_large") ||
     lower.includes("request exceeds the maximum size") ||
     lower.includes("context length exceeded") ||
+    // Codex/OpenAI-compatible error wrappers surface the underscored
+    // `"code":"context_length_exceeded"` field rather than a spaced phrase.
+    // Matching on it means the auto-compaction recovery in
+    // pi-embedded-runner/run.ts fires for Codex too — without this branch the
+    // run was dying terminally on "Your input exceeds the context window of
+    // this model" responses (incident: 2026-05-06 desert-river-solutions
+    // web session, blew up on an inlined laravel.log attachment that
+    // pushed total context past gpt-5.5's window).
+    lower.includes("context_length_exceeded") ||
     lower.includes("maximum context length") ||
     lower.includes("prompt is too long") ||
     lower.includes("prompt too long") ||
     lower.includes("exceeds model context window") ||
+    // Codex's user-facing message uses an alternate word order:
+    // "Your input exceeds the context window of this model".
+    // The "exceeds model context window" pattern above does NOT match this
+    // because the words are in a different order. Add a direct check.
+    lower.includes("exceeds the context window") ||
     lower.includes("model token limit") ||
     (hasRequestSizeExceeds && hasContextWindow) ||
     lower.includes("context overflow:") ||

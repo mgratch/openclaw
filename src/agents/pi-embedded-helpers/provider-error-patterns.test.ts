@@ -83,6 +83,32 @@ describe("isContextOverflowError with provider patterns", () => {
     expect(isContextOverflowError("context length exceeded")).toBe(true);
     expect(isContextOverflowError("prompt is too long: 150000 tokens > 128000 maximum")).toBe(true);
   });
+
+  it("detects Codex underscored code field as context overflow", () => {
+    // Regression: Codex/OpenAI-compatible wrappers surface the
+    // underscored field `"code":"context_length_exceeded"`. Prior
+    // patterns only matched the spaced phrase "context length
+    // exceeded", so Codex errors were misclassified and the
+    // pi-embedded-runner overflow auto-compaction never fired.
+    // Incident: 2026-05-06 desert-river-solutions web session.
+    expect(
+      isContextOverflowError(
+        'Codex error: {"type":"error","error":{"type":"invalid_request_error","code":"context_length_exceeded","message":"Your input exceeds the context window of this model."}}',
+      ),
+    ).toBe(true);
+  });
+
+  it("detects alternate-word-order 'exceeds the context window' phrasing", () => {
+    // Regression: Codex's user-facing message uses a different word
+    // order from Anthropic ("exceeds the context window of this model"
+    // vs "exceeds model context window"). Without this branch the
+    // standalone wrapper text didn't match either.
+    expect(
+      isContextOverflowError(
+        "LLM request rejected: Your input exceeds the context window of this model.",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("classifyFailoverReason with provider patterns", () => {
