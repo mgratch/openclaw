@@ -57,7 +57,10 @@ function resolveJsonSchemaForTool(tool: AnyAgentTool): Record<string, unknown> {
 
 /** Build a unique, safe tool name for an MCP-sourced tool. */
 function buildBridgedMcpToolName(serverName: string, toolName: string): string {
-  const safe = sanitizeServerName(serverName);
+  // Pass an empty Set for usedNames — this bridge sanitizes one server name
+  // per call without cross-server collision tracking, since each MCP server
+  // gets its own bridged toolset and conflicts are surfaced upstream.
+  const safe = sanitizeServerName(serverName, new Set<string>());
   return `${safe}__${toolName}`;
 }
 
