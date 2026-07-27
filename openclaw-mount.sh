@@ -128,6 +128,14 @@ cmd_unmount() {
 
     mount_point="${MOUNT_BASE}/${mount_name}"
 
+    # Logical same-access aliases are symlinks to a canonical mount. Removing an
+    # alias must never unmount the canonical source.
+    if [ -L "$mount_point" ]; then
+        rm "$mount_point"
+        echo "{\"ok\":true,\"unlinked_alias\":\"${mount_name}\"}"
+        exit 0
+    fi
+
     if ! mountpoint -q "$mount_point" 2>/dev/null; then
         rmdir "$mount_point" 2>/dev/null || true
         echo "{\"ok\":true,\"already_unmounted\":true}"
@@ -145,6 +153,15 @@ cmd_unmount() {
 }
 
 cmd_list() {
+    # The registry-aware status command distinguishes physical FUSE mounts,
+    # safe aliases, deliberately disabled rows, failures, and stale directories.
+    # Keep the legacy directory scan below as a fallback for older images.
+    status_script="${OPENCLAW_MOUNT_STATUS_SCRIPT:-/usr/local/lib/openclaw/mount-registry-status.mjs}"
+    if [ -f "$status_script" ]; then
+        node "$status_script"
+        return
+    fi
+
     printf '{"mounts":['
     first=true
     for dir in "$MOUNT_BASE"/*/; do
@@ -226,7 +243,14 @@ cmd_status() {
         exit 0
     fi
 
-    if mountpoint -q "$mount_point" 2>/dev/null; then
+    if [ -L "$mount_point" ]; then
+        alias_target=$(readlink -f "$mount_point" 2>/dev/null || true)
+        if [ -n "$alias_target" ] && mountpoint -q "$alias_target" 2>/dev/null; then
+            echo "{\"exists\":true,\"mounted\":true,\"alias\":true,\"target\":\"${alias_target}\"}"
+        else
+            echo '{"exists":true,"mounted":false,"alias":true}'
+        fi
+    elif mountpoint -q "$mount_point" 2>/dev/null; then
         echo '{"exists":true,"mounted":true}'
     else
         echo '{"exists":true,"mounted":false}'

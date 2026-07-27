@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Restore enabled OpenClaw project mounts deterministically.
+
+Registry rows may be regular mounts, safe same-access aliases, or explicitly
+ disabled records that preserve intent without causing startup failures.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+from collections import defaultdict
+
+REGISTRY = Path(os.environ.get("OPENCLAW_MOUNT_REGISTRY", "/home/node/.openclaw/mount-registry.json"))
+MOUNT_BASE = Path(os.environ.get("OPENCLAW_MOUNT_BASE", "/mnt/host-projects"))
+MOUNT_COMMAND = os.environ.get("OPENCLAW_MOUNT_COMMAND", "openclaw-mount")
+
+
+def is_enabled(info: dict[str, object]) -> bool:
+    return info.get("enabled") is not False
+
+
+def mount_kind(info: dict[str, object]) -> str:
+    return "alias" if info.get("kind") == "alias" else "mount"
+
+
+def access_mode(info: dict[str, object]) -> str:
+    return "rw" if info.get("access") == "rw" else "ro"
+
+
+def fail_preflight(registry: dict[str, dict[str, object]]) -> list[str]:
+    errors: list[str] = []
+    regular_by_source: dict[str, list[str]] = defaultdict(list)
+    for name, info in registry.items():
+        if not is_enabled(info) or mount_kind(info) != "mount":
+            continue
+        host_path = str(info.get("hostPath") or "")
+        if not host_path:
+            errors.append(f"{name}: enabled mount has no hostPath")
+            continue
+        regular_by_source[host_path].append(name)
+
+    for host_path, names in regular_by_source.items():
+        if len(names) > 1:
+            errors.append(
+                f"duplicate enabled mount source {host_path}: {', '.join(sorted(names))}"
+            )
+
+    for name, info in registry.items():
+        if not is_enabled(info) or mount_kind(info) != "alias":
+            continue
+        canonical_name = str(info.get("canonicalMount") or "")
+        canonical = registry.get(canonical_name)
+        if not canonical:
+            errors.append(f"{name}: alias canonicalMount does not exist: {canonical_name}")
+            continue
+        if not is_enabled(canonical) or mount_kind(canonical) != "mount":
+            errors.append(f"{name}: canonical mount is not an enabled regular mount")
+            continue
+        if str(info.get("hostPath") or "") != str(canonical.get("hostPath") or ""):
+            errors.append(f"{name}: alias hostPath differs from canonical mount")
+        if access_mode(info) != access_mode(canonical):
+            errors.append(
+                f"{name}: alias access {access_mode(info)} differs from canonical access {access_mode(canonical)}"
+            )
+    return errors
+
+
+def restore_mount(name: str, info: dict[str, object]) -> tuple[bool, str]:
+    host_path = str(info.get("hostPath") or "")
+    access = access_mode(info)
+    try:
+        result = subprocess.run(
+            [MOUNT_COMMAND, "mount", host_path, name, access],
+            capture_output=True,
+            text=True,
+            timeout=45,
+            check=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - startup diagnostic must retain the exact failure
+        return False, str(exc)
+
+    stdout = result.stdout.strip()
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError:
+        detail = stdout or result.stderr.strip() or f"exit {result.returncode}"
+        return False, detail
+    if payload.get("ok"):
+        return True, "already" if payload.get("already_mounted") else "mounted"
+    return False, str(payload.get("error") or stdout or f"exit {result.returncode}")
+
+
+def restore_alias(name: str, info: dict[str, object]) -> tuple[bool, str]:
+    canonical_name = str(info.get("canonicalMount") or "")
+    canonical_point = MOUNT_BASE / canonical_name
+    alias_point = MOUNT_BASE / name
+    if subprocess.run(
+        ["mountpoint", "-q", str(canonical_point)], check=False
+    ).returncode != 0:
+        return False, f"canonical mount is not active: {canonical_name}"
+
+    if alias_point.is_symlink():
+        try:
+            if alias_point.resolve(strict=True) == canonical_point:
+                return True, "already"
+        except OSError:
+            pass
+        alias_point.unlink()
+    elif alias_point.exists():
+        try:
+            alias_point.rmdir()
+        except OSError:
+            return False, f"alias path exists and is not an empty directory: {alias_point}"
+
+    alias_point.symlink_to(canonical_point, target_is_directory=True)
+    return True, "created"
+
+
+def main() -> int:
+    if not REGISTRY.exists():
+        print(f"[mount-restore] No registry found at {REGISTRY} — nothing to restore")
+        return 0
+
+    registry = json.loads(REGISTRY.read_text())
+    if not isinstance(registry, dict):
+        print("[mount-restore] Registry must be a JSON object", file=sys.stderr)
+        return 1
+    print(f"[mount-restore] Restoring mounts from {REGISTRY}")
+
+    errors = fail_preflight(registry)
+    if errors:
+        for error in errors:
+            print(f"[mount-restore] PREFLIGHT FAIL {error}")
+        print(f"[mount-restore] Aborted before mounting: {len(errors)} policy error(s)")
+        return 1
+
+    MOUNT_BASE.mkdir(parents=True, exist_ok=True)
+    mounted = already = aliases = disabled = failed = 0
+
+    for name in sorted(registry):
+        info = registry[name]
+        if not isinstance(info, dict):
+            print(f"[mount-restore] FAIL {name}: registry entry is not an object")
+            failed += 1
+            continue
+        if not is_enabled(info):
+            reason = str(info.get("reason") or info.get("status") or "disabled")
+            print(f"[mount-restore] DISABLED {name}: {reason}")
+            disabled += 1
+            continue
+        if mount_kind(info) == "alias":
+            continue
+        ok, detail = restore_mount(name, info)
+        if ok:
+            if detail == "already":
+                print(f"[mount-restore] ALREADY {name}")
+                already += 1
+            else:
+                print(
+                    f"[mount-restore] OK {name} -> {info.get('hostPath')} [{access_mode(info)}]"
+                )
+                mounted += 1
+        else:
+            print(f"[mount-restore] FAIL {name}: {detail}")
+            failed += 1
+
+    for name in sorted(registry):
+        info = registry[name]
+        if not isinstance(info, dict) or not is_enabled(info) or mount_kind(info) != "alias":
+            continue
+        ok, detail = restore_alias(name, info)
+        if ok:
+            print(f"[mount-restore] ALIAS {name} -> {info.get('canonicalMount')} ({detail})")
+            aliases += 1
+        else:
+            print(f"[mount-restore] FAIL {name}: {detail}")
+            failed += 1
+
+    print(
+        "[mount-restore] Done: "
+        f"{mounted} mounted, {already} already, {aliases} aliases, "
+        f"{disabled} disabled, {failed} failed"
+    )
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

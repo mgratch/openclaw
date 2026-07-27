@@ -99,9 +99,13 @@ RUN cd /app && pnpm add @lancedb/lancedb@^0.26.2 --ignore-scripts
 # "-?????????" stat, md5 drift, read hangs). Shipping in the image makes
 # the script immutable at runtime — update by rebuilding `openclaw:custom`.
 COPY openclaw-mount.sh /usr/local/bin/openclaw-mount
-# Explicit 755 (not `+x`) — the host source is mode 0700, which COPY preserves,
-# and `+x` leaves other/group without read, breaking script execution for node user.
-RUN chmod 755 /usr/local/bin/openclaw-mount
+COPY scripts/openclaw-mount-restore /usr/local/bin/openclaw-mount-restore
+COPY scripts/mount-registry-status.mjs /usr/local/lib/openclaw/mount-registry-status.mjs
+# Explicit 755 (not `+x`) — host source modes may be restrictive, and the
+# runtime node user needs to execute the helpers after the image drops root.
+RUN chmod 755 /usr/local/bin/openclaw-mount \
+    /usr/local/bin/openclaw-mount-restore \
+    /usr/local/lib/openclaw/mount-registry-status.mjs
 
 # Now drop to non-root for runtime
 USER node
