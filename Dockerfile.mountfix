@@ -1,0 +1,20 @@
+# Temporary pre-upgrade runtime overlay.
+#
+# The historical Dockerfile.custom base tag (`openclaw:local`) is no longer
+# available locally. Layer only the audited mount helpers onto the currently
+# deployed custom image so no gateway/runtime bundle changes are introduced.
+# Replace this overlay with a normal stable-source image during the v2026.7.1
+# transplant.
+FROM openclaw:custom
+
+USER root
+
+COPY openclaw-mount.sh /usr/local/bin/openclaw-mount
+COPY scripts/openclaw-mount-restore /usr/local/bin/openclaw-mount-restore
+COPY scripts/mount-registry-status.mjs /usr/local/lib/openclaw/mount-registry-status.mjs
+
+RUN chmod 755 /usr/local/bin/openclaw-mount \
+    /usr/local/bin/openclaw-mount-restore \
+    /usr/local/lib/openclaw/mount-registry-status.mjs
+
+USER node
