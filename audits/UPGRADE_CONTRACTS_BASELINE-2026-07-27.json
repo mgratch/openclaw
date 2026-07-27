@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-27T18-49-08-539Z-1a7fc269",
+  "runId": "2026-07-27T19-11-49-713Z-56927049",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-27T18:49:08.539Z",
-  "finishedAt": "2026-07-27T18:49:11.116Z",
-  "gitHead": "7b302aff0b31483ac9a119d8c988c47b03f97c9c",
+  "startedAt": "2026-07-27T19:11:49.713Z",
+  "finishedAt": "2026-07-27T19:12:14.558Z",
+  "gitHead": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-27T18:49:08.584Z",
+    "now": "2026-07-27T19:11:49.718Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,10 +22,10 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "7b302aff0b31483ac9a119d8c988c47b03f97c9c",
+      "head": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
       "branch": "test/upgrade-golden-master-contracts",
-      "dirty": true,
-      "dirtyFileCount": 2
+      "dirty": false,
+      "dirtyFileCount": 0
     },
     "openClawJson": {
       "path": "<redacted-path:.../.openclaw/openclaw.json>",
@@ -197,7 +197,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-27T18:48:56.655Z"
+      "mtime": "2026-07-27T19:09:36.296Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -220,10 +220,10 @@
     "totalRows": 80,
     "covered": 80,
     "uncoveredCheckIds": [],
-    "behaviorPass": 6,
+    "behaviorPass": 8,
     "inventoryPass": 37,
     "evidencePass": 1,
-    "manualPending": 74,
+    "manualPending": 62,
     "failed": 0,
     "skipped": 0,
     "stateNonterminal": 80,
@@ -384,17 +384,17 @@
       },
       {
         "id": "UM-06a",
-        "state": "assumed",
+        "state": "test-only",
         "matrixTerminal": false,
         "checks": 1,
         "executed": 1,
         "missingInRun": [],
-        "pass": 0,
+        "pass": 1,
         "fail": 0,
-        "manual": 1,
+        "manual": 0,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 0,
           "evidence": 0
         }
@@ -420,12 +420,12 @@
         "id": "UM-06c",
         "state": "assumed",
         "matrixTerminal": false,
-        "checks": 2,
-        "executed": 2,
+        "checks": 1,
+        "executed": 1,
         "missingInRun": [],
         "pass": 0,
         "fail": 0,
-        "manual": 2,
+        "manual": 1,
         "skip": 0,
         "byClass": {
           "behavior": 0,
@@ -1134,15 +1134,15 @@
         "id": "MEM-01",
         "state": "test-only",
         "matrixTerminal": false,
-        "checks": 17,
-        "executed": 17,
+        "checks": 8,
+        "executed": 8,
         "missingInRun": [],
-        "pass": 6,
+        "pass": 7,
         "fail": 0,
-        "manual": 11,
+        "manual": 1,
         "skip": 0,
         "byClass": {
-          "behavior": 2,
+          "behavior": 3,
           "inventory": 3,
           "evidence": 1
         }
@@ -1592,18 +1592,18 @@
     ]
   },
   "summary": {
-    "total": 105,
-    "pass": 38,
+    "total": 96,
+    "pass": 39,
     "fail": 0,
     "skip": 0,
-    "manual": 67,
+    "manual": 57,
     "byClass": {
-      "behaviorPass": 4,
+      "behaviorPass": 5,
       "inventoryPass": 33,
       "evidencePass": 1,
       "fail": 0,
       "skip": 0,
-      "manual": 67
+      "manual": 57
     }
   },
   "gate": {
@@ -1611,47 +1611,7 @@
     "blockers": [
       {
         "code": "check-manual",
-        "message": "memory-firewall.same-text-cross-project-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
         "message": "memory-firewall.subagent-idempotency-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.same-project-cross-agent-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.main-bypass-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.blank-global-legacy-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.concurrency-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.duplicate-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.foreign-delete-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.unknown-session-fail-closed-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.cleanup-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "memory-firewall.executable-isolation-manual pending manual attestation"
       },
       {
         "code": "check-manual",
@@ -1885,6 +1845,47 @@
   },
   "results": [
     {
+      "id": "memory-firewall.isolated-suite-behavior",
+      "name": "Focused memory Vitest suite proves <redacted:entropy> isolation on a disposable LanceDB",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01",
+        "UM-06a"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "exit code",
+          "value": 0
+        },
+        {
+          "label": "timed out",
+          "value": false
+        },
+        {
+          "label": "wall duration ms",
+          "value": 23106
+        },
+        {
+          "label": "test files",
+          "value": "3/3 passed"
+        },
+        {
+          "label": "tests",
+          "value": "28/28 passed"
+        },
+        {
+          "label": "vitest duration ms",
+          "value": 22080
+        }
+      ],
+      "notes": "Focused memory suite passed 28/28 tests across 3 files.",
+      "durationMs": 23107
+    },
+    {
       "id": "memory-firewall.effective-plugin-config",
       "name": "Effective plugin config: project slot enabled, stock lancedb not active",
       "groups": [
@@ -1986,7 +1987,7 @@
           "value": true
         }
       ],
-      "notes": "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and manual contracts.",
+      "notes": "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.",
       "durationMs": 1
     },
     {
@@ -2093,58 +2094,7 @@
         }
       ],
       "notes": "Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.",
-      "durationMs": 4
-    },
-    {
-      "id": "memory-firewall.same-text-cross-project-manual",
-      "name": "Same-text memory is isolated across two mapped staging projects",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Two pre-existing mapped staging sessions belonging to two distinct project_ids present in conversations.db (verify via SELECT DISTINCT project_id FROM sessions).",
-          "Use pre-existing mapped staging/test sessions from conversations.db (e.g. two distinct project_ids that already resolve). Never invent a synthetic projectId — the fail-closed path is deliberately rigged to return null for unknown sessions, so a synthetic id cannot exercise the cross-project semantic."
-        ],
-        "steps": [
-          "In staging project A's session, call memory_store with content prefixed by a reserved canary tag: openclaw-canary-upgrade-<uuid>.",
-          "In staging project B's session, call memory_recall on the same exact text.",
-          "In staging project B, call memory_recall broadly (empty query, large limit) to force a max-recall scan.",
-          "Explicitly delete the canary row in project A (memory_forget by exact tag).",
-          "Re-run memory_recall in project A to prove the row is gone."
-        ],
-        "expected": "memory_recall in project B returns zero rows referencing project A content, both exact-text and broad scan. Explicit delete succeeds; no residual rows.",
-        "evidence": [
-          "Redacted memory_recall responses from both projects.",
-          "LanceDB row-count deltas before/after cleanup via the extension admin API.",
-          "openclaw-agent audit log fragment showing the resolved projectId per call."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one canary row in project A, deleted at cleanup"
-          ],
-          "cleanupRollback": [
-            "memory_forget canary row after test",
-            "assert row count returns to baseline"
-          ],
-          "evidenceCapture": [
-            "redacted responses",
-            "row-count deltas",
-            "audit log fragment"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+      "durationMs": 6
     },
     {
       "id": "memory-firewall.subagent-idempotency-manual",
@@ -2183,409 +2133,6 @@
           "evidenceCapture": [
             "registry snapshot",
             "state diff"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.same-project-cross-agent-manual",
-      "name": "Within a single project, agent A memories do not leak to agent B",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01",
-        "UM-06a"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "One mapped staging project with two agents (agent_id A and B) that both have real sessions in conversations.db."
-        ],
-        "steps": [
-          "As agent A in staging project P, memory_store a UUID-tagged canary row.",
-          "As agent B in the same project P, memory_recall on the exact same tag.",
-          "Also memory_recall broadly.",
-          "Delete the canary row as agent A."
-        ],
-        "expected": "Agent B does not see agent A's row even inside the shared project.",
-        "evidence": [
-          "Redacted responses; scope resolution log lines from the extension."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one canary row for agent A in project P, deleted at cleanup"
-          ],
-          "cleanupRollback": [
-            "memory_forget canary row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses",
-            "scope resolution log"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.main-bypass-manual",
-      "name": "The 'main' agent does not bypass project scoping",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "One mapped staging project P (not 'main').",
-          "A live gateway session for the 'main' agent (agent_id=main) in conversations.db."
-        ],
-        "steps": [
-          "From staging project P, memory_store a UUID-tagged canary row.",
-          "Switch to a session whose sessionKey resolves to the 'main' agent.",
-          "memory_recall broadly.",
-          "Delete the canary row from staging project P."
-        ],
-        "expected": "The 'main' agent does not see the canary row via any implicit shared-memory path.",
-        "evidence": [
-          "Redacted responses; the resolved projectId for the 'main' session as reported by the extension."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one canary row in project P, deleted at cleanup"
-          ],
-          "cleanupRollback": [
-            "memory_forget canary row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses",
-            "resolved projectId"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.blank-global-legacy-manual",
-      "name": "Blank/global legacy rows (empty projectId) cannot bypass project scoping",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "A LanceDB admin able to insert a probe row with projectId='' or projectId is NULL (via the extension admin API only) into a disposable table."
-        ],
-        "steps": [
-          "Insert one legacy-style probe row with empty projectId AND known tag openclaw-canary-upgrade-<uuid> (only via admin API; never by hand-editing storage).",
-          "From any mapped staging session, memory_recall broadly.",
-          "Delete the legacy-style probe row via admin API."
-        ],
-        "expected": "The legacy row is not returned by memory_recall from any mapped session; direct admin cleanup succeeds.",
-        "evidence": [
-          "Redacted admin API responses (insert/query/delete).",
-          "LanceDB row-count deltas before/after."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one legacy probe row, deleted at cleanup"
-          ],
-          "cleanupRollback": [
-            "admin delete probe row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "admin API responses",
-            "row-count deltas"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.concurrency-manual",
-      "name": "Concurrent memory_store writers cannot corrupt project scoping",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Two mapped staging sessions (may be same or different agents/projects) able to issue simultaneous memory_store calls."
-        ],
-        "steps": [
-          "Issue N=10 concurrent memory_store calls with distinct UUID tags across both sessions.",
-          "memory_recall broadly from each session; verify only the calling scope sees its own tags.",
-          "Delete every canary row created."
-        ],
-        "expected": "Concurrent writes do not leak across scope; every row is deleted at the end and residual is zero.",
-        "evidence": [
-          "Full memory_recall responses; row-count deltas; cleanup verification."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "N canary rows created and deleted"
-          ],
-          "cleanupRollback": [
-            "delete every UUID-tagged canary row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses",
-            "row-count deltas"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.duplicate-manual",
-      "name": "Duplicate-insert of the same canary tag is handled deterministically",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "One mapped staging session."
-        ],
-        "steps": [
-          "memory_store the same canary tag twice back-to-back.",
-          "memory_recall on the tag.",
-          "Delete the canary rows and verify none remain."
-        ],
-        "expected": "Duplicate insert has a documented outcome (dedupe or explicit duplicate row) and cleanup removes every trace.",
-        "evidence": [
-          "Redacted memory_recall/memory_forget responses."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one or two canary rows, then all deleted"
-          ],
-          "cleanupRollback": [
-            "delete every duplicate row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.foreign-delete-manual",
-      "name": "Foreign projectId cannot delete another project's memories",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Two mapped staging projects A and B, each with one canary row."
-        ],
-        "steps": [
-          "From staging project A, call memory_forget with the tag belonging to staging project B.",
-          "From staging project B, memory_recall to verify the row still exists.",
-          "From staging project B, memory_forget with the correct tag."
-        ],
-        "expected": "Cross-project delete is refused; project B's row remains; only owning project can delete its own row.",
-        "evidence": [
-          "Full memory_forget and memory_recall responses; LanceDB row-count deltas."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "one canary row in each staging project, deleted at cleanup"
-          ],
-          "cleanupRollback": [
-            "delete own canary row",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses",
-            "row-count deltas"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.unknown-session-fail-closed-manual",
-      "name": "Unknown session fails closed; no silent memory return",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Access to submit a memory_store / memory_recall call with a sessionKey that does NOT exist in conversations.db.",
-          "Access to gateway logs for the same window; the gateway must NOT be restarted."
-        ],
-        "steps": [
-          "Submit memory_store with an unknown sessionKey (openclaw-unknown-<uuid>).",
-          "Submit memory_recall with the same unknown sessionKey.",
-          "Capture the gateway logs and the tool responses."
-        ],
-        "expected": "Both calls fail closed. No project-A row is exposed as fallback; no write is persisted.",
-        "evidence": [
-          "Redacted gateway log excerpts; tool responses proving zero rows returned/written."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": false,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": false,
-          "expectedMutations": [],
-          "cleanupRollback": [
-            "confirm no row was persisted"
-          ],
-          "evidenceCapture": [
-            "gateway log excerpt",
-            "tool responses"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.cleanup-manual",
-      "name": "Explicit cleanup returns residual rows to zero for the tested tag family",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Any mapped staging project."
-        ],
-        "steps": [
-          "Create N=3 canary rows with reserved openclaw-canary-upgrade-<uuid> tags.",
-          "Verify their presence via memory_recall.",
-          "Call memory_forget for each tag.",
-          "Verify residual == 0 via the extension admin API."
-        ],
-        "expected": "All rows are removed; residual count is exactly zero.",
-        "evidence": [
-          "memory_recall snapshots before/after; residual count."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "N canary rows, all deleted"
-          ],
-          "cleanupRollback": [
-            "memory_forget every UUID tag",
-            "verify residual==0"
-          ],
-          "evidenceCapture": [
-            "responses",
-            "residual count"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "memory-firewall.executable-isolation-manual",
-      "name": "Executable/copied-state isolation between running gateway and any copied working set",
-      "groups": [
-        "memory-firewall"
-      ],
-      "matrixIds": [
-        "MEM-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Ability to identify the running gateway process and any copied/detached memory state on the host."
-        ],
-        "steps": [
-          "Enumerate the memory DB paths referenced by the running gateway.",
-          "Verify no additional writable copy of the LanceDB directory is being loaded by any other process.",
-          "If a copied state exists (backup, snapshot), verify it is not being registered as a live memory backend."
-        ],
-        "expected": "Only one live LanceDB store is active; copies are dormant and cannot bleed writes into the live scope.",
-        "evidence": [
-          "Process listing referencing DB paths; ls of memory dirs; extension config path."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": false,
-          "writesWorkspaceFiles": false,
-          "expectedMutations": [],
-          "cleanupRollback": [
-            "no mutation; observational check"
-          ],
-          "evidenceCapture": [
-            "process listing",
-            "directory listings"
           ]
         }
       },
@@ -2688,7 +2235,7 @@
         }
       ],
       "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
-      "durationMs": 6
+      "durationMs": 8
     },
     {
       "id": "mounts-permissions.ipv4-inventory",
@@ -2711,7 +2258,7 @@
           "value": true
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "mounts-permissions.helper-baked-inventory",
@@ -2736,7 +2283,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "id": "mounts-permissions.helper-layered-inventory",
@@ -2764,7 +2311,7 @@
           "value": true
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "mounts-permissions.git-trust-readonly",
@@ -2852,7 +2399,7 @@
         }
       ],
       "notes": "RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.",
-      "durationMs": 38
+      "durationMs": 53
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -3023,7 +2570,7 @@
           ]
         }
       ],
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "history-recovery.paginated-manual",
@@ -3375,7 +2922,7 @@
         }
       ],
       "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "streaming-cleanup.terminal-cleanup-manual",
@@ -4568,7 +4115,7 @@
           "value": true
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "attachments.large-parsing-manual",
@@ -5257,7 +4804,7 @@
           "value": 25
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "browser-isolation.per-project-manual",
@@ -5524,7 +5071,7 @@
           "value": "openclaw"
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "runtime-infra.tooling-inventory",
@@ -5567,7 +5114,7 @@
           "value": false
         }
       ],
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "runtime-infra.stale-bundle-inventory",
@@ -5617,7 +5164,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "id": "runtime-infra.macos-dep-rationale-manual",
@@ -5779,7 +5326,7 @@
           "value": "<redacted-path:.../openclaw-pr-maintainer/SKILL.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "docs.upgrade-patches-inventory",
@@ -5798,7 +5345,7 @@
           "value": "<redacted-path:.../plugins/architecture.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.local-runtime-inventory",
@@ -5875,7 +5422,7 @@
           "value": "<redacted-path:.../audits/MOUNT_BASELINE_RECONCILIATION.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     }
   ]
 }

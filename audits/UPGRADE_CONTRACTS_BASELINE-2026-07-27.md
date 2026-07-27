@@ -1,25 +1,15 @@
 # OpenClaw upgrade-contracts baseline report
 
-_Schema:_ `openclaw-upgrade-contracts/v2`  ·  _Run:_ `2026-07-27T18-49-08-539Z-1a7fc269`  ·  _Mode:_ `report-only`  ·  _Filtered:_ `no`
-_Started:_ 2026-07-27T18:49:08.539Z  ·  _Finished:_ 2026-07-27T18:49:11.116Z
-_Git HEAD:_ `7b302aff0b31483ac9a119d8c988c47b03f97c9c`
+_Schema:_ `openclaw-upgrade-contracts/v2`  ·  _Run:_ `2026-07-27T19-11-49-713Z-56927049`  ·  _Mode:_ `report-only`  ·  _Filtered:_ `no`
+_Started:_ 2026-07-27T19:11:49.713Z  ·  _Finished:_ 2026-07-27T19:12:14.558Z
+_Git HEAD:_ `ecb741e52cefa425c0daab7de800294e4e3d3c11`
 _Runtime version:_ `2026.4.2`
 
 ## Gate decision
 
 - Result: **FAIL**
-- Blockers: **68**
-  - `check-manual` — memory-firewall.same-text-cross-project-manual pending manual attestation
+- Blockers: **58**
   - `check-manual` — memory-firewall.subagent-idempotency-manual pending manual attestation
-  - `check-manual` — memory-firewall.same-project-cross-agent-manual pending manual attestation
-  - `check-manual` — memory-firewall.main-bypass-manual pending manual attestation
-  - `check-manual` — memory-firewall.blank-global-legacy-manual pending manual attestation
-  - `check-manual` — memory-firewall.concurrency-manual pending manual attestation
-  - `check-manual` — memory-firewall.duplicate-manual pending manual attestation
-  - `check-manual` — memory-firewall.foreign-delete-manual pending manual attestation
-  - `check-manual` — memory-firewall.unknown-session-fail-closed-manual pending manual attestation
-  - `check-manual` — memory-firewall.cleanup-manual pending manual attestation
-  - `check-manual` — memory-firewall.executable-isolation-manual pending manual attestation
   - `check-manual` — memory-firewall.target-runtime-manual pending manual attestation
   - `check-manual` — mounts-permissions.host-mount-access-manual pending manual attestation
   - `check-manual` — mounts-permissions.container-setup-manual pending manual attestation
@@ -69,19 +59,26 @@ _Runtime version:_ `2026.4.2`
   - `check-manual` — fallback-persistence.fallback-chain-manual pending manual attestation
   - `check-manual` — project-files.generation-manual pending manual attestation
   - `check-manual` — browser-isolation.per-project-manual pending manual attestation
-  - ...(8 more truncated)
+  - `check-manual` — auth.oauth-refresh-dedupe-manual pending manual attestation
+  - `check-manual` — auth.burned-profile-manual pending manual attestation
+  - `check-manual` — auth.stale-refresh-manual pending manual attestation
+  - `check-manual` — auth.acp-log-identity-manual pending manual attestation
+  - `check-manual` — runtime-infra.macos-dep-rationale-manual pending manual attestation
+  - `check-manual` — providers.generated-bundle-manual pending manual attestation
+  - `check-manual` — providers.zap-baseline-manual pending manual attestation
+  - `matrix-nonterminal` — 80 matrix row(s) are still in nonterminal states (assumed|test-only). No row may advance without matrix update.
 
 ## Summary by evidence class
 
 | Class | Count |
 |---|---:|
-| behavior PASS | 4 |
+| behavior PASS | 5 |
 | inventory PASS | 33 |
 | evidence PASS | 1 |
 | FAIL | 0 |
 | SKIP | 0 |
-| MANUAL pending | 67 |
-| TOTAL | 105 |
+| MANUAL pending | 57 |
+| TOTAL | 96 |
 
 > Inventory PASS asserts the source/config/file inventory only. It is NOT proof of the behavior itself.
 > Evidence PASS attests to an immutable artifact for the current baseline; the target baseline requires a fresh artifact.
@@ -91,14 +88,14 @@ _Runtime version:_ `2026.4.2`
 - Total matrix rows: **80**
 - Terminal states: **0**  ·  Nonterminal states: **80**
 - Rows fully covered by this run: **80**
-- Behavior/Inventory/Evidence PASS counts across matrix rows: **6** / **37** / **1**
-- Manual pending: **74**  ·  Failed: **0**  ·  Skipped: **0**
+- Behavior/Inventory/Evidence PASS counts across matrix rows: **8** / **37** / **1**
+- Manual pending: **62**  ·  Failed: **0**  ·  Skipped: **0**
 
 ## Environment (redacted)
 
 ```json
 {
-  "now": "2026-07-27T18:49:08.584Z",
+  "now": "2026-07-27T19:11:49.718Z",
   "node": "24.14.0",
   "platform": "linux",
   "arch": "arm64",
@@ -112,10 +109,10 @@ _Runtime version:_ `2026.4.2`
   "procMountsPath": "/proc/self/mounts",
   "gatewayUrl": "http://127.0.0.1:18789",
   "git": {
-    "head": "7b302aff0b31483ac9a119d8c988c47b03f97c9c",
+    "head": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
     "branch": "test/upgrade-golden-master-contracts",
-    "dirty": true,
-    "dirtyFileCount": 2
+    "dirty": false,
+    "dirtyFileCount": 0
   },
   "openClawJson": {
     "path": "<redacted-path:.../.openclaw/openclaw.json>",
@@ -287,7 +284,7 @@ _Runtime version:_ `2026.4.2`
   "workspaceDb": {
     "path": "<redacted-path:.../workspace/conversations.db>",
     "sizeBytes": 1061588992,
-    "mtime": "2026-07-27T18:48:56.655Z"
+    "mtime": "2026-07-27T19:09:36.296Z"
   },
   "uiCheckpoint": {
     "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -298,45 +295,7 @@ _Runtime version:_ `2026.4.2`
 
 ## Results
 
-### MANUAL (pending) (67)
-
-#### `memory-firewall.same-text-cross-project-manual` — Same-text memory is isolated across two mapped staging projects
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Two pre-existing mapped staging sessions belonging to two distinct project_ids present in conversations.db (verify via SELECT DISTINCT project_id FROM sessions).
-  - Use pre-existing mapped staging/test sessions from conversations.db (e.g. two distinct project_ids that already resolve). Never invent a synthetic projectId — the fail-closed path is deliberately rigged to return null for unknown sessions, so a synthetic id cannot exercise the cross-project semantic.
-
-_Steps:_
-  1. In staging project A's session, call memory_store with content prefixed by a reserved canary tag: openclaw-canary-upgrade-<uuid>.
-  2. In staging project B's session, call memory_recall on the same exact text.
-  3. In staging project B, call memory_recall broadly (empty query, large limit) to force a max-recall scan.
-  4. Explicitly delete the canary row in project A (memory_forget by exact tag).
-  5. Re-run memory_recall in project A to prove the row is gone.
-
-_Expected:_ memory_recall in project B returns zero rows referencing project A content, both exact-text and broad scan. Explicit delete succeeds; no residual rows.
-
-_Evidence to capture:_
-  - Redacted memory_recall responses from both projects.
-  - LanceDB row-count deltas before/after cleanup via the extension admin API.
-  - openclaw-agent audit log fragment showing the resolved projectId per call.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one canary row in project A, deleted at cleanup`
-  - cleanupRollback: `memory_forget canary row after test`, `assert row count returns to baseline`
-  - evidenceCapture: `redacted responses`, `row-count deltas`, `audit log fragment`
-
-────────────────────────────────────────────────────────────────────────
+### MANUAL (pending) (57)
 
 #### `memory-firewall.subagent-idempotency-manual` — Subagent announcement is idempotent; same subagent does not multi-register
 
@@ -367,307 +326,6 @@ _Safety declaration:_
   - expectedMutations: `one subagent registry entry`
   - cleanupRollback: `deregister the canary subagent after verification`
   - evidenceCapture: `registry snapshot`, `state diff`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.same-project-cross-agent-manual` — Within a single project, agent A memories do not leak to agent B
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`, `UM-06a`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - One mapped staging project with two agents (agent_id A and B) that both have real sessions in conversations.db.
-
-_Steps:_
-  1. As agent A in staging project P, memory_store a UUID-tagged canary row.
-  2. As agent B in the same project P, memory_recall on the exact same tag.
-  3. Also memory_recall broadly.
-  4. Delete the canary row as agent A.
-
-_Expected:_ Agent B does not see agent A's row even inside the shared project.
-
-_Evidence to capture:_
-  - Redacted responses; scope resolution log lines from the extension.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one canary row for agent A in project P, deleted at cleanup`
-  - cleanupRollback: `memory_forget canary row`, `verify residual==0`
-  - evidenceCapture: `responses`, `scope resolution log`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.main-bypass-manual` — The 'main' agent does not bypass project scoping
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - One mapped staging project P (not 'main').
-  - A live gateway session for the 'main' agent (agent_id=main) in conversations.db.
-
-_Steps:_
-  1. From staging project P, memory_store a UUID-tagged canary row.
-  2. Switch to a session whose sessionKey resolves to the 'main' agent.
-  3. memory_recall broadly.
-  4. Delete the canary row from staging project P.
-
-_Expected:_ The 'main' agent does not see the canary row via any implicit shared-memory path.
-
-_Evidence to capture:_
-  - Redacted responses; the resolved projectId for the 'main' session as reported by the extension.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one canary row in project P, deleted at cleanup`
-  - cleanupRollback: `memory_forget canary row`, `verify residual==0`
-  - evidenceCapture: `responses`, `resolved projectId`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.blank-global-legacy-manual` — Blank/global legacy rows (empty projectId) cannot bypass project scoping
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - A LanceDB admin able to insert a probe row with projectId='' or projectId is NULL (via the extension admin API only) into a disposable table.
-
-_Steps:_
-  1. Insert one legacy-style probe row with empty projectId AND known tag openclaw-canary-upgrade-<uuid> (only via admin API; never by hand-editing storage).
-  2. From any mapped staging session, memory_recall broadly.
-  3. Delete the legacy-style probe row via admin API.
-
-_Expected:_ The legacy row is not returned by memory_recall from any mapped session; direct admin cleanup succeeds.
-
-_Evidence to capture:_
-  - Redacted admin API responses (insert/query/delete).
-  - LanceDB row-count deltas before/after.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one legacy probe row, deleted at cleanup`
-  - cleanupRollback: `admin delete probe row`, `verify residual==0`
-  - evidenceCapture: `admin API responses`, `row-count deltas`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.concurrency-manual` — Concurrent memory_store writers cannot corrupt project scoping
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Two mapped staging sessions (may be same or different agents/projects) able to issue simultaneous memory_store calls.
-
-_Steps:_
-  1. Issue N=10 concurrent memory_store calls with distinct UUID tags across both sessions.
-  2. memory_recall broadly from each session; verify only the calling scope sees its own tags.
-  3. Delete every canary row created.
-
-_Expected:_ Concurrent writes do not leak across scope; every row is deleted at the end and residual is zero.
-
-_Evidence to capture:_
-  - Full memory_recall responses; row-count deltas; cleanup verification.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `N canary rows created and deleted`
-  - cleanupRollback: `delete every UUID-tagged canary row`, `verify residual==0`
-  - evidenceCapture: `responses`, `row-count deltas`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.duplicate-manual` — Duplicate-insert of the same canary tag is handled deterministically
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - One mapped staging session.
-
-_Steps:_
-  1. memory_store the same canary tag twice back-to-back.
-  2. memory_recall on the tag.
-  3. Delete the canary rows and verify none remain.
-
-_Expected:_ Duplicate insert has a documented outcome (dedupe or explicit duplicate row) and cleanup removes every trace.
-
-_Evidence to capture:_
-  - Redacted memory_recall/memory_forget responses.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one or two canary rows, then all deleted`
-  - cleanupRollback: `delete every duplicate row`, `verify residual==0`
-  - evidenceCapture: `responses`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.foreign-delete-manual` — Foreign projectId cannot delete another project's memories
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Two mapped staging projects A and B, each with one canary row.
-
-_Steps:_
-  1. From staging project A, call memory_forget with the tag belonging to staging project B.
-  2. From staging project B, memory_recall to verify the row still exists.
-  3. From staging project B, memory_forget with the correct tag.
-
-_Expected:_ Cross-project delete is refused; project B's row remains; only owning project can delete its own row.
-
-_Evidence to capture:_
-  - Full memory_forget and memory_recall responses; LanceDB row-count deltas.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `one canary row in each staging project, deleted at cleanup`
-  - cleanupRollback: `delete own canary row`, `verify residual==0`
-  - evidenceCapture: `responses`, `row-count deltas`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.unknown-session-fail-closed-manual` — Unknown session fails closed; no silent memory return
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Access to submit a memory_store / memory_recall call with a sessionKey that does NOT exist in conversations.db.
-  - Access to gateway logs for the same window; the gateway must NOT be restarted.
-
-_Steps:_
-  1. Submit memory_store with an unknown sessionKey (openclaw-unknown-<uuid>).
-  2. Submit memory_recall with the same unknown sessionKey.
-  3. Capture the gateway logs and the tool responses.
-
-_Expected:_ Both calls fail closed. No project-A row is exposed as fallback; no write is persisted.
-
-_Evidence to capture:_
-  - Redacted gateway log excerpts; tool responses proving zero rows returned/written.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: false
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: false
-  - expectedMutations: none
-  - cleanupRollback: `confirm no row was persisted`
-  - evidenceCapture: `gateway log excerpt`, `tool responses`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.cleanup-manual` — Explicit cleanup returns residual rows to zero for the tested tag family
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Any mapped staging project.
-
-_Steps:_
-  1. Create N=3 canary rows with reserved openclaw-canary-upgrade-<uuid> tags.
-  2. Verify their presence via memory_recall.
-  3. Call memory_forget for each tag.
-  4. Verify residual == 0 via the extension admin API.
-
-_Expected:_ All rows are removed; residual count is exactly zero.
-
-_Evidence to capture:_
-  - memory_recall snapshots before/after; residual count.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `N canary rows, all deleted`
-  - cleanupRollback: `memory_forget every UUID tag`, `verify residual==0`
-  - evidenceCapture: `responses`, `residual count`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `memory-firewall.executable-isolation-manual` — Executable/copied-state isolation between running gateway and any copied working set
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `memory-firewall`
-- Matrix IDs: `MEM-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Ability to identify the running gateway process and any copied/detached memory state on the host.
-
-_Steps:_
-  1. Enumerate the memory DB paths referenced by the running gateway.
-  2. Verify no additional writable copy of the LanceDB directory is being loaded by any other process.
-  3. If a copied state exists (backup, snapshot), verify it is not being registered as a live memory backend.
-
-_Expected:_ Only one live LanceDB store is active; copies are dormant and cannot bleed writes into the live scope.
-
-_Evidence to capture:_
-  - Process listing referencing DB paths; ls of memory dirs; extension config path.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: false
-  - writesWorkspaceFiles: false
-  - expectedMutations: none
-  - cleanupRollback: `no mutation; observational check`
-  - evidenceCapture: `process listing`, `directory listings`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2546,7 +2204,7 @@ _Safety declaration:_
 
 #### `memory-firewall.current-runtime-evidence` — Immutable canary checkpoint proves 13 assertions and zero residual rows (CURRENT baseline only)
 
-- Status: **pass**  ·  kind: `evidence`  ·  duration: 4ms
+- Status: **pass**  ·  kind: `evidence`  ·  duration: 6ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`
 - Notes: Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.
@@ -2560,7 +2218,24 @@ Evidence:
 
 ────────────────────────────────────────────────────────────────────────
 
-### BEHAVIOR PASS (runtime invariant) (4)
+### BEHAVIOR PASS (runtime invariant) (5)
+
+#### `memory-firewall.isolated-suite-behavior` — Focused memory Vitest suite proves <redacted:entropy> isolation on a disposable LanceDB
+
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 23107ms
+- Groups: `memory-firewall`
+- Matrix IDs: `MEM-01`, `UM-06a`
+- Notes: Focused memory suite passed 28/28 tests across 3 files.
+
+Evidence:
+  - exit code: `0`
+  - timed out: `false`
+  - wall duration ms: `23106`
+  - test files: `3/3 passed`
+  - tests: `28/28 passed`
+  - vitest duration ms: `22080`
+
+────────────────────────────────────────────────────────────────────────
 
 #### `memory-firewall.effective-plugin-config` — Effective plugin config: project slot enabled, stock lancedb not active
 
@@ -2592,7 +2267,7 @@ Evidence:
 
 #### `mounts-permissions.exact-audit` — Exact per-row mount audit (<redacted:entropy>)
 
-- Status: **pass**  ·  kind: `behavior`  ·  duration: 6ms
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 8ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-01`, `MOUNT-02`, `MOUNT-03`
 - Notes: Every enabled row is exact per registry; reconciled shape matches 32+1+2.
@@ -2608,7 +2283,7 @@ Evidence:
 
 #### `mounts-permissions.git-trust-readonly` — Git trust is honored across every mounted repo root (RO probe)
 
-- Status: **pass**  ·  kind: `behavior`  ·  duration: 38ms
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 53ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-04`
 - Notes: RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.
@@ -2655,7 +2330,7 @@ Evidence:
 - Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`
-- Notes: Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and manual contracts.
+- Notes: Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.
 
 Evidence:
   - resolveProjectId returns null on missing sessionKey: `true`
@@ -2681,7 +2356,7 @@ Evidence:
 
 #### `mounts-permissions.ipv4-inventory` — openclaw-mount.sh forces IPv4 for SSHFS (source inventory)
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `CP-01`
 
@@ -2693,7 +2368,7 @@ Evidence:
 
 #### `mounts-permissions.helper-baked-inventory` — Dockerfile bakes the reconciled mount helpers
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
 - Groups: `mounts-permissions`, `runtime-infra`
 - Matrix IDs: `UM-20`, `MOUNT-03`
 
@@ -2705,7 +2380,7 @@ Evidence:
 
 #### `mounts-permissions.helper-layered-inventory` — Dockerfile.mountfix layers helper + restore + status
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `mounts-permissions`, `runtime-infra`
 - Matrix IDs: `MOUNT-03`
 
@@ -2729,7 +2404,7 @@ Evidence:
 
 #### `history-recovery.tree-recovery-inventory` — conversation-tree recovery utility is present in the UI checkpoint
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 
@@ -2751,7 +2426,7 @@ Evidence:
 
 #### `streaming-cleanup.heartbeat-inventory` — UI useGatewayEvents separates liveness from progress and does not reset progress on generic heartbeat
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
 - Groups: `streaming-cleanup`
 - Matrix IDs: `UI-03b`
 - Notes: Inventory only — see streaming-cleanup manual contracts for behavior.
@@ -2828,7 +2503,7 @@ Evidence:
 
 #### `attachments.mime-allowlist-inventory` — input-files MIME allowlist includes text/calendar and JSONL variants; no blanket text/* bypass
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `attachments`
 - Matrix IDs: `UM-12`, `CP-03`
 
@@ -2892,7 +2567,7 @@ Evidence:
 
 #### `browser-isolation.ports-inventory` — Per-project browser port registry is present and non-empty with unique ports
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `browser-isolation`
 - Matrix IDs: `RT-06`
 
@@ -2915,7 +2590,7 @@ Evidence:
 
 #### `runtime-infra.build-config-inventory` — tsdown config and package.json build script inventory
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-13b`
 
@@ -2928,7 +2603,7 @@ Evidence:
 
 #### `runtime-infra.tooling-inventory` — Operational tooling set (patch/mount/reauth/routing/CA/upgrade scripts)
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-15`
 
@@ -2956,7 +2631,7 @@ Evidence:
 
 #### `runtime-infra.gitignore-inventory` — .gitignore OR .git/info/exclude excludes local bundle/workspace artifacts
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-19`
 
@@ -2981,7 +2656,7 @@ Evidence:
 
 #### `docs.pr-maintainer-skill-inventory` — PR maintainer skill file present
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `docs`
 - Matrix IDs: `UM-14b`
 
@@ -2992,7 +2667,7 @@ Evidence:
 
 #### `docs.upgrade-patches-inventory` — Upgrade patches inventory doc present
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14c`
 
@@ -3036,7 +2711,7 @@ Evidence:
 
 #### `docs.mount-baseline-inventory` — Mount baseline reconciliation recorded
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `MOUNT-02`, `MOUNT-05`
 
