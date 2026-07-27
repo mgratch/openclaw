@@ -14,12 +14,12 @@
 // `memory-firewall.isolated-suite-behavior`. Only subagent-idempotency and
 // the target-runtime evidence artifact remain manual.
 
-import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import { promises as fs, existsSync, createReadStream } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { HOME, WORKSPACE_DB, CHECKPOINT_ROOT, REPO_ROOT } from "../lib/env.mjs";
+import { runFocusedVitest } from "../lib/focused-vitest-runner.mjs";
 import { FOCUSED_MEMORY_TEST_FILES, summarizeVitestResult } from "../lib/memory-firewall-suite.mjs";
 import { defineCheck } from "../lib/runner.mjs";
 
@@ -27,45 +27,19 @@ const CANARY_CHECKPOINT_DIR = path.join(CHECKPOINT_ROOT, "memory-firewall-202607
 
 const VITEST_TIMEOUT_MS = 180_000; // 3 minutes — focused suite is ~20s locally
 const VITEST_MAX_BUFFER = 8 * 1024 * 1024;
+const VITEST_ENTRY = path.join(REPO_ROOT, "node_modules", "vitest", "vitest.mjs");
 
 function runFocusedMemorySuite() {
-  return new Promise((resolve) => {
-    const args = ["exec", "vitest", "run", ...FOCUSED_MEMORY_TEST_FILES];
-    const started = Date.now();
-    const child = execFile(
-      "pnpm",
-      args,
-      {
-        cwd: REPO_ROOT,
-        timeout: VITEST_TIMEOUT_MS,
-        maxBuffer: VITEST_MAX_BUFFER,
-        shell: false,
-        windowsHide: true,
-        // Inherit env so pnpm/node/vitest resolve normally. Env values are
-        // NEVER copied into evidence — see summarizeVitestResult.
-        env: process.env,
-      },
-      (error, stdout, stderr) => {
-        const durationMs = Date.now() - started;
-        // execFile surfaces exitCode/signal on the error when non-zero.
-        const timedOut = error?.killed === true && error?.signal === "SIGTERM";
-        const exitCode = timedOut || error?.code === "ETIMEDOUT" ? null : (error?.code ?? 0);
-        const signal = error?.signal ?? null;
-        const spawnError =
-          error && typeof error.code === "string" && error.code !== 0 && error.errno !== undefined
-            ? { code: error.code, message: error.message }
-            : null;
-        resolve({
-          exitCode: typeof exitCode === "number" ? exitCode : (child.exitCode ?? null),
-          signal,
-          timedOut,
-          stdout: String(stdout ?? ""),
-          stderr: String(stderr ?? ""),
-          durationMs,
-          spawnError,
-        });
-      },
-    );
+  return runFocusedVitest({
+    execPath: process.execPath,
+    args: [VITEST_ENTRY, "run", "--root", REPO_ROOT, ...FOCUSED_MEMORY_TEST_FILES],
+    cwd: REPO_ROOT,
+    // Execute the already-installed Vitest entry directly: no package-manager
+    // wrapper, Corepack lookup, install, or download. Env values are NEVER
+    // copied into evidence — see summarizeVitestResult.
+    env: process.env,
+    timeoutMs: VITEST_TIMEOUT_MS,
+    maxBuffer: VITEST_MAX_BUFFER,
   });
 }
 
@@ -79,6 +53,13 @@ defineCheck({
   kind: "behavior",
   automated: "auto",
   async run() {
+    if (!existsSync(VITEST_ENTRY)) {
+      return {
+        status: "fail",
+        evidence: [{ label: "local vitest entry exists", value: false }],
+        notes: "Local Vitest entry is missing; refusing to fall back to pnpm/Corepack.",
+      };
+    }
     const result = await runFocusedMemorySuite();
     return summarizeVitestResult(result);
   },
