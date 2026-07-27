@@ -679,7 +679,7 @@
       "audit": "audits/MOUNT_BASELINE_RECONCILIATION.md",
       "intent": "Ensure host Git repositories mounted via SSHFS are trusted by Git after restore.",
       "state": "test-only",
-      "checks": ["mounts-permissions.git-trust-readonly", "mounts-permissions.git-trust-manual"]
+      "checks": ["mounts-permissions.git-trust-readonly"]
     },
     {
       "id": "MOUNT-05",

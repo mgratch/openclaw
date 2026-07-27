@@ -10,11 +10,15 @@
 // The audit exposes exact source, target, access, alias target, enabled/kind,
 // stale directories, conflicts, extras — every one is checked.
 
+import { execFile } from "node:child_process";
 import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import { parseProcMounts, auditMountRegistry } from "../../mount-registry-status.mjs";
 import { REPO_ROOT, MOUNT_BASE, MOUNT_REGISTRY, PROC_MOUNTS } from "../lib/env.mjs";
 import { defineCheck } from "../lib/runner.mjs";
+
+const execFileAsync = promisify(execFile);
 
 // -- Behavior: exact per-row audit -----------------------------------------
 
@@ -205,38 +209,46 @@ defineCheck({
 
 defineCheck({
   id: "mounts-permissions.git-trust-readonly",
-  name: "Git trust is honored across every mounted repo root (RO probe)",
+  name: "Git ownership trust is honored across every mounted repo root",
   groups: ["mounts-permissions"],
   matrixIds: ["MOUNT-04"],
   kind: "behavior",
   automated: "auto",
   async run() {
     const evidence = [];
-    let ok = true;
+    const failures = [];
     let repos = 0;
     try {
       const entries = await fs.readdir(MOUNT_BASE, { withFileTypes: true });
-      for (const e of entries) {
-        if (!e.isDirectory() && !e.isSymbolicLink()) {
+      for (const entry of entries) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) {
           continue;
         }
-        const target = path.join(MOUNT_BASE, e.name);
-        const gitDir = path.join(target, ".git");
-        if (!existsSync(gitDir)) {
+        const target = path.join(MOUNT_BASE, entry.name);
+        if (!existsSync(path.join(target, ".git"))) {
           continue;
         }
         repos++;
-        // Read HEAD as a stand-in for "git trusts this directory". We do NOT
-        // exec `git` because that would require child_process across mounts;
-        // instead we open HEAD read-only to confirm the mount is trusted from
-        // filesystem semantics. Git's trust check is orthogonal — the manual
-        // check must verify `git status` runs cleanly.
         try {
-          const head = await fs.readFile(path.join(gitDir, "HEAD"), "utf8");
-          evidence.push({ label: e.name, value: head.trim().slice(0, 60) });
+          const { stdout } = await execFileAsync(
+            "git",
+            ["-C", target, "rev-parse", "--is-inside-work-tree"],
+            {
+              env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+              timeout: 5_000,
+              maxBuffer: 256 * 1024,
+              windowsHide: true,
+            },
+          );
+          const trusted = stdout.trim() === "true";
+          evidence.push({ label: entry.name, value: trusted ? "trusted" : "unexpected result" });
+          if (!trusted) {
+            failures.push(`${entry.name}: rev-parse did not confirm a work tree`);
+          }
         } catch (err) {
-          evidence.push({ label: e.name, value: `HEAD unreadable: ${err?.message ?? err}` });
-          ok = false;
+          const code = err?.code ?? err?.signal ?? "unknown";
+          evidence.push({ label: entry.name, value: `git trust failed (${code})` });
+          failures.push(`${entry.name}: git rev-parse failed (${code})`);
         }
       }
     } catch (err) {
@@ -248,17 +260,17 @@ defineCheck({
     if (repos === 0) {
       return { status: "fail", notes: "No mounted repos found — expected at least one" };
     }
-    if (!ok) {
+    if (failures.length > 0) {
       return {
         status: "fail",
         evidence,
-        notes: "One or more mounted repos has an unreadable .git/HEAD",
+        notes: `Git ownership trust failed: ${failures.join("; ")}`,
       };
     }
     return {
       status: "pass",
       evidence,
-      notes: `RO probe OK across ${repos} mounted repos; the git-status semantic remains a manual verification.`,
+      notes: `git rev-parse passed with optional locks disabled across ${repos} mounted repos.`,
     };
   },
 });
@@ -331,37 +343,6 @@ defineCheck({
       expectedMutations: [],
       cleanupRollback: ["staging-only boot; no cleanup on live"],
       evidenceCapture: ["diff", "log excerpt"],
-    },
-  },
-});
-
-// -- Manual: git trust behavior --------------------------------------------
-
-defineCheck({
-  id: "mounts-permissions.git-trust-manual",
-  name: "Host Git repositories remain trusted after mount restore (behavior)",
-  groups: ["mounts-permissions"],
-  matrixIds: ["MOUNT-04"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "Fresh gateway boot with reconciled mount baseline.",
-      "A host repository mounted via SSHFS.",
-    ],
-    steps: [
-      "From the container, cd into a mounted host repo and run git status.",
-      "Confirm no `fatal: detected dubious ownership` message.",
-    ],
-    expected: "git status runs cleanly; safe.directory entry present.",
-    evidence: ["git status output and container HOME/.gitconfig safe.directory entries."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: false,
-      writesWorkspaceFiles: false,
-      expectedMutations: [],
-      cleanupRollback: ["no mutation; observational only"],
-      evidenceCapture: ["git status output", "safe.directory entries"],
     },
   },
 });
