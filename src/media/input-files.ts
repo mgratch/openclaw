@@ -100,6 +100,7 @@ export const DEFAULT_INPUT_FILE_MIMES = [
   "text/markdown",
   "text/html",
   "text/csv",
+  "text/calendar",
   "application/json",
   "application/jsonl",
   "application/x-ndjson",

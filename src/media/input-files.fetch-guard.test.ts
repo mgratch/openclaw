@@ -23,10 +23,18 @@ async function waitForMicrotaskTurn(): Promise<void> {
 let fetchWithGuard: typeof import("./input-files.js").fetchWithGuard;
 let extractImageContentFromSource: typeof import("./input-files.js").extractImageContentFromSource;
 let extractFileContentFromSource: typeof import("./input-files.js").extractFileContentFromSource;
+let defaultInputFileMimes: typeof import("./input-files.js").DEFAULT_INPUT_FILE_MIMES;
 
 beforeAll(async () => {
-  ({ fetchWithGuard, extractImageContentFromSource, extractFileContentFromSource } =
-    await import("./input-files.js"));
+  const inputFiles = await import("./input-files.js");
+  ({ fetchWithGuard, extractImageContentFromSource, extractFileContentFromSource } = inputFiles);
+  defaultInputFileMimes = inputFiles.DEFAULT_INPUT_FILE_MIMES;
+});
+
+describe("default input file MIME policy", () => {
+  it("allows calendar files explicitly without bypassing the MIME allowlist", () => {
+    expect(defaultInputFileMimes).toContain("text/calendar");
+  });
 });
 
 beforeEach(() => {
