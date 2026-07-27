@@ -11,6 +11,7 @@ export type MemoryConfig = {
     dimensions?: number;
   };
   dbPath?: string;
+  projectDbPath?: string;
   autoCapture?: boolean;
   autoRecall?: boolean;
   captureMaxChars?: number;
@@ -49,6 +50,7 @@ function resolveDefaultDbPath(): string {
 }
 
 const DEFAULT_DB_PATH = resolveDefaultDbPath();
+const DEFAULT_PROJECT_DB_PATH = join(homedir(), ".openclaw", "workspace", "conversations.db");
 
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   "text-embedding-3-small": 1536,
@@ -97,7 +99,7 @@ export const memoryConfigSchema = {
     const cfg = value as Record<string, unknown>;
     assertAllowedKeys(
       cfg,
-      ["embedding", "dbPath", "autoCapture", "autoRecall", "captureMaxChars"],
+      ["embedding", "dbPath", "projectDbPath", "autoCapture", "autoRecall", "captureMaxChars"],
       "memory config",
     );
 
@@ -128,6 +130,8 @@ export const memoryConfigSchema = {
         dimensions: typeof embedding.dimensions === "number" ? embedding.dimensions : undefined,
       },
       dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : DEFAULT_DB_PATH,
+      projectDbPath:
+        typeof cfg.projectDbPath === "string" ? cfg.projectDbPath : DEFAULT_PROJECT_DB_PATH,
       autoCapture: cfg.autoCapture === true,
       autoRecall: cfg.autoRecall !== false,
       captureMaxChars: captureMaxChars ?? DEFAULT_CAPTURE_MAX_CHARS,
@@ -160,6 +164,12 @@ export const memoryConfigSchema = {
     dbPath: {
       label: "Database Path",
       placeholder: "~/.openclaw/memory/lancedb",
+      advanced: true,
+    },
+    projectDbPath: {
+      label: "Project Mapping Database",
+      placeholder: "~/.openclaw/workspace/conversations.db",
+      help: "Read-only session-to-project mapping used to isolate memories",
       advanced: true,
     },
     autoCapture: {

@@ -30,6 +30,12 @@
       "placeholder": "~/.openclaw/memory/lancedb",
       "advanced": true
     },
+    "projectDbPath": {
+      "label": "Project Mapping Database",
+      "placeholder": "~/.openclaw/workspace/conversations.db",
+      "help": "Read-only session-to-project mapping used to isolate memories",
+      "advanced": true
+    },
     "autoCapture": {
       "label": "Auto-Capture",
       "help": "Automatically capture important information from conversations"
@@ -69,6 +75,9 @@
         "required": ["apiKey"]
       },
       "dbPath": {
+        "type": "string"
+      },
+      "projectDbPath": {
         "type": "string"
       },
       "autoCapture": {

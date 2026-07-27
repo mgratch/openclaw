@@ -11,6 +11,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { createLanceDbRuntimeLoader, type LanceDbRuntimeLogger } from "./lancedb-runtime.js";
 
@@ -22,6 +23,7 @@ type MemoryPluginTestConfig = {
     dimensions?: number;
   };
   dbPath?: string;
+  projectDbPath?: string;
   captureMaxChars?: number;
   autoCapture?: boolean;
   autoRecall?: boolean;
@@ -195,11 +197,15 @@ describe("memory plugin e2e", () => {
     const ensureGlobalUndiciEnvProxyDispatcher = vi.fn();
     const toArray = vi.fn(async () => []);
     const limit = vi.fn(() => ({ toArray }));
-    const vectorSearch = vi.fn(() => ({ limit }));
+    const where = vi.fn(() => ({ limit }));
+    const vectorSearch = vi.fn(() => ({ where }));
     const loadLanceDbModule = vi.fn(async () => ({
       connect: vi.fn(async () => ({
         tableNames: vi.fn(async () => ["memories"]),
         openTable: vi.fn(async () => ({
+          schema: vi.fn(async () => ({
+            fields: [{ name: "agentId" }, { name: "projectId" }],
+          })),
           vectorSearch,
           countRows: vi.fn(async () => 0),
           add: vi.fn(async () => undefined),
@@ -222,6 +228,13 @@ describe("memory plugin e2e", () => {
     }));
 
     try {
+      const projectDbPath = path.join(path.dirname(getDbPath()), "projects.db");
+      const projectDb = new DatabaseSync(projectDbPath);
+      projectDb.exec(
+        "CREATE TABLE sessions (session_key TEXT PRIMARY KEY, project_id TEXT); " +
+          "INSERT INTO sessions VALUES ('session-a', 'project-a')",
+      );
+      projectDb.close();
       const { default: memoryPlugin } = await import("./index.js");
       // oxlint-disable-next-line typescript/no-explicit-any
       const registeredTools: any[] = [];
@@ -237,6 +250,7 @@ describe("memory plugin e2e", () => {
             dimensions: 1024,
           },
           dbPath: getDbPath(),
+          projectDbPath,
           autoCapture: false,
           autoRecall: false,
         },
@@ -262,7 +276,11 @@ describe("memory plugin e2e", () => {
 
       // oxlint-disable-next-line typescript/no-explicit-any
       memoryPlugin.register(mockApi as any);
-      const recallTool = registeredTools.find((t) => t.opts?.name === "memory_recall")?.tool;
+      const recallFactory = registeredTools.find((t) => t.opts?.name === "memory_recall")?.tool;
+      const recallTool = recallFactory?.({
+        agentId: "agent-a",
+        sessionKey: "agent:agent-a:session-a",
+      });
       if (!recallTool) {
         throw new Error("memory_recall tool was not registered");
       }
@@ -342,6 +360,297 @@ describe("memory plugin e2e", () => {
     expect(detectCategory("My email is test@example.com")).toBe("entity");
     expect(detectCategory("The server is running on port 3000")).toBe("fact");
     expect(detectCategory("Random note")).toBe("other");
+  });
+});
+
+type ScopedHarnessRow = {
+  id: string;
+  text: string;
+  vector: number[];
+  importance: number;
+  category: string;
+  createdAt: number;
+  agentId: string;
+  projectId: string;
+};
+
+async function createScopedHarness(params: {
+  tmpDir: string;
+  mappings: Array<[string, string | null]>;
+  autoRecall?: boolean;
+  autoCapture?: boolean;
+  schemaFields?: string[];
+}) {
+  const projectDbPath = path.join(params.tmpDir, `projects-${Math.random()}.db`);
+  const projectDb = new DatabaseSync(projectDbPath);
+  projectDb.exec("CREATE TABLE sessions (session_key TEXT PRIMARY KEY, project_id TEXT)");
+  const insert = projectDb.prepare("INSERT INTO sessions (session_key, project_id) VALUES (?, ?)");
+  for (const [sessionKey, projectId] of params.mappings) {
+    insert.run(sessionKey, projectId);
+  }
+  projectDb.close();
+
+  const rows: ScopedHarnessRow[] = [];
+  const queryOrder: string[] = [];
+  const extract = (predicate: string, column: string) =>
+    new RegExp(`${column} = '([^']*)'`).exec(predicate)?.[1];
+  const filtered = (predicate = "") => {
+    const projectId = extract(predicate, "projectId");
+    const id = extract(predicate, "id");
+    return rows.filter(
+      (row) => (!projectId || row.projectId === projectId) && (!id || row.id === id),
+    );
+  };
+  const makeBuilder = () => {
+    let predicate = "";
+    let max = Number.POSITIVE_INFINITY;
+    const builder = {
+      where(value: string) {
+        queryOrder.push("where");
+        predicate = value;
+        return builder;
+      },
+      limit(value: number) {
+        queryOrder.push("limit");
+        max = value;
+        return builder;
+      },
+      async toArray() {
+        return filtered(predicate)
+          .slice(0, max)
+          .map((row) => ({ ...row, _distance: 0 }));
+      },
+    };
+    return builder;
+  };
+  const table = {
+    schema: vi.fn(async () => ({
+      fields: (params.schemaFields ?? ["agentId", "projectId"]).map((name) => ({ name })),
+    })),
+    vectorSearch: vi.fn(() => makeBuilder()),
+    query: vi.fn(() => makeBuilder()),
+    add: vi.fn(async (entries: ScopedHarnessRow[]) => {
+      rows.push(...entries);
+    }),
+    delete: vi.fn(async (predicate: string) => {
+      const doomed = new Set(filtered(predicate).map((row) => row.id));
+      for (let index = rows.length - 1; index >= 0; index--) {
+        if (doomed.has(rows[index].id)) {
+          rows.splice(index, 1);
+        }
+      }
+    }),
+    countRows: vi.fn(async () => rows.length),
+  };
+  const embeddingsCreate = vi.fn(async () => ({ data: [{ embedding: [0.1, 0.2, 0.3] }] }));
+  vi.resetModules();
+  vi.doMock("openclaw/plugin-sdk/runtime-env", () => ({
+    ensureGlobalUndiciEnvProxyDispatcher: vi.fn(),
+  }));
+  vi.doMock("openai", () => ({
+    default: class MockOpenAI {
+      embeddings = { create: embeddingsCreate };
+    },
+  }));
+  vi.doMock("./lancedb-runtime.js", () => ({
+    loadLanceDbModule: vi.fn(async () => ({
+      connect: vi.fn(async () => ({
+        tableNames: vi.fn(async () => ["memories"]),
+        openTable: vi.fn(async () => table),
+      })),
+    })),
+  }));
+
+  const tools = new Map<string, (ctx: { agentId?: string; sessionKey?: string }) => unknown>();
+  const hooks = new Map<string, Array<(event: unknown, ctx?: unknown) => Promise<unknown>>>();
+  const { default: memoryPlugin } = await import("./index.js");
+  memoryPlugin.register({
+    id: "memory-lancedb",
+    name: "Memory (LanceDB)",
+    source: "test",
+    config: {},
+    pluginConfig: {
+      embedding: { apiKey: OPENAI_API_KEY, dimensions: 3 },
+      dbPath: path.join(params.tmpDir, "lance"),
+      projectDbPath,
+      autoRecall: params.autoRecall ?? false,
+      autoCapture: params.autoCapture ?? false,
+    },
+    runtime: {},
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    registerTool: (factory: unknown, options?: { name?: string }) => {
+      if (options?.name) {
+        tools.set(
+          options.name,
+          factory as (ctx: { agentId?: string; sessionKey?: string }) => unknown,
+        );
+      }
+    },
+    registerCli: vi.fn(),
+    registerService: vi.fn(),
+    on: (name: string, handler: (event: unknown, ctx?: unknown) => Promise<unknown>) => {
+      hooks.set(name, [...(hooks.get(name) ?? []), handler]);
+    },
+    resolvePath: (value: string) => value,
+  } as never);
+
+  const context = (agentId: string, sessionKey: string) => ({
+    agentId,
+    sessionKey: `agent:${agentId}:${sessionKey}`,
+  });
+  const tool = (name: string, ctx: { agentId?: string; sessionKey?: string }) =>
+    tools.get(name)?.(ctx) as
+      | {
+          execute: (
+            callId: string,
+            args: Record<string, unknown>,
+          ) => Promise<Record<string, unknown>>;
+        }
+      | null
+      | undefined;
+  return { rows, queryOrder, tools, hooks, context, tool, projectDbPath };
+}
+
+describe("project-scoped memory firewall", () => {
+  const { getTmpDir } = installTmpDirHarness({ prefix: "openclaw-memory-scope-test-" });
+
+  test("fails closed for missing, unknown, blank, and unavailable project mappings", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [["blank", "   "]],
+    });
+    expect(harness.tool("memory_recall", { agentId: "a" })).toBeNull();
+    expect(harness.tool("memory_recall", harness.context("a", "unknown"))).toBeNull();
+    expect(harness.tool("memory_recall", harness.context("a", "blank"))).toBeNull();
+    const { resolveProjectId } = await import("./index.js");
+    expect(
+      resolveProjectId(path.join(getTmpDir(), "missing.db"), harness.context("a", "x")),
+    ).toBeNull();
+  });
+
+  test("isolates projects, permits same text independently, and does not give main a bypass", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [
+        ["a", "project-a"],
+        ["b", "project-b"],
+        ["main", "main"],
+      ],
+    });
+    const storeA = harness.tool("memory_store", harness.context("agent-a", "a"))!;
+    const storeB = harness.tool("memory_store", harness.context("agent-b", "b"))!;
+    expect((await storeA.execute("1", { text: "same text" })).details).toMatchObject({
+      action: "created",
+    });
+    expect((await storeB.execute("2", { text: "same text" })).details).toMatchObject({
+      action: "created",
+    });
+    expect(harness.rows.map((row) => row.projectId).toSorted()).toEqual(["project-a", "project-b"]);
+
+    const recallA = harness.tool("memory_recall", harness.context("agent-a", "a"))!;
+    const recallMain = harness.tool("memory_recall", harness.context("main", "main"))!;
+    expect((await recallA.execute("3", { query: "same" })).details).toMatchObject({ count: 1 });
+    expect((await recallMain.execute("4", { query: "same" })).details).toMatchObject({ count: 0 });
+  });
+
+  test("shares within one project across agents and isolates one agent across projects", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [
+        ["one", "shared"],
+        ["two", "shared"],
+        ["other", "other"],
+      ],
+    });
+    const one = harness.tool("memory_store", harness.context("agent-one", "one"))!;
+    await one.execute("1", { text: "shared knowledge" });
+    const twoRecall = harness.tool("memory_recall", harness.context("agent-two", "two"))!;
+    expect((await twoRecall.execute("2", { query: "knowledge" })).details).toMatchObject({
+      count: 1,
+    });
+    const otherRecall = harness.tool("memory_recall", harness.context("agent-one", "other"))!;
+    expect((await otherRecall.execute("3", { query: "knowledge" })).details).toMatchObject({
+      count: 0,
+    });
+  });
+
+  test("interleaved tool factories retain immutable scope and filter before limit", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [
+        ["a", "project-a"],
+        ["b", "project-b"],
+      ],
+    });
+    const storeA = harness.tool("memory_store", harness.context("agent-a", "a"))!;
+    const storeB = harness.tool("memory_store", harness.context("agent-b", "b"))!;
+    await storeB.execute("b", { text: "B only" });
+    await storeA.execute("a", { text: "A only" });
+    expect(harness.rows.map((row) => `${row.projectId}:${row.text}`).toSorted()).toEqual([
+      "project-a:A only",
+      "project-b:B only",
+    ]);
+    for (let index = 0; index < harness.queryOrder.length; index += 2) {
+      expect(harness.queryOrder.slice(index, index + 2)).toEqual(["where", "limit"]);
+    }
+  });
+
+  test("denies foreign direct ID deletion and leaves the row intact", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [
+        ["a", "project-a"],
+        ["b", "project-b"],
+      ],
+    });
+    const storeA = harness.tool("memory_store", harness.context("agent-a", "a"))!;
+    const created = await storeA.execute("1", { text: "A secret" });
+    const id = (created.details as { id: string }).id;
+    const forgetB = harness.tool("memory_forget", harness.context("agent-b", "b"))!;
+    expect((await forgetB.execute("2", { memoryId: id })).details).toMatchObject({
+      action: "not_found",
+    });
+    expect(harness.rows).toHaveLength(1);
+    expect(harness.rows[0].id).toBe(id);
+  });
+
+  test("hooks use their own immutable contexts for recall and capture", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [
+        ["a", "project-a"],
+        ["b", "project-b"],
+      ],
+      autoRecall: true,
+      autoCapture: true,
+    });
+    const storeA = harness.tool("memory_store", harness.context("agent-a", "a"))!;
+    await storeA.execute("1", { text: "project A seed" });
+    const recallHook = harness.hooks.get("before_agent_start")![0];
+    expect(
+      await recallHook({ prompt: "find seed" }, harness.context("agent-b", "b")),
+    ).toBeUndefined();
+    expect(
+      await recallHook({ prompt: "find seed" }, harness.context("agent-a", "a")),
+    ).toMatchObject({
+      prependContext: expect.stringContaining("project A seed"),
+    });
+    const captureHook = harness.hooks.get("agent_end")![0];
+    await captureHook(
+      { success: true, messages: [{ role: "user", content: "I always prefer project B" }] },
+      harness.context("agent-b", "b"),
+    );
+    expect(harness.rows.find((row) => row.text.includes("project B"))?.projectId).toBe("project-b");
+  });
+
+  test("rejects an existing LanceDB schema missing projectId", async () => {
+    const harness = await createScopedHarness({
+      tmpDir: getTmpDir(),
+      mappings: [["a", "project-a"]],
+      schemaFields: ["agentId"],
+    });
+    const recall = harness.tool("memory_recall", harness.context("agent-a", "a"))!;
+    await expect(recall.execute("1", { query: "anything" })).rejects.toThrow("migration required");
   });
 });
 
