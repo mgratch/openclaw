@@ -1204,7 +1204,11 @@
     "tui:dev": "OPENCLAW_PROFILE=dev node scripts/run-node.mjs --dev tui",
     "ui:build": "node scripts/ui.js build",
     "ui:dev": "node scripts/ui.js dev",
-    "ui:install": "node scripts/ui.js install"
+    "ui:install": "node scripts/ui.js install",
+    "upgrade-contracts:baseline": "node scripts/upgrade-contracts/run.mjs --report-only --durable-json audits/UPGRADE_CONTRACTS_BASELINE-2026-07-27.json --durable-md audits/UPGRADE_CONTRACTS_BASELINE-2026-07-27.md",
+    "upgrade-contracts:gate": "node scripts/upgrade-contracts/run.mjs",
+    "upgrade-contracts:report": "node scripts/upgrade-contracts/run.mjs --report-only",
+    "upgrade-contracts:test": "node --test 'scripts/upgrade-contracts/__tests__/*.test.mjs'"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "0.17.1",

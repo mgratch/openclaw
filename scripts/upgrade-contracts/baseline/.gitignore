@@ -1,0 +1,5 @@
+# Baseline reports are generated artifacts. Track only the README that
+# describes what to do with them; runs are transient.
+*
+!.gitignore
+!README.md
