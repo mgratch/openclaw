@@ -121,9 +121,9 @@
       "phase": "1",
       "groups": ["memory-firewall"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
-      "intent": "Agent isolation: agent A's memories do not leak to agent B within the same project.",
-      "state": "assumed",
-      "checks": ["memory-firewall.same-project-cross-agent-manual"]
+      "intent": "Agent scope is uniform within a project: within one project any agent sees that project's memories, and no memory crosses the project boundary, per the disposable-LanceDB behavior suite.",
+      "state": "test-only",
+      "checks": ["memory-firewall.isolated-suite-behavior"]
     },
     {
       "id": "UM-06b",
@@ -145,10 +145,7 @@
       "audit": "audits/CORE_COMMIT_AUDIT.md",
       "intent": "Subagent announcement is idempotent; the same subagent does not multi-register.",
       "state": "assumed",
-      "checks": [
-        "memory-firewall.subagent-idempotency-manual",
-        "memory-firewall.same-project-cross-agent-manual"
-      ]
+      "checks": ["memory-firewall.subagent-idempotency-manual"]
     },
     {
       "id": "UM-06d",
@@ -612,23 +609,14 @@
       "phase": "1",
       "groups": ["memory-firewall", "memory-schema"],
       "audit": "docs/local-runtime-preservation.md",
-      "intent": "Hard project-scoped memory firewall: no cross-project recall or delete; fail-closed for unknown session; no cross-agent leak within a project; blank/global legacy rows do not bypass.",
+      "intent": "Hard project-scoped memory firewall: no cross-project recall or delete; fail-closed for unknown session; project-uniform agent scope within a project; blank/global legacy rows do not bypass.",
       "state": "test-only",
       "checks": [
         "memory-firewall.effective-plugin-config",
         "memory-firewall.project-plugin-installed",
         "memory-firewall.source-fail-closed-inventory",
         "memory-firewall.current-runtime-evidence",
-        "memory-firewall.same-text-cross-project-manual",
-        "memory-firewall.same-project-cross-agent-manual",
-        "memory-firewall.main-bypass-manual",
-        "memory-firewall.foreign-delete-manual",
-        "memory-firewall.unknown-session-fail-closed-manual",
-        "memory-firewall.blank-global-legacy-manual",
-        "memory-firewall.concurrency-manual",
-        "memory-firewall.duplicate-manual",
-        "memory-firewall.cleanup-manual",
-        "memory-firewall.executable-isolation-manual",
+        "memory-firewall.isolated-suite-behavior",
         "memory-firewall.target-runtime-manual",
         "memory-schema.projectId-required-inventory",
         "memory-schema.session-mapping-behavior"

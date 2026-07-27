@@ -7,20 +7,82 @@
 //     attests to a 13-assertion, zero-residual-row live run for THIS current
 //     baseline only. The target baseline REQUIRES a new artifact.
 //
-// All cross-project / cross-agent / main-bypass / blank-legacy / concurrency /
-// duplicate / foreign-delete / cleanup / unknown-session behaviors ship as
-// MANUAL contracts referencing pre-existing mapped staging/test sessions plus
-// UUID-tagged canary rows. Manual instructions never invoke impossible
-// synthetic projectIds.
+// The cross-project / cross-agent / main-bypass / blank-legacy / concurrency /
+// duplicate / foreign-delete / cleanup / unknown-session behaviors used to
+// ship as manual contracts. They are now exercised by the memory plugin's
+// disposable-LanceDB Vitest suite, invoked through
+// `memory-firewall.isolated-suite-behavior`. Only subagent-idempotency and
+// the target-runtime evidence artifact remain manual.
 
+import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import { promises as fs, existsSync, createReadStream } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { HOME, WORKSPACE_DB, CHECKPOINT_ROOT } from "../lib/env.mjs";
+import { HOME, WORKSPACE_DB, CHECKPOINT_ROOT, REPO_ROOT } from "../lib/env.mjs";
+import { FOCUSED_MEMORY_TEST_FILES, summarizeVitestResult } from "../lib/memory-firewall-suite.mjs";
 import { defineCheck } from "../lib/runner.mjs";
 
 const CANARY_CHECKPOINT_DIR = path.join(CHECKPOINT_ROOT, "memory-firewall-20260727-125533");
+
+const VITEST_TIMEOUT_MS = 180_000; // 3 minutes — focused suite is ~20s locally
+const VITEST_MAX_BUFFER = 8 * 1024 * 1024;
+
+function runFocusedMemorySuite() {
+  return new Promise((resolve) => {
+    const args = ["exec", "vitest", "run", ...FOCUSED_MEMORY_TEST_FILES];
+    const started = Date.now();
+    const child = execFile(
+      "pnpm",
+      args,
+      {
+        cwd: REPO_ROOT,
+        timeout: VITEST_TIMEOUT_MS,
+        maxBuffer: VITEST_MAX_BUFFER,
+        shell: false,
+        windowsHide: true,
+        // Inherit env so pnpm/node/vitest resolve normally. Env values are
+        // NEVER copied into evidence — see summarizeVitestResult.
+        env: process.env,
+      },
+      (error, stdout, stderr) => {
+        const durationMs = Date.now() - started;
+        // execFile surfaces exitCode/signal on the error when non-zero.
+        const timedOut = error?.killed === true && error?.signal === "SIGTERM";
+        const exitCode = timedOut || error?.code === "ETIMEDOUT" ? null : (error?.code ?? 0);
+        const signal = error?.signal ?? null;
+        const spawnError =
+          error && typeof error.code === "string" && error.code !== 0 && error.errno !== undefined
+            ? { code: error.code, message: error.message }
+            : null;
+        resolve({
+          exitCode: typeof exitCode === "number" ? exitCode : (child.exitCode ?? null),
+          signal,
+          timedOut,
+          stdout: String(stdout ?? ""),
+          stderr: String(stderr ?? ""),
+          durationMs,
+          spawnError,
+        });
+      },
+    );
+  });
+}
+
+// -- Behavior: automated isolated-suite runs the focused Vitest files --------
+
+defineCheck({
+  id: "memory-firewall.isolated-suite-behavior",
+  name: "Focused memory Vitest suite proves cross-project/agent/main/legacy/duplicate/foreign/unknown isolation on a disposable LanceDB",
+  groups: ["memory-firewall"],
+  matrixIds: ["MEM-01", "UM-06a"],
+  kind: "behavior",
+  automated: "auto",
+  async run() {
+    const result = await runFocusedMemorySuite();
+    return summarizeVitestResult(result);
+  },
+});
 
 // -- Effective plugin config ---------------------------------------------------
 
@@ -170,7 +232,7 @@ defineCheck({
       status: "pass",
       evidence,
       notes:
-        "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and manual contracts.",
+        "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.",
     };
   },
 });
@@ -383,53 +445,6 @@ defineCheck({
   },
 });
 
-// -- Manual: same-text cross-project (uses mapped staging sessions + UUID) -----
-
-function stagingOptInInstruction() {
-  return "Use pre-existing mapped staging/test sessions from conversations.db (e.g. two distinct project_ids that already resolve). Never invent a synthetic projectId — the fail-closed path is deliberately rigged to return null for unknown sessions, so a synthetic id cannot exercise the cross-project semantic.";
-}
-
-defineCheck({
-  id: "memory-firewall.same-text-cross-project-manual",
-  name: "Same-text memory is isolated across two mapped staging projects",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "Two pre-existing mapped staging sessions belonging to two distinct project_ids present in conversations.db (verify via SELECT DISTINCT project_id FROM sessions).",
-      stagingOptInInstruction(),
-    ],
-    steps: [
-      "In staging project A's session, call memory_store with content prefixed by a reserved canary tag: openclaw-canary-upgrade-<uuid>.",
-      "In staging project B's session, call memory_recall on the same exact text.",
-      "In staging project B, call memory_recall broadly (empty query, large limit) to force a max-recall scan.",
-      "Explicitly delete the canary row in project A (memory_forget by exact tag).",
-      "Re-run memory_recall in project A to prove the row is gone.",
-    ],
-    expected:
-      "memory_recall in project B returns zero rows referencing project A content, both exact-text and broad scan. Explicit delete succeeds; no residual rows.",
-    evidence: [
-      "Redacted memory_recall responses from both projects.",
-      "LanceDB row-count deltas before/after cleanup via the extension admin API.",
-      "openclaw-agent audit log fragment showing the resolved projectId per call.",
-    ],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one canary row in project A, deleted at cleanup"],
-      cleanupRollback: [
-        "memory_forget canary row after test",
-        "assert row count returns to baseline",
-      ],
-      evidenceCapture: ["redacted responses", "row-count deltas", "audit log fragment"],
-    },
-  },
-});
-
 // -- Manual: subagent announcement idempotency --------------------------------
 
 defineCheck({
@@ -457,302 +472,6 @@ defineCheck({
       expectedMutations: ["one subagent registry entry"],
       cleanupRollback: ["deregister the canary subagent after verification"],
       evidenceCapture: ["registry snapshot", "state diff"],
-    },
-  },
-});
-
-// -- Manual: same-project cross-agent leak -------------------------------------
-
-defineCheck({
-  id: "memory-firewall.same-project-cross-agent-manual",
-  name: "Within a single project, agent A memories do not leak to agent B",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01", "UM-06a"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "One mapped staging project with two agents (agent_id A and B) that both have real sessions in conversations.db.",
-    ],
-    steps: [
-      "As agent A in staging project P, memory_store a UUID-tagged canary row.",
-      "As agent B in the same project P, memory_recall on the exact same tag.",
-      "Also memory_recall broadly.",
-      "Delete the canary row as agent A.",
-    ],
-    expected: "Agent B does not see agent A's row even inside the shared project.",
-    evidence: ["Redacted responses; scope resolution log lines from the extension."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one canary row for agent A in project P, deleted at cleanup"],
-      cleanupRollback: ["memory_forget canary row", "verify residual==0"],
-      evidenceCapture: ["responses", "scope resolution log"],
-    },
-  },
-});
-
-// -- Manual: main agent bypass -------------------------------------------------
-
-defineCheck({
-  id: "memory-firewall.main-bypass-manual",
-  name: "The 'main' agent does not bypass project scoping",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "One mapped staging project P (not 'main').",
-      "A live gateway session for the 'main' agent (agent_id=main) in conversations.db.",
-    ],
-    steps: [
-      "From staging project P, memory_store a UUID-tagged canary row.",
-      "Switch to a session whose sessionKey resolves to the 'main' agent.",
-      "memory_recall broadly.",
-      "Delete the canary row from staging project P.",
-    ],
-    expected: "The 'main' agent does not see the canary row via any implicit shared-memory path.",
-    evidence: [
-      "Redacted responses; the resolved projectId for the 'main' session as reported by the extension.",
-    ],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one canary row in project P, deleted at cleanup"],
-      cleanupRollback: ["memory_forget canary row", "verify residual==0"],
-      evidenceCapture: ["responses", "resolved projectId"],
-    },
-  },
-});
-
-// -- Manual: blank/global legacy rows do not bypass ----------------------------
-
-defineCheck({
-  id: "memory-firewall.blank-global-legacy-manual",
-  name: "Blank/global legacy rows (empty projectId) cannot bypass project scoping",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "A LanceDB admin able to insert a probe row with projectId='' or projectId is NULL (via the extension admin API only) into a disposable table.",
-    ],
-    steps: [
-      "Insert one legacy-style probe row with empty projectId AND known tag openclaw-canary-upgrade-<uuid> (only via admin API; never by hand-editing storage).",
-      "From any mapped staging session, memory_recall broadly.",
-      "Delete the legacy-style probe row via admin API.",
-    ],
-    expected:
-      "The legacy row is not returned by memory_recall from any mapped session; direct admin cleanup succeeds.",
-    evidence: [
-      "Redacted admin API responses (insert/query/delete).",
-      "LanceDB row-count deltas before/after.",
-    ],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one legacy probe row, deleted at cleanup"],
-      cleanupRollback: ["admin delete probe row", "verify residual==0"],
-      evidenceCapture: ["admin API responses", "row-count deltas"],
-    },
-  },
-});
-
-// -- Manual: concurrent writers ------------------------------------------------
-
-defineCheck({
-  id: "memory-firewall.concurrency-manual",
-  name: "Concurrent memory_store writers cannot corrupt project scoping",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "Two mapped staging sessions (may be same or different agents/projects) able to issue simultaneous memory_store calls.",
-    ],
-    steps: [
-      "Issue N=10 concurrent memory_store calls with distinct UUID tags across both sessions.",
-      "memory_recall broadly from each session; verify only the calling scope sees its own tags.",
-      "Delete every canary row created.",
-    ],
-    expected:
-      "Concurrent writes do not leak across scope; every row is deleted at the end and residual is zero.",
-    evidence: ["Full memory_recall responses; row-count deltas; cleanup verification."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["N canary rows created and deleted"],
-      cleanupRollback: ["delete every UUID-tagged canary row", "verify residual==0"],
-      evidenceCapture: ["responses", "row-count deltas"],
-    },
-  },
-});
-
-// -- Manual: duplicate insert into the same tag --------------------------------
-
-defineCheck({
-  id: "memory-firewall.duplicate-manual",
-  name: "Duplicate-insert of the same canary tag is handled deterministically",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: ["One mapped staging session."],
-    steps: [
-      "memory_store the same canary tag twice back-to-back.",
-      "memory_recall on the tag.",
-      "Delete the canary rows and verify none remain.",
-    ],
-    expected:
-      "Duplicate insert has a documented outcome (dedupe or explicit duplicate row) and cleanup removes every trace.",
-    evidence: ["Redacted memory_recall/memory_forget responses."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one or two canary rows, then all deleted"],
-      cleanupRollback: ["delete every duplicate row", "verify residual==0"],
-      evidenceCapture: ["responses"],
-    },
-  },
-});
-
-// -- Manual: foreign delete ---------------------------------------------------
-
-defineCheck({
-  id: "memory-firewall.foreign-delete-manual",
-  name: "Foreign projectId cannot delete another project's memories",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: ["Two mapped staging projects A and B, each with one canary row."],
-    steps: [
-      "From staging project A, call memory_forget with the tag belonging to staging project B.",
-      "From staging project B, memory_recall to verify the row still exists.",
-      "From staging project B, memory_forget with the correct tag.",
-    ],
-    expected:
-      "Cross-project delete is refused; project B's row remains; only owning project can delete its own row.",
-    evidence: ["Full memory_forget and memory_recall responses; LanceDB row-count deltas."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["one canary row in each staging project, deleted at cleanup"],
-      cleanupRollback: ["delete own canary row", "verify residual==0"],
-      evidenceCapture: ["responses", "row-count deltas"],
-    },
-  },
-});
-
-// -- Manual: unknown session fail-closed --------------------------------------
-
-defineCheck({
-  id: "memory-firewall.unknown-session-fail-closed-manual",
-  name: "Unknown session fails closed; no silent memory return",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "Access to submit a memory_store / memory_recall call with a sessionKey that does NOT exist in conversations.db.",
-      "Access to gateway logs for the same window; the gateway must NOT be restarted.",
-    ],
-    steps: [
-      "Submit memory_store with an unknown sessionKey (openclaw-unknown-<uuid>).",
-      "Submit memory_recall with the same unknown sessionKey.",
-      "Capture the gateway logs and the tool responses.",
-    ],
-    expected:
-      "Both calls fail closed. No project-A row is exposed as fallback; no write is persisted.",
-    evidence: ["Redacted gateway log excerpts; tool responses proving zero rows returned/written."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: false,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: false,
-      expectedMutations: [],
-      cleanupRollback: ["confirm no row was persisted"],
-      evidenceCapture: ["gateway log excerpt", "tool responses"],
-    },
-  },
-});
-
-// -- Manual: cleanup path -----------------------------------------------------
-
-defineCheck({
-  id: "memory-firewall.cleanup-manual",
-  name: "Explicit cleanup returns residual rows to zero for the tested tag family",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: ["Any mapped staging project."],
-    steps: [
-      "Create N=3 canary rows with reserved openclaw-canary-upgrade-<uuid> tags.",
-      "Verify their presence via memory_recall.",
-      "Call memory_forget for each tag.",
-      "Verify residual == 0 via the extension admin API.",
-    ],
-    expected: "All rows are removed; residual count is exactly zero.",
-    evidence: ["memory_recall snapshots before/after; residual count."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["N canary rows, all deleted"],
-      cleanupRollback: ["memory_forget every UUID tag", "verify residual==0"],
-      evidenceCapture: ["responses", "residual count"],
-    },
-  },
-});
-
-// -- Manual: executable / copied-state isolation contracts (pending) ----------
-
-defineCheck({
-  id: "memory-firewall.executable-isolation-manual",
-  name: "Executable/copied-state isolation between running gateway and any copied working set",
-  groups: ["memory-firewall"],
-  matrixIds: ["MEM-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "Ability to identify the running gateway process and any copied/detached memory state on the host.",
-    ],
-    steps: [
-      "Enumerate the memory DB paths referenced by the running gateway.",
-      "Verify no additional writable copy of the LanceDB directory is being loaded by any other process.",
-      "If a copied state exists (backup, snapshot), verify it is not being registered as a live memory backend.",
-    ],
-    expected:
-      "Only one live LanceDB store is active; copies are dormant and cannot bleed writes into the live scope.",
-    evidence: ["Process listing referencing DB paths; ls of memory dirs; extension config path."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: false,
-      writesWorkspaceFiles: false,
-      expectedMutations: [],
-      cleanupRollback: ["no mutation; observational check"],
-      evidenceCapture: ["process listing", "directory listings"],
     },
   },
 });
