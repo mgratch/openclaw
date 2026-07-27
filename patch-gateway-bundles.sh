@@ -68,8 +68,15 @@ for pattern in 'gateway-cli-*.js' 'input-files-*.js' 'auth-profiles-*.js'; do
     case "$old" in
       *.bak|*.unpatched) continue ;;
     esac
-    echo "    rm $old"
-    rm -f "$old"
+    # Docker Desktop creates a directory at a missing bind-mount source path.
+    # Remove those stale mount stubs without changing the normal file cleanup.
+    if [ -d "$old" ] && [ ! -L "$old" ]; then
+      echo "    rmdir $old (stale Docker mount directory)"
+      rmdir "$old"
+    else
+      echo "    rm $old"
+      rm -f "$old"
+    fi
   done
 done
 shopt -u nullglob
