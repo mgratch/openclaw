@@ -256,7 +256,11 @@ export function renderMarkdownReport(report) {
           lines.push("");
           lines.push("_Safety declaration:_");
           for (const [k, v] of Object.entries(r.manual.safety)) {
-            const shown = Array.isArray(v) ? v.map((x) => `\`${x}\``).join(", ") : String(v);
+            const shown = Array.isArray(v)
+              ? v.length > 0
+                ? v.map((x) => `\`${x}\``).join(", ")
+                : "none"
+              : String(v);
             lines.push(`  - ${k}: ${shown}`);
           }
         }

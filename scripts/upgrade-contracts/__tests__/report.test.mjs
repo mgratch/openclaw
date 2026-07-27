@@ -99,6 +99,37 @@ test("renderMarkdownReport separates evidence classes", () => {
   assert.match(md, /Gate decision/);
 });
 
+test("renderMarkdownReport keeps empty safety arrays diff-clean", () => {
+  const report = sampleReport({
+    results: [
+      {
+        id: "manual",
+        name: "Manual",
+        groups: ["g"],
+        matrixIds: ["M1"],
+        kind: "behavior",
+        status: "manual",
+        durationMs: 0,
+        manual: {
+          prerequisites: ["staging"],
+          steps: ["inspect"],
+          expected: "works",
+          evidence: ["capture"],
+          safety: {
+            stagingOnly: true,
+            expectedMutations: [],
+            cleanupRollback: ["none required"],
+            evidenceCapture: ["capture"],
+          },
+        },
+      },
+    ],
+  });
+  const md = renderMarkdownReport(report);
+  assert.match(md, /expectedMutations: none/);
+  assert.doesNotMatch(md, / +$/m);
+});
+
 test("writeAtomic writes with 0600 mode", async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "uc-report-"));
   try {
