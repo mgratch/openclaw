@@ -115,11 +115,18 @@ test("restore mounts canonicals before aliases and skips disabled rows", () =>
     const mountCommand = path.join(bin, "openclaw-mount");
     fs.writeFileSync(
       mountCommand,
-      `#!/bin/sh\nmkdir -p "${mountBase}/$3"\nprintf '{"ok":true,"mount_point":"%s"}\\n' "${mountBase}/$3"\n`,
+      `#!/bin/sh\nmkdir -p "${mountBase}/$3/.git"\nprintf '{"ok":true,"mount_point":"%s"}\\n' "${mountBase}/$3"\n`,
       { mode: 0o755 },
     );
     const mountpointCommand = path.join(bin, "mountpoint");
     fs.writeFileSync(mountpointCommand, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    const gitSafeMarker = path.join(dir, "git-safe.txt");
+    const gitCommand = path.join(bin, "git");
+    fs.writeFileSync(
+      gitCommand,
+      `#!/bin/sh\nif [ "$3" = "--add" ]; then printf '%s\\n' "$5" >> "${gitSafeMarker}"; fi\nexit 0\n`,
+      { mode: 0o755 },
+    );
     const result = spawnSync("python3", [path.resolve("scripts/openclaw-mount-restore")], {
       cwd: path.resolve("."),
       encoding: "utf8",
@@ -134,7 +141,12 @@ test("restore mounts canonicals before aliases and skips disabled rows", () =>
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /ALIAS project-b--shared/);
     assert.match(result.stdout, /DISABLED project-c--offline/);
+    assert.match(result.stdout, /GIT SAFE/);
     assert.equal(fs.lstatSync(path.join(mountBase, "project-b--shared")).isSymbolicLink(), true);
+    assert.equal(
+      fs.readFileSync(gitSafeMarker, "utf8").trim(),
+      path.join(mountBase, "project-a--shared"),
+    );
   }));
 
 test("restore fails preflight before mounting duplicate enabled sources", () =>

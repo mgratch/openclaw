@@ -94,6 +94,49 @@ def restore_mount(name: str, info: dict[str, object]) -> tuple[bool, str]:
     return False, str(payload.get("error") or stdout or f"exit {result.returncode}")
 
 
+def register_git_safe_directories(
+    registry: dict[str, dict[str, object]],
+) -> tuple[int, list[str]]:
+    try:
+        result = subprocess.run(
+            ["git", "config", "--global", "--get-all", "safe.directory"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        existing = set(result.stdout.splitlines())
+    except Exception as exc:  # noqa: BLE001 - retain startup diagnostics
+        return 0, [f"could not read Git safe directories: {exc}"]
+
+    added = 0
+    errors: list[str] = []
+    for name in sorted(registry):
+        info = registry[name]
+        if (
+            not isinstance(info, dict)
+            or not is_enabled(info)
+            or mount_kind(info) != "mount"
+        ):
+            continue
+        mount_point = MOUNT_BASE / name
+        if not (mount_point / ".git").exists() or str(mount_point) in existing:
+            continue
+        result = subprocess.run(
+            ["git", "config", "--global", "--add", "safe.directory", str(mount_point)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            existing.add(str(mount_point))
+            added += 1
+            print(f"[mount-restore] GIT SAFE {mount_point}")
+        else:
+            detail = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
+            errors.append(f"{mount_point}: {detail}")
+    return added, errors
+
+
 def restore_alias(name: str, info: dict[str, object]) -> tuple[bool, str]:
     canonical_name = str(info.get("canonicalMount") or "")
     canonical_point = MOUNT_BASE / canonical_name
@@ -180,10 +223,15 @@ def main() -> int:
             print(f"[mount-restore] FAIL {name}: {detail}")
             failed += 1
 
+    git_safe, git_errors = register_git_safe_directories(registry)
+    for error in git_errors:
+        print(f"[mount-restore] FAIL Git safe.directory: {error}")
+        failed += 1
+
     print(
         "[mount-restore] Done: "
         f"{mounted} mounted, {already} already, {aliases} aliases, "
-        f"{disabled} disabled, {failed} failed"
+        f"{disabled} disabled, {git_safe} Git-safe roots added, {failed} failed"
     )
     return 1 if failed else 0
 
