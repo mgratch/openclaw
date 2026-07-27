@@ -56,10 +56,14 @@ test("redact scrubs URL query secrets while preserving surrounding url", () => {
   assert.match(out, /keep=1/);
 });
 
-test("redact scrubs high-entropy blobs but preserves commit SHAs", () => {
+test("redact scrubs high-entropy blobs but preserves evidence hashes", () => {
   const sha = "1f5e68cda9e8d63fa80f983b19e3a88f4e65ae17";
+  const digitHeavySha = "e731944841006fbe81f45456a270e6d87f80bc71";
+  const checksum = "a".repeat(64);
   const blob = "aGVsbG9CYXNlNjRibG9iVGhhdElzTG9uZ0Vub3VnaFRvVHJpZ2dlckVudHJvcHlSZWRhY3Rpb24=";
   assert.equal(redact(sha), sha);
+  assert.equal(redact(digitHeavySha), digitHeavySha);
+  assert.equal(redact(checksum), checksum);
   assert.match(redact(blob), /<redacted:entropy>/);
 });
 

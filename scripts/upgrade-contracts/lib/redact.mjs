@@ -70,8 +70,10 @@ const SENSITIVE_VALUE_PATTERNS = [
 // look like an English sentence. Kept separate so we can whitelist matrix ids
 // and commit SHAs, which are short-ish uppercase-friendly tokens.
 const HIGH_ENTROPY_TOKEN = /(?<![A-Za-z0-9])[A-Za-z0-9+/_-]{40,}={0,3}(?![A-Za-z0-9])/g;
-// SHA-256 / 40-hex commit SHAs are legitimate evidence — leave them alone.
-const COMMITTED_HEX = /^[0-9a-f]{7,64}$/;
+// Full Git commit SHAs and SHA-256 checksums are legitimate evidence. Match
+// only the exact 40/64-hex forms; shorter IDs are safe in prose, while other
+// arbitrary hex lengths should not receive a blanket exemption.
+const EVIDENCE_HEX = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 // URL query parameter secrets — token=..., access_token=..., password=..., etc.
 const URL_SECRET =
@@ -136,7 +138,7 @@ function scrubStrings(str) {
   }
   // High-entropy blobs that are NOT commit SHAs.
   out = out.replace(HIGH_ENTROPY_TOKEN, (m) =>
-    COMMITTED_HEX.test(m) ? m : `<${SENSITIVE_CLASSIFIER}:entropy>`,
+    EVIDENCE_HEX.test(m) ? m : `<${SENSITIVE_CLASSIFIER}:entropy>`,
   );
   return out;
 }
@@ -146,6 +148,11 @@ function redactString(value) {
     return value;
   }
   if (value.length === 0) {
+    return value;
+  }
+  // Preserve exact evidence hashes before the phone scrubber sees long
+  // digit-only runs inside an otherwise valid hexadecimal digest.
+  if (EVIDENCE_HEX.test(value)) {
     return value;
   }
   return scrubStrings(value);
