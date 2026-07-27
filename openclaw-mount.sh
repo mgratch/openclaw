@@ -19,7 +19,8 @@ SSH_HOST="host.docker.internal"
 SSH_PORT="${OPENCLAW_HOST_SSH_PORT:-22}"
 
 # Common sshfs options
-SSHFS_OPTS="StrictHostKeyChecking=no,UserKnownHostsFile=/dev/null,IdentityFile=${SSH_KEY},port=${SSH_PORT},reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,allow_other"
+SSH_COMMAND="ssh -4"
+SSHFS_OPTS="ssh_command=${SSH_COMMAND},StrictHostKeyChecking=no,UserKnownHostsFile=/dev/null,IdentityFile=${SSH_KEY},port=${SSH_PORT},reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,allow_other"
 
 cmd_mount() {
     host_path="$1"
