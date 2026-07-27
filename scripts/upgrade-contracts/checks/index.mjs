@@ -13,6 +13,7 @@ import "./mcp-bridge.mjs";
 import "./attachments.mjs";
 import "./model-provenance.mjs";
 import "./fallback-persistence.mjs";
+import "./ui-checkpoint.mjs";
 import "./project-files.mjs";
 import "./browser-isolation.mjs";
 import "./auth.mjs";

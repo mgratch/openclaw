@@ -40,36 +40,6 @@ defineCheck({
 });
 
 defineCheck({
-  id: "fallback-persistence.ui-source-manual",
-  name: "Fallback order persists and drag reorder works",
-  groups: ["fallback-persistence"],
-  matrixIds: ["UI-01"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: ["Staging UI checkpoint build with the fallback multi-select."],
-    steps: [
-      "Add three fallback models via the UI.",
-      "Drag the third above the first; verify the new order.",
-      "Reload the page and confirm the order persists via projectApi.",
-      "Use the keyboard arrow buttons to move a model up; verify persistence again.",
-      "Drop a chip on empty space; confirm it moves to the end.",
-    ],
-    expected:
-      "Both drag and keyboard reordering persist across reloads; drops on empty space append to the end.",
-    evidence: ["Screenshots or DOM captures pre- and post-reload."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      writesWorkspaceFiles: true,
-      expectedMutations: ["fallback model ordering persisted per project"],
-      cleanupRollback: ["restore prior fallback ordering after test"],
-      evidenceCapture: ["screenshots", "DOM captures"],
-    },
-  },
-});
-
-defineCheck({
   id: "fallback-persistence.fallback-chain-manual",
   name: "Cross-provider fallback chain honors persisted ordering, cooldown, and death-spiral breaker",
   groups: ["fallback-persistence", "model-provenance"],

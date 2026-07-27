@@ -156,37 +156,6 @@ defineCheck({
 });
 
 defineCheck({
-  id: "streaming-cleanup.toolcallid-correlation-manual",
-  name: "Tool completion correlates by toolCallId; searches backward for owning assistant message",
-  groups: ["streaming-cleanup"],
-  matrixIds: ["UI-03a"],
-  kind: "behavior",
-  automated: "manual",
-  manual: {
-    prerequisites: [
-      "A staging UI session with interleaved tool events; ability to inspect the message list state after each event.",
-    ],
-    steps: [
-      "Emit a tool-result whose toolCallId belongs to an older assistant message.",
-      "Verify the UI updates the OWNING message, not the last message.",
-      "Emit a stall-warning system message and then a real tool completion; verify the completion is not dropped.",
-    ],
-    expected:
-      "Every tool completion updates the owning assistant message by toolCallId; no drop on interleaved system messages.",
-    evidence: ["Before/after message-list state around each event."],
-    safety: {
-      stagingOnly: true,
-      mutatesData: true,
-      invokesPaidApi: true,
-      writesWorkspaceFiles: false,
-      expectedMutations: ["staging message-list mutations"],
-      cleanupRollback: ["staging-only"],
-      evidenceCapture: ["message state snapshots"],
-    },
-  },
-});
-
-defineCheck({
   id: "streaming-cleanup.ghost-stream-manual",
   name: "Ghost Stream (dead reconnect loop) is bounded and does not persist",
   groups: ["streaming-cleanup"],

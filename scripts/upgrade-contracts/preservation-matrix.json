@@ -700,8 +700,8 @@
       "groups": ["fallback-persistence"],
       "audit": "audits/UI_COMMIT_AUDIT.md",
       "intent": "Fallback drag-and-drop and keyboard arrow reordering in the UI ModelMultiSelect.",
-      "state": "assumed",
-      "checks": ["fallback-persistence.ui-source-manual", "fallback-persistence.dnd-inventory"]
+      "state": "test-only",
+      "checks": ["ui-checkpoint.focused-behavior", "fallback-persistence.dnd-inventory"]
     },
     {
       "id": "UI-02a",
@@ -723,7 +723,7 @@
       "audit": "audits/UI_COMMIT_AUDIT.md",
       "intent": "SOL Base resets prior thinking (no stale effort inheritance); fallback exclusion for Off; ExtraHigh-Pro roundtrip; config rollback path.",
       "state": "assumed",
-      "checks": ["model-provenance.sol-thinking-reset-manual"]
+      "checks": ["ui-checkpoint.focused-behavior", "model-provenance.sol-thinking-reset-manual"]
     },
     {
       "id": "UI-03a",
@@ -733,8 +733,8 @@
       "groups": ["streaming-cleanup"],
       "audit": "audits/UI_COMMIT_AUDIT.md",
       "intent": "Tool completion correlated by toolCallId; owning assistant message searched backward.",
-      "state": "assumed",
-      "checks": ["streaming-cleanup.toolcallid-correlation-manual"]
+      "state": "test-only",
+      "checks": ["ui-checkpoint.focused-behavior"]
     },
     {
       "id": "UI-03b",
