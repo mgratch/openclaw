@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-27T19-35-19-729Z-e6975bde",
+  "runId": "2026-07-27T19-40-10-707Z-be81c5a8",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-27T19:35:19.729Z",
-  "finishedAt": "2026-07-27T19:35:44.614Z",
-  "gitHead": "96384127ff86aabf634f12065a63a091a4451efc",
+  "startedAt": "2026-07-27T19:40:10.707Z",
+  "finishedAt": "2026-07-27T19:40:33.652Z",
+  "gitHead": "d327e15b199ffcbf4f70d8fc31f3c46b8657dc0a",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-27T19:35:19.734Z",
+    "now": "2026-07-27T19:40:10.711Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,7 +22,7 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "96384127ff86aabf634f12065a63a091a4451efc",
+      "head": "d327e15b199ffcbf4f70d8fc31f3c46b8657dc0a",
       "branch": "test/upgrade-golden-master-contracts",
       "dirty": false,
       "dirtyFileCount": 0
@@ -197,7 +197,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-27T19:28:56.669Z"
+      "mtime": "2026-07-27T19:38:56.680Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -223,7 +223,7 @@
     "behaviorPass": 11,
     "inventoryPass": 37,
     "evidencePass": 1,
-    "manualPending": 60,
+    "manualPending": 59,
     "failed": 0,
     "skipped": 0,
     "stateNonterminal": 80,
@@ -1219,12 +1219,12 @@
         "id": "MOUNT-04",
         "state": "test-only",
         "matrixTerminal": false,
-        "checks": 2,
-        "executed": 2,
+        "checks": 1,
+        "executed": 1,
         "missingInRun": [],
         "pass": 1,
         "fail": 0,
-        "manual": 1,
+        "manual": 0,
         "skip": 0,
         "byClass": {
           "behavior": 1,
@@ -1592,18 +1592,18 @@
     ]
   },
   "summary": {
-    "total": 95,
+    "total": 94,
     "pass": 40,
     "fail": 0,
     "skip": 0,
-    "manual": 55,
+    "manual": 54,
     "byClass": {
       "behaviorPass": 6,
       "inventoryPass": 33,
       "evidencePass": 1,
       "fail": 0,
       "skip": 0,
-      "manual": 55
+      "manual": 54
     }
   },
   "gate": {
@@ -1624,10 +1624,6 @@
       {
         "code": "check-manual",
         "message": "mounts-permissions.container-setup-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "mounts-permissions.git-trust-manual pending manual attestation"
       },
       {
         "code": "check-manual",
@@ -1859,7 +1855,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 21237
+          "value": 19594
         },
         {
           "label": "test files",
@@ -1871,11 +1867,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 20180
+          "value": 18540
         }
       ],
       "notes": "Focused memory suite passed 28/28 tests across 3 files.",
-      "durationMs": 21240
+      "durationMs": 19597
     },
     {
       "id": "memory-firewall.effective-plugin-config",
@@ -1980,7 +1976,7 @@
         }
       ],
       "notes": "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.",
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "memory-schema.projectId-required-inventory",
@@ -2046,7 +2042,7 @@
           ]
         }
       ],
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "memory-firewall.current-runtime-evidence",
@@ -2086,7 +2082,7 @@
         }
       ],
       "notes": "Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.",
-      "durationMs": 6
+      "durationMs": 5
     },
     {
       "id": "memory-firewall.subagent-idempotency-manual",
@@ -2227,7 +2223,7 @@
         }
       ],
       "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
-      "durationMs": 9
+      "durationMs": 6
     },
     {
       "id": "mounts-permissions.ipv4-inventory",
@@ -2307,7 +2303,7 @@
     },
     {
       "id": "mounts-permissions.git-trust-readonly",
-      "name": "Git trust is honored across every mounted repo root (RO probe)",
+      "name": "Git ownership trust is honored across every mounted repo root",
       "groups": [
         "mounts-permissions"
       ],
@@ -2319,79 +2315,79 @@
       "evidence": [
         {
           "label": "4corner-resources--4cornerresources",
-          "value": "ref: refs/heads/develop"
+          "value": "trusted"
         },
         {
           "label": "blue-bird-nest-lines--bb-nest",
-          "value": "ref: refs/heads/feat/wsl-ios-testing"
+          "value": "trusted"
         },
         {
           "label": "<redacted:entropy>",
-          "value": "ref: refs/heads/main"
+          "value": "trusted"
         },
         {
           "label": "kirkwood--kirkwood",
-          "value": "ref: refs/heads/fix/hotel-attribution-intent"
+          "value": "trusted"
         },
         {
           "label": "mighty-tour--mightytour",
-          "value": "ref: refs/heads/feat/v1x-must-fields"
+          "value": "trusted"
         },
         {
           "label": "openclaw--claude-code-source",
-          "value": "ref: refs/heads/main"
+          "value": "trusted"
         },
         {
           "label": "openclaw--openclaw",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "openclaw--openclaw-ui",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "opensupply--opensupply",
-          "value": "ref: refs/heads/fix/regressions-2026-04-23"
+          "value": "trusted"
         },
         {
           "label": "opensupply--theoptumgroup",
-          "value": "ref: refs/heads/develop"
+          "value": "trusted"
         },
         {
           "label": "r2c--compare-colleges",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "r2c--r2c-student-loan-calculator",
-          "value": "ref: refs/heads/main"
+          "value": "trusted"
         },
         {
           "label": "r2c--r2c-student-loan-calculator-iframe",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "r2c--r2capp-v3",
-          "value": "ref: refs/heads/feat/1476-sync-diff-analysis"
+          "value": "trusted"
         },
         {
           "label": "r2c--road2college",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "<redacted:entropy>",
-          "value": "ref: refs/heads/main"
+          "value": "trusted"
         },
         {
           "label": "sunrail--sunrailv3",
-          "value": "ref: <redacted:entropy>"
+          "value": "trusted"
         },
         {
           "label": "theory-time--lms-migration-tool",
-          "value": "ref: refs/heads/update/learndash-importer"
+          "value": "trusted"
         }
       ],
-      "notes": "RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.",
-      "durationMs": 73
+      "notes": "git rev-parse passed with optional locks disabled across 18 mounted repos.",
+      "durationMs": 147
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -2436,7 +2432,7 @@
           ]
         }
       },
-      "durationMs": 1,
+      "durationMs": 0,
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
     },
     {
@@ -2483,47 +2479,6 @@
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
     },
     {
-      "id": "mounts-permissions.git-trust-manual",
-      "name": "Host Git repositories remain trusted after mount restore (behavior)",
-      "groups": [
-        "mounts-permissions"
-      ],
-      "matrixIds": [
-        "MOUNT-04"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Fresh gateway boot with reconciled mount baseline.",
-          "A host repository mounted via SSHFS."
-        ],
-        "steps": [
-          "From the container, cd into a mounted host repo and run git status.",
-          "Confirm no `fatal: detected dubious ownership` message."
-        ],
-        "expected": "git status runs cleanly; safe.directory entry present.",
-        "evidence": [
-          "git status output and container HOME/.gitconfig safe.directory entries."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": false,
-          "writesWorkspaceFiles": false,
-          "expectedMutations": [],
-          "cleanupRollback": [
-            "no mutation; observational only"
-          ],
-          "evidenceCapture": [
-            "git status output",
-            "safe.directory entries"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
       "id": "history-recovery.session-context-recovery-installed",
       "name": "session-context-recovery extension is installed",
       "groups": [
@@ -2562,7 +2517,7 @@
           ]
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "history-recovery.paginated-manual",
@@ -2837,7 +2792,7 @@
           "value": "<redacted-path:.../extensions/transcript-archive>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "transcript-archive.injection-manual",
@@ -2914,7 +2869,7 @@
         }
       ],
       "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "streaming-cleanup.terminal-cleanup-manual",
@@ -3231,7 +3186,7 @@
         }
       ],
       "notes": "Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "acp.context-preamble-inventory",
@@ -3254,7 +3209,7 @@
           "value": 10041
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "acp.preset-http-upload-manual",
@@ -3780,7 +3735,7 @@
           "value": "<redacted-path:.../mcp-servers/lando-mcp-server>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "mcp-bridge.gateway-bridge-manual",
@@ -4064,7 +4019,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "attachments.large-parsing-manual",
@@ -4219,7 +4174,7 @@
           "value": "absent"
         }
       ],
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "model-provenance.opus-4-8-inventory",
@@ -4577,7 +4532,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "fallback-persistence.fallback-chain-manual",
@@ -4648,7 +4603,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 2010
+          "value": 1964
         },
         {
           "label": "test files",
@@ -4660,11 +4615,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 1220
+          "value": 915
         }
       ],
       "notes": "Focused UI checkpoint suite passed 21/21 tests across 3 files.",
-      "durationMs": 2014
+      "durationMs": 1969
     },
     {
       "id": "project-files.server-inventory",
@@ -4683,7 +4638,7 @@
           "value": "<redacted-path:.../server/projectManifest.js>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "project-files.generation-manual",
@@ -4752,7 +4707,7 @@
           "value": 25
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "browser-isolation.per-project-manual",
@@ -5062,7 +5017,7 @@
           "value": false
         }
       ],
-      "durationMs": 5
+      "durationMs": 4
     },
     {
       "id": "runtime-infra.stale-bundle-inventory",
@@ -5081,7 +5036,7 @@
           "value": "<redacted-path:...<redacted:entropy>.sh>"
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "runtime-infra.gitignore-inventory",
@@ -5255,7 +5210,7 @@
           "value": "<redacted-path:.../openclaw--openclaw/AGENTS.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "docs.pr-maintainer-skill-inventory",
@@ -5293,7 +5248,7 @@
           "value": "<redacted-path:.../plugins/architecture.md>"
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "docs.local-runtime-inventory",
@@ -5312,7 +5267,7 @@
           "value": "<redacted-path:.../docs/local-runtime-preservation.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.checkpoint-validation-inventory",
@@ -5331,7 +5286,7 @@
           "value": "<redacted-path:.../docs/pre-upgrade-checkpoint-validation.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "docs.memory-firewall-inventory",
@@ -5370,7 +5325,7 @@
           "value": "<redacted-path:.../audits/MOUNT_BASELINE_RECONCILIATION.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     }
   ]
 }
