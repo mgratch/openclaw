@@ -1,0 +1,5881 @@
+{
+  "schemaVersion": "openclaw-upgrade-contracts/v2",
+  "runId": "2026-07-27T18-49-08-539Z-1a7fc269",
+  "mode": "report-only",
+  "filtered": false,
+  "startedAt": "2026-07-27T18:49:08.539Z",
+  "finishedAt": "2026-07-27T18:49:11.116Z",
+  "gitHead": "7b302aff0b31483ac9a119d8c988c47b03f97c9c",
+  "version": "2026.4.2",
+  "environment": {
+    "now": "2026-07-27T18:49:08.584Z",
+    "node": "24.14.0",
+    "platform": "linux",
+    "arch": "arm64",
+    "stateDir": "<redacted-path:.../node/.openclaw>",
+    "repoRoot": "<redacted-path:.../host-projects/openclaw--openclaw>",
+    "uiRoot": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
+    "configPath": "<redacted-path:.../.openclaw/openclaw.json>",
+    "workspaceDbPath": "<redacted-path:.../workspace/conversations.db>",
+    "mountRegistryPath": "<redacted-path:.../.openclaw/mount-registry.json>",
+    "mountBase": "/mnt/host-projects",
+    "procMountsPath": "/proc/self/mounts",
+    "gatewayUrl": "http://127.0.0.1:18789",
+    "git": {
+      "head": "7b302aff0b31483ac9a119d8c988c47b03f97c9c",
+      "branch": "test/upgrade-golden-master-contracts",
+      "dirty": true,
+      "dirtyFileCount": 2
+    },
+    "openClawJson": {
+      "path": "<redacted-path:.../.openclaw/openclaw.json>",
+      "version": "2026.4.2",
+      "lastTouchedAt": "2026-07-27T13:03:48.201Z",
+      "topLevelKeys": [
+        "acp",
+        "agents",
+        "auth",
+        "bindings",
+        "browser",
+        "canvasHost",
+        "channels",
+        "commands",
+        "cron",
+        "env",
+        "gateway",
+        "hooks",
+        "logging",
+        "mcp",
+        "messages",
+        "meta",
+        "models",
+        "plugins",
+        "session",
+        "skills",
+        "tools",
+        "ui",
+        "update",
+        "wizard"
+      ],
+      "agentListCount": 40,
+      "mcpServerCount": 3,
+      "mcpServerNames": [
+        "forge",
+        "gmail",
+        "zoom"
+      ],
+      "pluginsEnabled": true,
+      "pluginSlots": {
+        "memory": "memory-lancedb-project"
+      },
+      "pluginLoadPaths": [
+        "<redacted-path:.../extensions/memory-lancedb-project>"
+      ],
+      "pluginEntryIds": [
+        "acpx",
+        "browser",
+        "memory-lancedb-project",
+        "session-context-recovery",
+        "slack",
+        "transcript-archive"
+      ],
+      "pluginEntryStates": [
+        {
+          "id": "acpx",
+          "enabled": true
+        },
+        {
+          "id": "browser",
+          "enabled": true
+        },
+        {
+          "id": "memory-lancedb-project",
+          "enabled": true
+        },
+        {
+          "id": "session-context-recovery",
+          "enabled": true
+        },
+        {
+          "id": "slack",
+          "enabled": true
+        },
+        {
+          "id": "transcript-archive",
+          "enabled": true
+        }
+      ],
+      "enabledEntryIds": [
+        "acpx",
+        "browser",
+        "memory-lancedb-project",
+        "session-context-recovery",
+        "slack",
+        "transcript-archive"
+      ],
+      "disabledEntryIds": [],
+      "stockMemoryPresent": false,
+      "stockMemoryEnabled": false,
+      "projectMemoryEnabled": true,
+      "requiredModels": [
+        {
+          "id": "anthropic/claude-opus-4-8",
+          "allowed": true,
+          "providerDeclared": true
+        },
+        {
+          "id": "anthropic/claude-opus-5",
+          "allowed": true,
+          "providerDeclared": true
+        }
+      ],
+      "browserProfileCount": 7
+    },
+    "gateway": {
+      "url": "http://127.0.0.1:18789",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "status": "live"
+      }
+    },
+    "mounts": {
+      "path": "<redacted-path:.../.openclaw/mount-registry.json>",
+      "totalRows": 35,
+      "enabled": 33,
+      "disabled": 2,
+      "aliases": 1,
+      "readOnly": 8,
+      "readWrite": 27
+    },
+    "extensions": {
+      "root": "<redacted-path:.../.openclaw/extensions>",
+      "entries": [
+        "memory-lancedb-project",
+        "session-context-recovery",
+        "transcript-archive"
+      ]
+    },
+    "mcpServers": {
+      "root": "<redacted-path:.../.openclaw/mcp>",
+      "entries": [
+        "forge-mcp-server-patched",
+        "zoom-mcp-server"
+      ]
+    },
+    "browser": {
+      "path": "<redacted-path:.../.openclaw/browser-ports.json>",
+      "profileCount": 25,
+      "profileIds": [
+        "4corner-ai",
+        "4corner-resources",
+        "4corner-select",
+        "blue-bird-nest-lines",
+        "blue-bird-nest-lines-2",
+        "business-warrior",
+        "desert-river-solutions",
+        "kirkwood",
+        "kirkwood-db",
+        "lidar",
+        "main",
+        "main-agent",
+        "mg-media",
+        "mighty-tour",
+        "openclaw",
+        "opensupply",
+        "opensupply-content-reg",
+        "optum-group",
+        "r2c",
+        "rapid-fund-raising",
+        "slater-floorin-and-design",
+        "sunrail",
+        "theory-time",
+        "zengig",
+        "zengig-laravel"
+      ]
+    },
+    "workspaceDb": {
+      "path": "<redacted-path:.../workspace/conversations.db>",
+      "sizeBytes": 1061588992,
+      "mtime": "2026-07-27T18:48:56.655Z"
+    },
+    "uiCheckpoint": {
+      "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
+      "isDirectory": true
+    }
+  },
+  "matrixValidation": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "rowIds": {},
+    "referencedCheckIds": {}
+  },
+  "bidirectionalValidation": {
+    "ok": true,
+    "errors": []
+  },
+  "manualSafetyViolations": [],
+  "matrixCoverage": {
+    "totalRows": 80,
+    "covered": 80,
+    "uncoveredCheckIds": [],
+    "behaviorPass": 6,
+    "inventoryPass": 37,
+    "evidencePass": 1,
+    "manualPending": 74,
+    "failed": 0,
+    "skipped": 0,
+    "stateNonterminal": 80,
+    "stateTerminal": 0,
+    "perRow": [
+      {
+        "id": "UM-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-02",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-03",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 2,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-04a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-04b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-04c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-05a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-05b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-05c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-06a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-06b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-06c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 2,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-06d",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-07",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-08a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-08b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 3,
+        "executed": 3,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 2,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-08c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-08d",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-09",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-10a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-10b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-10c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-11",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-12",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-13a",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-13b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-14a",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-14b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-14c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-15",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-16a",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-16b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-17a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-17b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-18",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-19",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-20",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-21",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-22a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-22b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-23",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-24",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-25",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 2,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-26",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-27a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-27b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-28a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UM-28b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "CP-01",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "CP-02",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "CP-03",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "CP-04",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "CP-05",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MEM-01",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 17,
+        "executed": 17,
+        "missingInRun": [],
+        "pass": 6,
+        "fail": 0,
+        "manual": 11,
+        "skip": 0,
+        "byClass": {
+          "behavior": 2,
+          "inventory": 3,
+          "evidence": 1
+        }
+      },
+      {
+        "id": "MEM-02",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MOUNT-01",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 1,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MOUNT-02",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 2,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 1,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MOUNT-03",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 3,
+        "executed": 3,
+        "missingInRun": [],
+        "pass": 3,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 1,
+          "inventory": 2,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MOUNT-04",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 1,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MOUNT-05",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-02a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-02b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-03a",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-03b",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "UI-03c",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 2,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-01",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-02",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-03",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-04",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-05",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-06",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-07",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RT-08",
+        "state": "test-only",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 0,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MODEL-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MODEL-02",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "MODEL-03",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "PF-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 2,
+        "executed": 2,
+        "missingInRun": [],
+        "pass": 1,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 1,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "TT-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      },
+      {
+        "id": "RUN-01",
+        "state": "assumed",
+        "matrixTerminal": false,
+        "checks": 1,
+        "executed": 1,
+        "missingInRun": [],
+        "pass": 0,
+        "fail": 0,
+        "manual": 1,
+        "skip": 0,
+        "byClass": {
+          "behavior": 0,
+          "inventory": 0,
+          "evidence": 0
+        }
+      }
+    ]
+  },
+  "summary": {
+    "total": 105,
+    "pass": 38,
+    "fail": 0,
+    "skip": 0,
+    "manual": 67,
+    "byClass": {
+      "behaviorPass": 4,
+      "inventoryPass": 33,
+      "evidencePass": 1,
+      "fail": 0,
+      "skip": 0,
+      "manual": 67
+    }
+  },
+  "gate": {
+    "passed": false,
+    "blockers": [
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.same-text-cross-project-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.subagent-idempotency-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.same-project-cross-agent-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.main-bypass-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.blank-global-legacy-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.concurrency-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.duplicate-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.foreign-delete-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.unknown-session-fail-closed-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.cleanup-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.executable-isolation-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "memory-firewall.target-runtime-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mounts-permissions.host-mount-access-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mounts-permissions.container-setup-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mounts-permissions.git-trust-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.paginated-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.large-history-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.post-compaction-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.compaction-quality-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.workspace-limits-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "history-recovery.codex-overflow-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "transcript-archive.injection-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "streaming-cleanup.terminal-cleanup-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "streaming-cleanup.empty-final-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "streaming-cleanup.wrap-up-idempotent-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "streaming-cleanup.toolcallid-correlation-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "streaming-cleanup.ghost-stream-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "two-tab-scoping.session-scoping-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "steering.mid-run-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.preset-http-upload-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.runtime-flip-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.sidecar-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.plugin-sdk-collision-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.dispatch-pipeline-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.lifecycle-channel-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.pty-permission-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.prompt-tempfile-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.event-parsing-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.session-metadata-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "acp.patched-shim-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.gateway-bridge-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.forge-live-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.zoom-live-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.lando-live-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.lando-safety-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "mcp-bridge.sanitizer-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "attachments.large-parsing-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "attachments.hostile-labels-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "attachments.jsonl-mime-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.opus-4-8-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.opus-5-live-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.sol-provider-path-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.sol-atomic-send-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.sol-thinking-reset-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.acp-preset-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "model-provenance.per-turn-model-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "fallback-persistence.ui-source-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "fallback-persistence.fallback-chain-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "project-files.generation-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "browser-isolation.per-project-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "auth.oauth-refresh-dedupe-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "auth.burned-profile-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "auth.stale-refresh-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "auth.acp-log-identity-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "runtime-infra.macos-dep-rationale-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "providers.generated-bundle-manual pending manual attestation"
+      },
+      {
+        "code": "check-manual",
+        "message": "providers.zap-baseline-manual pending manual attestation"
+      },
+      {
+        "code": "matrix-nonterminal",
+        "message": "80 matrix row(s) are still in nonterminal states (assumed|test-only). No row may advance without matrix update."
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "memory-firewall.effective-plugin-config",
+      "name": "Effective plugin config: project slot enabled, stock lancedb not active",
+      "groups": [
+        "memory-firewall",
+        "memory-schema"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "plugins.slots.memory",
+          "value": "memory-lancedb-project"
+        },
+        {
+          "label": "plugins.entries.memory-lancedb-project.enabled",
+          "value": true
+        },
+        {
+          "label": "plugins.entries.memory-lancedb present",
+          "value": false
+        },
+        {
+          "label": "plugins.entries.memory-lancedb enabled",
+          "value": false
+        },
+        {
+          "label": "plugins.load.paths",
+          "value": "<redacted:cycle>"
+        }
+      ],
+      "notes": "Effective config binds memory slot to the project extension; no stock memory-lancedb entry is active.",
+      "durationMs": 0
+    },
+    {
+      "id": "memory-firewall.project-plugin-installed",
+      "name": "memory-lancedb-project extension is installed and no duplicate lancedb ext discovered",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01",
+        "RT-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "plugin id",
+          "value": "memory-lancedb-project"
+        },
+        {
+          "label": "kind",
+          "value": "memory"
+        },
+        {
+          "label": "duplicate stock extension present",
+          "value": false
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "memory-firewall.source-fail-closed-inventory",
+      "name": "extension source contains fail-closed session mapping and exact projectId filters",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "resolveProjectId returns null on missing sessionKey",
+          "value": true
+        },
+        {
+          "label": "returns null on empty short session key",
+          "value": true
+        },
+        {
+          "label": "opens conversations.db read-only",
+          "value": true
+        },
+        {
+          "label": "filters by projectId in search",
+          "value": true
+        },
+        {
+          "label": "delete predicate scoped by projectId",
+          "value": true
+        },
+        {
+          "label": "fail-closed scope resolution (agentId && projectId)",
+          "value": true
+        }
+      ],
+      "notes": "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and manual contracts.",
+      "durationMs": 1
+    },
+    {
+      "id": "memory-schema.projectId-required-inventory",
+      "name": "memory table schema requires projectId column",
+      "groups": [
+        "memory-schema"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "schema-guard present",
+          "value": true
+        },
+        {
+          "label": "projectId declared",
+          "value": true
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "memory-schema.session-mapping-behavior",
+      "name": "conversations.db sessions table exposes the columns project resolution needs",
+      "groups": [
+        "memory-schema"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "sessions columns",
+          "value": [
+            "id",
+            "session_key",
+            "project_id",
+            "agent_id",
+            "title",
+            "channel",
+            "hidden",
+            "active_root_index",
+            "created_at",
+            "updated_at",
+            "tree_hash"
+          ]
+        },
+        {
+          "label": "projects columns",
+          "value": [
+            "id",
+            "name",
+            "description",
+            "icon",
+            "color",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "memory-firewall.current-runtime-evidence",
+      "name": "Immutable canary checkpoint proves 13 assertions and zero residual rows (CURRENT baseline only)",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "evidence",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "checkpoint dir",
+          "value": "<redacted-path:...<redacted:entropy>>"
+        },
+        {
+          "label": "manifest files verified",
+          "value": 7
+        },
+        {
+          "label": "assertions",
+          "value": 13
+        },
+        {
+          "label": "projects",
+          "value": [
+            "openclaw",
+            "r2c",
+            "main"
+          ]
+        },
+        {
+          "label": "residual rows",
+          "value": 0
+        }
+      ],
+      "notes": "Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.",
+      "durationMs": 4
+    },
+    {
+      "id": "memory-firewall.same-text-cross-project-manual",
+      "name": "Same-text memory is isolated across two mapped staging projects",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Two pre-existing mapped staging sessions belonging to two distinct project_ids present in conversations.db (verify via SELECT DISTINCT project_id FROM sessions).",
+          "Use pre-existing mapped staging/test sessions from conversations.db (e.g. two distinct project_ids that already resolve). Never invent a synthetic projectId — the fail-closed path is deliberately rigged to return null for unknown sessions, so a synthetic id cannot exercise the cross-project semantic."
+        ],
+        "steps": [
+          "In staging project A's session, call memory_store with content prefixed by a reserved canary tag: openclaw-canary-upgrade-<uuid>.",
+          "In staging project B's session, call memory_recall on the same exact text.",
+          "In staging project B, call memory_recall broadly (empty query, large limit) to force a max-recall scan.",
+          "Explicitly delete the canary row in project A (memory_forget by exact tag).",
+          "Re-run memory_recall in project A to prove the row is gone."
+        ],
+        "expected": "memory_recall in project B returns zero rows referencing project A content, both exact-text and broad scan. Explicit delete succeeds; no residual rows.",
+        "evidence": [
+          "Redacted memory_recall responses from both projects.",
+          "LanceDB row-count deltas before/after cleanup via the extension admin API.",
+          "openclaw-agent audit log fragment showing the resolved projectId per call."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one canary row in project A, deleted at cleanup"
+          ],
+          "cleanupRollback": [
+            "memory_forget canary row after test",
+            "assert row count returns to baseline"
+          ],
+          "evidenceCapture": [
+            "redacted responses",
+            "row-count deltas",
+            "audit log fragment"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.subagent-idempotency-manual",
+      "name": "Subagent announcement is idempotent; same subagent does not multi-register",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "UM-06c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session capable of triggering subagent announcement more than once."
+        ],
+        "steps": [
+          "Force N=3 subagent announcements for the same subagent identity in rapid succession.",
+          "Inspect the runtime state to confirm the subagent registers exactly once."
+        ],
+        "expected": "Only one subagent record exists after the repeated announcements.",
+        "evidence": [
+          "Runtime state before/after; subagent registry snapshot."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "one subagent registry entry"
+          ],
+          "cleanupRollback": [
+            "deregister the canary subagent after verification"
+          ],
+          "evidenceCapture": [
+            "registry snapshot",
+            "state diff"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.same-project-cross-agent-manual",
+      "name": "Within a single project, agent A memories do not leak to agent B",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01",
+        "UM-06a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "One mapped staging project with two agents (agent_id A and B) that both have real sessions in conversations.db."
+        ],
+        "steps": [
+          "As agent A in staging project P, memory_store a UUID-tagged canary row.",
+          "As agent B in the same project P, memory_recall on the exact same tag.",
+          "Also memory_recall broadly.",
+          "Delete the canary row as agent A."
+        ],
+        "expected": "Agent B does not see agent A's row even inside the shared project.",
+        "evidence": [
+          "Redacted responses; scope resolution log lines from the extension."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one canary row for agent A in project P, deleted at cleanup"
+          ],
+          "cleanupRollback": [
+            "memory_forget canary row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses",
+            "scope resolution log"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.main-bypass-manual",
+      "name": "The 'main' agent does not bypass project scoping",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "One mapped staging project P (not 'main').",
+          "A live gateway session for the 'main' agent (agent_id=main) in conversations.db."
+        ],
+        "steps": [
+          "From staging project P, memory_store a UUID-tagged canary row.",
+          "Switch to a session whose sessionKey resolves to the 'main' agent.",
+          "memory_recall broadly.",
+          "Delete the canary row from staging project P."
+        ],
+        "expected": "The 'main' agent does not see the canary row via any implicit shared-memory path.",
+        "evidence": [
+          "Redacted responses; the resolved projectId for the 'main' session as reported by the extension."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one canary row in project P, deleted at cleanup"
+          ],
+          "cleanupRollback": [
+            "memory_forget canary row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses",
+            "resolved projectId"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.blank-global-legacy-manual",
+      "name": "Blank/global legacy rows (empty projectId) cannot bypass project scoping",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A LanceDB admin able to insert a probe row with projectId='' or projectId is NULL (via the extension admin API only) into a disposable table."
+        ],
+        "steps": [
+          "Insert one legacy-style probe row with empty projectId AND known tag openclaw-canary-upgrade-<uuid> (only via admin API; never by hand-editing storage).",
+          "From any mapped staging session, memory_recall broadly.",
+          "Delete the legacy-style probe row via admin API."
+        ],
+        "expected": "The legacy row is not returned by memory_recall from any mapped session; direct admin cleanup succeeds.",
+        "evidence": [
+          "Redacted admin API responses (insert/query/delete).",
+          "LanceDB row-count deltas before/after."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one legacy probe row, deleted at cleanup"
+          ],
+          "cleanupRollback": [
+            "admin delete probe row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "admin API responses",
+            "row-count deltas"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.concurrency-manual",
+      "name": "Concurrent memory_store writers cannot corrupt project scoping",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Two mapped staging sessions (may be same or different agents/projects) able to issue simultaneous memory_store calls."
+        ],
+        "steps": [
+          "Issue N=10 concurrent memory_store calls with distinct UUID tags across both sessions.",
+          "memory_recall broadly from each session; verify only the calling scope sees its own tags.",
+          "Delete every canary row created."
+        ],
+        "expected": "Concurrent writes do not leak across scope; every row is deleted at the end and residual is zero.",
+        "evidence": [
+          "Full memory_recall responses; row-count deltas; cleanup verification."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "N canary rows created and deleted"
+          ],
+          "cleanupRollback": [
+            "delete every UUID-tagged canary row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses",
+            "row-count deltas"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.duplicate-manual",
+      "name": "Duplicate-insert of the same canary tag is handled deterministically",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "One mapped staging session."
+        ],
+        "steps": [
+          "memory_store the same canary tag twice back-to-back.",
+          "memory_recall on the tag.",
+          "Delete the canary rows and verify none remain."
+        ],
+        "expected": "Duplicate insert has a documented outcome (dedupe or explicit duplicate row) and cleanup removes every trace.",
+        "evidence": [
+          "Redacted memory_recall/memory_forget responses."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one or two canary rows, then all deleted"
+          ],
+          "cleanupRollback": [
+            "delete every duplicate row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.foreign-delete-manual",
+      "name": "Foreign projectId cannot delete another project's memories",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Two mapped staging projects A and B, each with one canary row."
+        ],
+        "steps": [
+          "From staging project A, call memory_forget with the tag belonging to staging project B.",
+          "From staging project B, memory_recall to verify the row still exists.",
+          "From staging project B, memory_forget with the correct tag."
+        ],
+        "expected": "Cross-project delete is refused; project B's row remains; only owning project can delete its own row.",
+        "evidence": [
+          "Full memory_forget and memory_recall responses; LanceDB row-count deltas."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one canary row in each staging project, deleted at cleanup"
+          ],
+          "cleanupRollback": [
+            "delete own canary row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses",
+            "row-count deltas"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.unknown-session-fail-closed-manual",
+      "name": "Unknown session fails closed; no silent memory return",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Access to submit a memory_store / memory_recall call with a sessionKey that does NOT exist in conversations.db.",
+          "Access to gateway logs for the same window; the gateway must NOT be restarted."
+        ],
+        "steps": [
+          "Submit memory_store with an unknown sessionKey (openclaw-unknown-<uuid>).",
+          "Submit memory_recall with the same unknown sessionKey.",
+          "Capture the gateway logs and the tool responses."
+        ],
+        "expected": "Both calls fail closed. No project-A row is exposed as fallback; no write is persisted.",
+        "evidence": [
+          "Redacted gateway log excerpts; tool responses proving zero rows returned/written."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "confirm no row was persisted"
+          ],
+          "evidenceCapture": [
+            "gateway log excerpt",
+            "tool responses"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.cleanup-manual",
+      "name": "Explicit cleanup returns residual rows to zero for the tested tag family",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Any mapped staging project."
+        ],
+        "steps": [
+          "Create N=3 canary rows with reserved openclaw-canary-upgrade-<uuid> tags.",
+          "Verify their presence via memory_recall.",
+          "Call memory_forget for each tag.",
+          "Verify residual == 0 via the extension admin API."
+        ],
+        "expected": "All rows are removed; residual count is exactly zero.",
+        "evidence": [
+          "memory_recall snapshots before/after; residual count."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "N canary rows, all deleted"
+          ],
+          "cleanupRollback": [
+            "memory_forget every UUID tag",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "responses",
+            "residual count"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.executable-isolation-manual",
+      "name": "Executable/copied-state isolation between running gateway and any copied working set",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Ability to identify the running gateway process and any copied/detached memory state on the host."
+        ],
+        "steps": [
+          "Enumerate the memory DB paths referenced by the running gateway.",
+          "Verify no additional writable copy of the LanceDB directory is being loaded by any other process.",
+          "If a copied state exists (backup, snapshot), verify it is not being registered as a live memory backend."
+        ],
+        "expected": "Only one live LanceDB store is active; copies are dormant and cannot bleed writes into the live scope.",
+        "evidence": [
+          "Process listing referencing DB paths; ls of memory dirs; extension config path."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "no mutation; observational check"
+          ],
+          "evidenceCapture": [
+            "process listing",
+            "directory listings"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "memory-firewall.target-runtime-manual",
+      "name": "Target runtime canary evidence artifact must be produced fresh; current baseline does NOT count",
+      "groups": [
+        "memory-firewall"
+      ],
+      "matrixIds": [
+        "MEM-01"
+      ],
+      "kind": "evidence",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "The target-runtime canary artifact directory (fresh timestamp) with a SHA256SUMS manifest and live-canary-result.json produced against the target runtime.",
+          "The manifest MUST NOT reuse the current baseline directory memory-firewall-20260727-125533; a new UPGRADE_CHECKPOINT is required."
+        ],
+        "steps": [
+          "Rerun the canary suite against the target runtime.",
+          "Publish the new artifact directory under ~/.<redacted:entropy><target-ts>/ with SHA256SUMS.",
+          "Point the target-runtime evidence checker at the new path."
+        ],
+        "expected": "A fresh evidence directory exists with 13-assertion PASS and zero residual rows for the TARGET runtime.",
+        "evidence": [
+          "New artifact directory path and manifest SHA256s."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "target-runtime canary rows created and deleted"
+          ],
+          "cleanupRollback": [
+            "delete every UUID-tagged canary row",
+            "verify residual==0"
+          ],
+          "evidenceCapture": [
+            "new artifact directory",
+            "manifest SHA256s"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mounts-permissions.exact-audit",
+      "name": "Exact per-row mount audit (<redacted:entropy>)",
+      "groups": [
+        "mounts-permissions"
+      ],
+      "matrixIds": [
+        "MOUNT-01",
+        "MOUNT-02",
+        "MOUNT-03"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "audit.summary",
+          "value": {
+            "registryRows": 35,
+            "enabledRows": 33,
+            "disabledRows": 2,
+            "readyRows": 33,
+            "activeFuseMounts": 32,
+            "aliases": 1,
+            "failedEnabledRows": 0,
+            "uniqueHostPaths": 33,
+            "duplicateHostPathGroups": 2,
+            "enabledMountConflicts": 0,
+            "nestedHostPathGroups": 1,
+            "staleDirectories": 0,
+            "extraFuseMounts": 0
+          }
+        },
+        {
+          "label": "staleDirectories",
+          "value": []
+        },
+        {
+          "label": "extraFuseMounts",
+          "value": []
+        },
+        {
+          "label": "duplicateHostPathGroups",
+          "value": 2
+        },
+        {
+          "label": "enabledMountConflicts",
+          "value": 0
+        }
+      ],
+      "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
+      "durationMs": 6
+    },
+    {
+      "id": "mounts-permissions.ipv4-inventory",
+      "name": "openclaw-mount.sh forces IPv4 for SSHFS (source inventory)",
+      "groups": [
+        "mounts-permissions"
+      ],
+      "matrixIds": [
+        "CP-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../openclaw--openclaw/openclaw-mount.sh>"
+        },
+        {
+          "label": "IPv4 override present",
+          "value": true
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "mounts-permissions.helper-baked-inventory",
+      "name": "Dockerfile bakes the reconciled mount helpers",
+      "groups": [
+        "mounts-permissions",
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-20",
+        "MOUNT-03"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "Dockerfile.custom mentions mount helper",
+          "value": true
+        },
+        {
+          "label": "Dockerfile.mountfix mentions mount helper",
+          "value": true
+        }
+      ],
+      "durationMs": 2
+    },
+    {
+      "id": "mounts-permissions.helper-layered-inventory",
+      "name": "Dockerfile.mountfix layers helper + restore + status",
+      "groups": [
+        "mounts-permissions",
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "MOUNT-03"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "openclaw-mount.sh",
+          "value": true
+        },
+        {
+          "label": "openclaw-mount-restore",
+          "value": true
+        },
+        {
+          "label": "mount-registry-status.mjs",
+          "value": true
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "mounts-permissions.git-trust-readonly",
+      "name": "Git trust is honored across every mounted repo root (RO probe)",
+      "groups": [
+        "mounts-permissions"
+      ],
+      "matrixIds": [
+        "MOUNT-04"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "4corner-resources--4cornerresources",
+          "value": "ref: refs/heads/develop"
+        },
+        {
+          "label": "blue-bird-nest-lines--bb-nest",
+          "value": "ref: refs/heads/feat/wsl-ios-testing"
+        },
+        {
+          "label": "<redacted:entropy>",
+          "value": "ref: refs/heads/main"
+        },
+        {
+          "label": "kirkwood--kirkwood",
+          "value": "ref: refs/heads/fix/hotel-attribution-intent"
+        },
+        {
+          "label": "mighty-tour--mightytour",
+          "value": "ref: refs/heads/feat/v1x-must-fields"
+        },
+        {
+          "label": "openclaw--claude-code-source",
+          "value": "ref: refs/heads/main"
+        },
+        {
+          "label": "openclaw--openclaw",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "openclaw--openclaw-ui",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "opensupply--opensupply",
+          "value": "ref: refs/heads/fix/regressions-2026-04-23"
+        },
+        {
+          "label": "opensupply--theoptumgroup",
+          "value": "ref: refs/heads/develop"
+        },
+        {
+          "label": "r2c--compare-colleges",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "r2c--r2c-student-loan-calculator",
+          "value": "ref: refs/heads/main"
+        },
+        {
+          "label": "r2c--r2c-student-loan-calculator-iframe",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "r2c--r2capp-v3",
+          "value": "ref: refs/heads/feat/1476-sync-diff-analysis"
+        },
+        {
+          "label": "r2c--road2college",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "<redacted:entropy>",
+          "value": "ref: refs/heads/main"
+        },
+        {
+          "label": "sunrail--sunrailv3",
+          "value": "ref: <redacted:entropy>"
+        },
+        {
+          "label": "theory-time--lms-migration-tool",
+          "value": "ref: refs/heads/update/learndash-importer"
+        }
+      ],
+      "notes": "RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.",
+      "durationMs": 38
+    },
+    {
+      "id": "mounts-permissions.host-mount-access-manual",
+      "name": "Host-mount access enforces RO/RW per registry (staging RW canary)",
+      "groups": [
+        "mounts-permissions"
+      ],
+      "matrixIds": [
+        "UM-04a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Live gateway container with reconciled 32-FUSE baseline.",
+          "Explicit staging/safe-live opt-in from Marc; the RW canary is a reserved UUID tag and the harness will clean it up."
+        ],
+        "steps": [
+          "For each RO row (openclaw-mount list --ro), attempt to touch /mnt/host-projects/<name>/.canary-<uuid>; capture stderr.",
+          "For one RW row explicitly authorized as the RW canary target, touch a canary file and immediately delete it in the same step.",
+          "Confirm every RO attempt fails and the single RW attempt succeeds and is cleaned up."
+        ],
+        "expected": "Every RO attempt fails EROFS or equivalent. Exactly one RW target permits the write and the canary is removed. No canary files remain after the test.",
+        "evidence": [
+          "Touch commands, exit codes, and errno messages.",
+          "Post-test ls confirming no canary files remain."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "single RW canary file created and immediately deleted"
+          ],
+          "cleanupRollback": [
+            "rm the RW canary in the same step",
+            "assert file does not exist post-test"
+          ],
+          "evidenceCapture": [
+            "command outputs",
+            "ls confirming cleanup"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mounts-permissions.container-setup-manual",
+      "name": "Container mount setup preserves ro/rw + reconnect + IPv4",
+      "groups": [
+        "mounts-permissions",
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-26"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging image built from Dockerfile.mountfix.",
+          "Ability to snapshot /proc/self/mounts before and after start."
+        ],
+        "steps": [
+          "Boot the staging image; wait for openclaw-mount-restore to complete.",
+          "Capture /proc/self/mounts and diff it against the reconciled baseline.",
+          "Assert every mount uses ssh_command=ssh -4 and reconnect,ServerAliveInterval=15."
+        ],
+        "expected": "All enabled rows mount with correct ro/rw, IPv4 transport, and reconnect. No extra mounts, no failed rows.",
+        "evidence": [
+          "Diff vs reconciled baseline; openclaw-mount-restore log excerpt."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only boot; no cleanup on live"
+          ],
+          "evidenceCapture": [
+            "diff",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mounts-permissions.git-trust-manual",
+      "name": "Host Git repositories remain trusted after mount restore (behavior)",
+      "groups": [
+        "mounts-permissions"
+      ],
+      "matrixIds": [
+        "MOUNT-04"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Fresh gateway boot with reconciled mount baseline.",
+          "A host repository mounted via SSHFS."
+        ],
+        "steps": [
+          "From the container, cd into a mounted host repo and run git status.",
+          "Confirm no `fatal: detected dubious ownership` message."
+        ],
+        "expected": "git status runs cleanly; safe.directory entry present.",
+        "evidence": [
+          "git status output and container HOME/.gitconfig safe.directory entries."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "no mutation; observational only"
+          ],
+          "evidenceCapture": [
+            "git status output",
+            "safe.directory entries"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.session-context-recovery-installed",
+      "name": "session-context-recovery extension is installed",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "RT-02"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "extension root",
+          "value": "<redacted-path:.../extensions/session-context-recovery>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "history-recovery.tree-recovery-inventory",
+      "name": "conversation-tree recovery utility is present in the UI checkpoint",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-08b"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "tree-like utils",
+          "value": [
+            "conversationDbApi.ts",
+            "conversationTree.ts"
+          ]
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "history-recovery.paginated-manual",
+      "name": "Paginated history and full history recovery",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-08b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session with more than one page of history.",
+          "Ability to query the paginated history endpoint from the UI."
+        ],
+        "steps": [
+          "Load the session; scroll the UI to trigger paginated history fetches.",
+          "Compare the aggregated UI messages with the raw JSONL under ~/.openclaw/agents/<agent>/sessions/*.jsonl.",
+          "Fetch the full history from the API and diff against the paginated one."
+        ],
+        "expected": "Every message from JSONL appears in the paginated view; full-history fetch equals concatenated pages.",
+        "evidence": [
+          "Paginated response boundaries and total message count.",
+          "Checksum comparison between paginated aggregate and full-history response."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only test"
+          ],
+          "evidenceCapture": [
+            "response boundaries",
+            "checksum"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.large-history-manual",
+      "name": "Large session histories are served without truncation or crash",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-08b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session with thousands of messages; sufficient memory allocation."
+        ],
+        "steps": [
+          "Fetch the full history for the session.",
+          "Confirm no OOM and no dropped messages."
+        ],
+        "expected": "Full-history fetch completes; message count matches JSONL row count.",
+        "evidence": [
+          "Message count comparison; memory usage snapshot."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only test"
+          ],
+          "evidenceCapture": [
+            "message count",
+            "memory snapshot"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.post-compaction-manual",
+      "name": "Context recovers correctly after compaction",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-05b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session close to the compaction threshold.",
+          "The session-context-recovery extension enabled."
+        ],
+        "steps": [
+          "Trigger compaction.",
+          "Ask the agent to summarize what happened before the compaction cut-off.",
+          "Verify the pre-compaction transcript is retained under ~/.openclaw/workspace/ui-transcripts/."
+        ],
+        "expected": "Agent references specific facts from pre-compaction turns; transcripts persist without loss.",
+        "evidence": [
+          "Full response transcript; pre-/post-compaction JSONL and ui-transcript file names."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "compaction summary and updated transcript"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "transcript",
+            "file names"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.compaction-quality-manual",
+      "name": "Repeated compactions are idempotent and do not amplify content",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-06b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session that can be compacted twice in a row without new turns."
+        ],
+        "steps": [
+          "Compact the session.",
+          "Immediately trigger another compaction.",
+          "Verify the second compaction is a no-op or a bounded refinement (no content amplification)."
+        ],
+        "expected": "Second compaction is idempotent within a documented bound.",
+        "evidence": [
+          "Compaction outputs from both attempts."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "two compaction turns"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "compaction outputs"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.workspace-limits-manual",
+      "name": "Workspace bootstrap prompts honor per-agent limits and do not spill cross-agent data",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-06d"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging workspace with multiple agents and distinct workspace-scoped files."
+        ],
+        "steps": [
+          "Boot agent A; capture its workspace bootstrap prompt.",
+          "Boot agent B; capture its workspace bootstrap prompt.",
+          "Verify B's bootstrap does not include A's workspace files."
+        ],
+        "expected": "Bootstrap prompts are scoped per-agent; no cross-agent spill.",
+        "evidence": [
+          "Redacted bootstrap prompts for both agents."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "bootstrap prompts"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "history-recovery.codex-overflow-manual",
+      "name": "Codex context overflow triggers auto-compaction",
+      "groups": [
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-24"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging Codex session and a large synthetic input that exceeds the provider's context."
+        ],
+        "steps": [
+          "Send the oversize input.",
+          "Observe the gateway log for the classification path.",
+          "Confirm auto-compaction runs and the next turn completes."
+        ],
+        "expected": "Overflow is classified, auto-compaction runs, and the follow-up turn returns a completed response.",
+        "evidence": [
+          "Gateway log lines; turn-completion transcript with compaction summary reference."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one compaction turn"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "log lines",
+            "transcript"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "transcript-archive.installed",
+      "name": "transcript-archive extension is installed",
+      "groups": [
+        "transcript-archive"
+      ],
+      "matrixIds": [
+        "RT-03"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "extension root",
+          "value": "<redacted-path:.../extensions/transcript-archive>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "transcript-archive.injection-manual",
+      "name": "Transcript injection retains prior turns after runtime flip",
+      "groups": [
+        "transcript-archive"
+      ],
+      "matrixIds": [
+        "UM-08d"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session with several assistant turns.",
+          "Ability to trigger a runtime flip (ACP <-> embedded)."
+        ],
+        "steps": [
+          "Record the last three assistant turns from the current staging session.",
+          "Trigger a runtime flip.",
+          "Ask the agent to summarize what it said in the previous three turns."
+        ],
+        "expected": "Post-flip agent references pre-flip turns via transcript injection without loss of ordering.",
+        "evidence": [
+          "Full pre- and post-flip transcript excerpts; session-log NDJSON showing injection payload."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one staging summary turn"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "transcript excerpts",
+            "NDJSON"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "streaming-cleanup.heartbeat-inventory",
+      "name": "UI useGatewayEvents separates liveness from progress and does not reset progress on generic heartbeat",
+      "groups": [
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UI-03b"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "mentions heartbeat",
+          "value": true
+        },
+        {
+          "label": "explicitly ignores heartbeat for progress",
+          "value": true
+        },
+        {
+          "label": "separates writing/idle/between phase timeouts",
+          "value": true
+        },
+        {
+          "label": "does NOT reset run timer on heartbeat",
+          "value": true
+        }
+      ],
+      "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
+      "durationMs": 3
+    },
+    {
+      "id": "streaming-cleanup.terminal-cleanup-manual",
+      "name": "Terminal cleanup clears refs on every completion path",
+      "groups": [
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UI-03b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A running UI session with the checkpoint UI build.",
+          "Ability to drive normal send, edit, retry, abort, timeout, and HTTP file paths."
+        ],
+        "steps": [
+          "Send a normal WS message; on final, capture window.__openclaw_debug refs (sendingRef, runStartedAtRef, activeRunRef).",
+          "Send with an attachment via HTTP; capture the same refs.",
+          "Trigger a user abort mid-run.",
+          "Trigger a stall auto-abort by delaying tool completion beyond the timeout.",
+          "Trigger an error final by sending an invalid model id.",
+          "Trigger a session-mismatch final by rehydrating a stale sessionKey."
+        ],
+        "expected": "After each terminal path all three refs are cleared; RunStatusIndicator elapsed time resets; no lingering 'Writing…' state.",
+        "evidence": [
+          "Screenshot or DOM dump of RunStatusIndicator after each terminal path.",
+          "The ref values captured immediately after final."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "staging chat turns and abort states"
+          ],
+          "cleanupRollback": [
+            "staging-only session"
+          ],
+          "evidenceCapture": [
+            "screenshots",
+            "ref dumps"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "streaming-cleanup.empty-final-manual",
+      "name": "Empty final-turn recovery still terminates cleanly",
+      "groups": [
+        "streaming-cleanup",
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-28a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live staging session on Codex or another provider prone to empty final turns.",
+          "Sufficient staging balance for one conservative wrap-up prompt."
+        ],
+        "steps": [
+          "Trigger the known empty-final path (successful tool work with no assistant text).",
+          "Observe the runner emits exactly one wrap-up prompt.",
+          "Confirm the UI transitions to Idle after the wrap-up prompt lands."
+        ],
+        "expected": "The wrap-up prompt runs at most once, the UI reaches Idle, and the transcript records the recovered final turn.",
+        "evidence": [
+          "Runner log excerpt showing the wrap-up trigger.",
+          "Final transcript row proving the recovered response."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one wrap-up prompt turn and its transcript row"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "runner log",
+            "transcript row"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "streaming-cleanup.wrap-up-idempotent-manual",
+      "name": "Wrap-up is idempotent; duplicate wrap-ups do not incur double billing/persistence",
+      "groups": [
+        "streaming-cleanup",
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-28b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session prone to empty final; ability to observe billing/persistence side-effects."
+        ],
+        "steps": [
+          "Force a second wrap-up attempt (simulate a reconnect/duplicate trigger).",
+          "Verify the second wrap-up is suppressed.",
+          "Verify only one billed API call and one transcript row exist for the wrap-up."
+        ],
+        "expected": "Second wrap-up is suppressed; single billing / single row persisted.",
+        "evidence": [
+          "Billing snapshot; transcript row count."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one billed wrap-up turn"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "billing snapshot",
+            "row count"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "streaming-cleanup.toolcallid-correlation-manual",
+      "name": "Tool completion correlates by toolCallId; searches backward for owning assistant message",
+      "groups": [
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UI-03a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging UI session with interleaved tool events; ability to inspect the message list state after each event."
+        ],
+        "steps": [
+          "Emit a tool-result whose toolCallId belongs to an older assistant message.",
+          "Verify the UI updates the OWNING message, not the last message.",
+          "Emit a stall-warning system message and then a real tool completion; verify the completion is not dropped."
+        ],
+        "expected": "Every tool completion updates the owning assistant message by toolCallId; no drop on interleaved system messages.",
+        "evidence": [
+          "Before/after message-list state around each event."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "staging message-list mutations"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "message state snapshots"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "streaming-cleanup.ghost-stream-manual",
+      "name": "Ghost Stream (dead reconnect loop) is bounded and does not persist",
+      "groups": [
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UI-03c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Ability to force disconnect and re-connect the UI to the gateway."
+        ],
+        "steps": [
+          "Force a disconnect during an active run.",
+          "Rehydrate the session; verify the UI does not enter a reconnect flood.",
+          "Confirm the current-run tool count remains accurate across the reconnect."
+        ],
+        "expected": "No reconnect flood; accurate current-run tool count.",
+        "evidence": [
+          "WebSocket reconnect log; tool-count snapshot."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "reconnect log",
+            "tool-count snapshot"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "two-tab-scoping.session-scoping-manual",
+      "name": "Two tabs on the same session do not cross events",
+      "groups": [
+        "two-tab-scoping"
+      ],
+      "matrixIds": [
+        "TT-01",
+        "UI-03c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Two browser tabs on the same staging UI attached to identical projectId + sessionKey.",
+          "A third tab on a different session for negative control."
+        ],
+        "steps": [
+          "Send a message from tab A.",
+          "Confirm tab B receives streaming events for the same run.",
+          "Confirm the negative-control tab receives no events.",
+          "Send a message from tab B; assert the same fan-out.",
+          "Close tab A; send from tab B and confirm no dead reconnection loop."
+        ],
+        "expected": "Both same-session tabs stream identical events; negative-control tab receives no events; no reconnect flood after close.",
+        "evidence": [
+          "Per-tab WebSocket frame captures; gateway log excerpt showing per-connection dispatch scoping."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "staging turns from both tabs"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "frame captures",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "steering.mid-run-manual",
+      "name": "Mid-run steering redirects the active turn without losing state",
+      "groups": [
+        "steering"
+      ],
+      "matrixIds": [
+        "UM-03"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging session where the agent is executing a long tool call.",
+          "The UI steering input available."
+        ],
+        "steps": [
+          "Start a long-running tool call on staging.",
+          "Submit a steering message that modifies the goal.",
+          "Observe the agent adopting the new goal without duplicating tool events."
+        ],
+        "expected": "The agent adopts the new goal; prior tool events remain visible; no duplicate final turn.",
+        "evidence": [
+          "Chat transcript showing pre-steering tool events and steering-message boundary.",
+          "Gateway log excerpt showing steering-event delivery."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one staging turn with steering"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "transcript",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.preset-catalog-inventory",
+      "name": "ACP preset catalog module exists and declares supported routing symbols",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-02"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../acp/presets.ts>"
+        },
+        {
+          "label": "declares AcpModelPreset",
+          "value": true
+        },
+        {
+          "label": "exports ACP_MODEL_PRESETS",
+          "value": true
+        },
+        {
+          "label": "declares acpxModel routing",
+          "value": true
+        },
+        {
+          "label": "contains supported Opus 4.6 preset",
+          "value": true
+        },
+        {
+          "label": "does NOT contain invalid claude-opus-5-0",
+          "value": true
+        }
+      ],
+      "notes": "Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.",
+      "durationMs": 1
+    },
+    {
+      "id": "acp.context-preamble-inventory",
+      "name": "ACP context preamble file exists at ~/.openclaw/acp-context-preamble.md",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "RT-08"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../.openclaw/acp-context-preamble.md>"
+        },
+        {
+          "label": "sizeBytes",
+          "value": 10041
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "acp.preset-http-upload-manual",
+      "name": "HTTP upload accepts ACP preset models",
+      "groups": [
+        "acp",
+        "attachments"
+      ],
+      "matrixIds": [
+        "UM-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Live gateway session and a small HTTP file-upload attachment prepared for staging.",
+          "A valid ACP preset id from the current preset catalog."
+        ],
+        "steps": [
+          "Upload a small text file with the preset model id set via HTTP.",
+          "Confirm the gateway accepts the upload and echoes the resolved model."
+        ],
+        "expected": "The upload completes and the resolved model equals the preset's underlying model id.",
+        "evidence": [
+          "Full HTTP response body and gateway log excerpt showing normalization."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one uploaded text file in staging workspace"
+          ],
+          "cleanupRollback": [
+            "delete uploaded file after verification"
+          ],
+          "evidenceCapture": [
+            "response body",
+            "gateway log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.runtime-flip-manual",
+      "name": "ACP runtime flip preserves context, session log, and subagent identity",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-03"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live staging session with both ACP and embedded runtimes available.",
+          "A canary subagent identity established before the flip."
+        ],
+        "steps": [
+          "Send a turn on ACP; record the NDJSON session log line.",
+          "Flip to embedded; send a follow-up turn.",
+          "Flip back to ACP; ask the agent to recall the canary subagent identity."
+        ],
+        "expected": "No duplicated messages; session log records each transition; subagent identity survives both flips.",
+        "evidence": [
+          "Session log NDJSON excerpt; chat transcript excerpts around both flips."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "session log lines and canary subagent identity"
+          ],
+          "cleanupRollback": [
+            "retire canary subagent identity after test"
+          ],
+          "evidenceCapture": [
+            "NDJSON excerpt",
+            "transcript excerpts"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.sidecar-manual",
+      "name": "ACP NDJSON sidecar persists per-turn metadata",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-04b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live ACP session and access to ~/.openclaw/agents/<agent>/sessions/<session>.jsonl."
+        ],
+        "steps": [
+          "Send a turn.",
+          "Inspect the NDJSON sidecar for the turn.",
+          "Verify runtime, model, and thinking effort metadata is present."
+        ],
+        "expected": "The sidecar has one JSON line per turn with runtime, model, and effort fields populated.",
+        "evidence": [
+          "The exact JSONL lines for the turn."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one JSONL line in staging session log"
+          ],
+          "cleanupRollback": [
+            "staging-only; no rollback of session log lines needed"
+          ],
+          "evidenceCapture": [
+            "JSONL lines"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.plugin-sdk-collision-manual",
+      "name": "ACP plugin-sdk exports do not collide with core internals",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-04c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Ability to load the plugin-sdk barrel and diff exports against src/acp core internals."
+        ],
+        "steps": [
+          "Compare exported names from openclaw/plugin-sdk/acp with src/acp internals.",
+          "Verify no third-party plugin can import a core internal through the sdk barrel by name."
+        ],
+        "expected": "The public surface is a narrow, documented subset. No internal-only symbol is re-exported.",
+        "evidence": [
+          "Diff of the SDK barrel exports vs the core internals; test import from a third-party stub."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "observational only"
+          ],
+          "evidenceCapture": [
+            "diff output"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.dispatch-pipeline-manual",
+      "name": "ACP dispatch pipeline delivers events without duplication",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-05a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live ACP session and the UI streaming view."
+        ],
+        "steps": [
+          "Trigger a turn with tool events.",
+          "Compare gateway-emitted events with UI-rendered events.",
+          "Trigger post-compaction context injection; verify projection order."
+        ],
+        "expected": "1:1 mapping between gateway events and UI events; post-compaction ordering preserved.",
+        "evidence": [
+          "Event log capture from both sides."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one staging turn with tool events"
+          ],
+          "cleanupRollback": [
+            "staging-only; retain events for evidence"
+          ],
+          "evidenceCapture": [
+            "event captures"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.lifecycle-channel-manual",
+      "name": "ACP lifecycle commands terminate cleanly across every configured messaging channel",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-05c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "For each configured channel (webchat, Slack, Telegram, Discord, Signal, iMessage, WhatsApp web, Matrix, Zalo, Voice Call as applicable), a staging session or dry-run harness."
+        ],
+        "steps": [
+          "Issue an ACP lifecycle command (start/stop/reset).",
+          "Verify each configured channel reflects the terminal state."
+        ],
+        "expected": "Every channel reaches the terminal state consistently; no lingering runs.",
+        "evidence": [
+          "Per-channel state snapshots after the command."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": false,
+          "changesAuth": false,
+          "downloadsExternal": false,
+          "writesWorkspaceFiles": false,
+          "externalMessaging": false,
+          "expectedMutations": [
+            "lifecycle state changes"
+          ],
+          "cleanupRollback": [
+            "staging-only; restart is not permitted by this harness"
+          ],
+          "evidenceCapture": [
+            "state snapshots"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.pty-permission-manual",
+      "name": "ACPX PTY spawn and permission policy behave as documented",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-10a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live ACPX session where permission prompts are enabled."
+        ],
+        "steps": [
+          "Trigger a tool that requires approval.",
+          "Approve it; verify the tool runs.",
+          "Trigger a tool that requires approval; deny it; verify it does not run."
+        ],
+        "expected": "Approval gates operate as expected; PTY spawn does not leak to a shared TTY.",
+        "evidence": [
+          "Screenshots of the approval prompt and the deny path."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "one tool invocation on approve; nothing on deny"
+          ],
+          "cleanupRollback": [
+            "staging-only; roll back any tool side-effect"
+          ],
+          "evidenceCapture": [
+            "screenshots"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.prompt-tempfile-manual",
+      "name": "ACPX prompt-tempfile transport cleans up and honors noninteractive policy",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "UM-10b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging ACPX session with a large prompt that triggers the tempfile path."
+        ],
+        "steps": [
+          "Send a large prompt; observe tempfile creation and cleanup after the turn.",
+          "Verify path safety (no traversal, no shared tmp).",
+          "Repeat in noninteractive mode; confirm noninteractive-policy behavior."
+        ],
+        "expected": "Tempfile is created in an isolated path, cleaned up post-turn, and noninteractive policy is honored.",
+        "evidence": [
+          "Tempfile path listing before/after; noninteractive session output."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one tempfile created and deleted"
+          ],
+          "cleanupRollback": [
+            "assert tempfile removed after turn"
+          ],
+          "evidenceCapture": [
+            "path listings",
+            "session output"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.event-parsing-manual",
+      "name": "ACPX expanded event parsing tolerates duplicate/unknown events; process cleanup on exit",
+      "groups": [
+        "acp",
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UM-10c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging ACPX session with the ability to inject duplicate/unknown NDJSON lines."
+        ],
+        "steps": [
+          "Inject one duplicate event and one unknown-type event during a turn.",
+          "Confirm the runtime does not crash and the turn completes.",
+          "Exit the session; verify process cleanup releases child processes."
+        ],
+        "expected": "Turn completes; no zombie processes remain after exit.",
+        "evidence": [
+          "Turn transcript; ps snapshot before/after exit."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "ps snapshot proves cleanup"
+          ],
+          "evidenceCapture": [
+            "transcript",
+            "ps snapshots"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.session-metadata-manual",
+      "name": "Session metadata records ACP runtime information",
+      "groups": [
+        "acp",
+        "history-recovery"
+      ],
+      "matrixIds": [
+        "UM-11"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A live ACP session and read access to session metadata."
+        ],
+        "steps": [
+          "Retrieve session metadata for the current run.",
+          "Confirm the ACP runtime, model, and thinking effort are present."
+        ],
+        "expected": "Metadata contains the ACP runtime, model, and effort fields.",
+        "evidence": [
+          "Metadata JSON payload."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only; no rollback"
+          ],
+          "evidenceCapture": [
+            "metadata payload"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "acp.patched-shim-manual",
+      "name": "Patched Claude ACP shim is bind-mounted and active",
+      "groups": [
+        "acp"
+      ],
+      "matrixIds": [
+        "RT-07"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Host filesystem access with the patched claude-agent-acp-local directory."
+        ],
+        "steps": [
+          "Verify the compose file bind-mounts the patched shim path.",
+          "From inside the container, resolve the shim's entry file and check for the systemPrompt.append patch."
+        ],
+        "expected": "Container uses the patched shim; the patch is present and matches the recovery-archive checksum.",
+        "evidence": [
+          "File checksum comparison against the recovery archive."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "observational only"
+          ],
+          "evidenceCapture": [
+            "checksum comparison"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.forge-installed",
+      "name": "Patched Forge MCP server is present",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "RT-04"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../mcp/forge-mcp-server-patched>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "mcp-bridge.zoom-installed",
+      "name": "Zoom MCP server is present",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "RT-05"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../mcp/zoom-mcp-server>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "mcp-bridge.lando-inventory",
+      "name": "lando-mcp-server exists in core repo",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "UM-16a"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../mcp-servers/lando-mcp-server>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "mcp-bridge.gateway-bridge-manual",
+      "name": "Gateway-bridge MCP exposes OpenClaw tools inside ACP",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "UM-09",
+        "UM-25"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging ACP session with the gateway-bridge MCP enabled."
+        ],
+        "steps": [
+          "List tools inside the ACP session.",
+          "Invoke one OpenClaw tool (e.g. memory_recall) through the bridge.",
+          "Trigger a name-collision path by installing a same-named tool on both sides; verify sanitization."
+        ],
+        "expected": "OpenClaw tools appear inside the ACP tool list; collisions are sanitized without swallowing calls.",
+        "evidence": [
+          "Full tool list; bridged tool response; sanitizer log excerpt."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "one bridged tool call"
+          ],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "tool list",
+            "response",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.forge-live-manual",
+      "name": "Forge MCP responds and redacts environment retrieval",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "RT-04"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Forge MCP configured and reachable.",
+          "A Forge action that reads environment values."
+        ],
+        "steps": [
+          "Invoke the environment-reading action against staging.",
+          "Inspect the response for any raw secret leakage."
+        ],
+        "expected": "Response returns redacted values; no plaintext token leaves the container.",
+        "evidence": [
+          "Redacted response body and Forge server log excerpt."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "response",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.zoom-live-manual",
+      "name": "Zoom MCP tool set responds via configured OAuth",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "RT-05"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Zoom MCP configured with valid OAuth."
+        ],
+        "steps": [
+          "Invoke a read-only Zoom action (e.g. list meetings).",
+          "Verify the response is authenticated and correctly scoped."
+        ],
+        "expected": "The read-only Zoom call succeeds without a re-auth prompt.",
+        "evidence": [
+          "Truncated Zoom API response (redacted)."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "changesAuth": false,
+          "downloadsExternal": false,
+          "writesWorkspaceFiles": false,
+          "externalMessaging": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "response"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.lando-live-manual",
+      "name": "Lando MCP performs a safe read-only action",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "UM-16a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Lando MCP configured with a project the operator is allowed to inspect."
+        ],
+        "steps": [
+          "Invoke lando list / status (never a destructive one).",
+          "Verify no lifecycle command runs without explicit confirmation."
+        ],
+        "expected": "Read-only calls succeed; destructive ops still require explicit confirmation.",
+        "evidence": [
+          "Redacted MCP response body."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "response"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.lando-safety-manual",
+      "name": "Lando MCP enforces safe quoting, containment, timeouts, and destructive-confirmation",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "UM-16b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Lando MCP and a project whose lifecycle can be exercised safely."
+        ],
+        "steps": [
+          "Attempt a command with shell-metacharacters in an argument; confirm quoting rejects it.",
+          "Attempt a slow-running command past the configured timeout; confirm timeout enforced.",
+          "Attempt a destructive op; confirm explicit confirmation is required."
+        ],
+        "expected": "Every safety invariant is honored; nothing destructive proceeds without confirmation.",
+        "evidence": [
+          "Command outputs; timeout log; confirmation prompt capture."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "outputs",
+            "log",
+            "prompt capture"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "mcp-bridge.sanitizer-manual",
+      "name": "MCP tool-name sanitizer prevents collisions",
+      "groups": [
+        "mcp-bridge"
+      ],
+      "matrixIds": [
+        "UM-25"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging MCP server registering a tool with the same name as an OpenClaw built-in."
+        ],
+        "steps": [
+          "Register the colliding tool.",
+          "List tools; verify the collision was renamed.",
+          "Invoke both tools; verify they route to the correct handler."
+        ],
+        "expected": "Sanitizer renames the colliding tool and preserves both handlers.",
+        "evidence": [
+          "Tool list showing renamed entry and both responses."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "tool list",
+            "responses"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "attachments.mime-allowlist-inventory",
+      "name": "input-files MIME allowlist includes text/calendar and JSONL variants; no blanket text/* bypass",
+      "groups": [
+        "attachments"
+      ],
+      "matrixIds": [
+        "UM-12",
+        "CP-03"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "text/calendar",
+          "value": true
+        },
+        {
+          "label": "application/jsonl",
+          "value": true
+        },
+        {
+          "label": "application/x-ndjson",
+          "value": true
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "attachments.large-parsing-manual",
+      "name": "Large attachment parsing is bounded and returns structured offloadedRefs",
+      "groups": [
+        "attachments"
+      ],
+      "matrixIds": [
+        "UM-22a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging gateway session.",
+          "Sample PDF, DOCX, JSONL, unknown-binary, and >10 MB image files staged locally."
+        ],
+        "steps": [
+          "Upload each file type via both WebSocket and HTTP transports.",
+          "Inspect the returned message payload for offloadedRefs entries with path, mime, label, size.",
+          "Have the agent invoke a read tool against the offloaded path; verify content accessibility."
+        ],
+        "expected": "Every non-image accepted file produces a structured OffloadedRef; agent can read via the returned path.",
+        "evidence": [
+          "offloadedRefs JSON for each upload.",
+          "Read-tool response for each file."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one offloaded file per upload"
+          ],
+          "cleanupRollback": [
+            "delete uploaded files after verification"
+          ],
+          "evidenceCapture": [
+            "offloadedRefs",
+            "read responses"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "attachments.hostile-labels-manual",
+      "name": "Hostile labels/limits are refused with a bounded error; order preserved",
+      "groups": [
+        "attachments"
+      ],
+      "matrixIds": [
+        "UM-22b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging gateway with sample malformed uploads."
+        ],
+        "steps": [
+          "Upload files with path-traversal labels, oversized labels, and null-byte labels.",
+          "Verify each is refused with a documented error, not a crash.",
+          "Verify order of operations places validation before persistence."
+        ],
+        "expected": "Malicious inputs are refused with bounded errors; no persistence side-effects on refuse.",
+        "evidence": [
+          "Error responses; server log excerpt showing validation order."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "error responses",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "attachments.jsonl-mime-manual",
+      "name": "JSONL upload is accepted end-to-end",
+      "groups": [
+        "attachments"
+      ],
+      "matrixIds": [
+        "UM-12",
+        "CP-03"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging gateway session and a small JSONL sample file."
+        ],
+        "steps": [
+          "Upload the JSONL via HTTP.",
+          "Have the agent invoke a read tool on the offloaded path."
+        ],
+        "expected": "The upload is accepted, the offloadedRef is present, and the agent can read line by line.",
+        "evidence": [
+          "Full upload response and read-tool output."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "one uploaded JSONL"
+          ],
+          "cleanupRollback": [
+            "delete uploaded file after verification"
+          ],
+          "evidenceCapture": [
+            "response",
+            "read output"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.opus-5-canonical-inventory",
+      "name": "No source file exposes claude-opus-5-0 as a selectable option",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "MODEL-03"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "<redacted-path:.../acp/presets.ts>",
+          "value": "absent"
+        },
+        {
+          "label": "<redacted-path:.../constants/acpPresets.ts>",
+          "value": "absent"
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "model-provenance.opus-4-8-inventory",
+      "name": "Direct Opus 4.8 model is allowed and declared by the effective gateway catalog",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "MODEL-02"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "anthropic/claude-opus-4-8 allowed",
+          "value": true
+        },
+        {
+          "label": "claude-opus-4-8 provider model declared",
+          "value": true
+        }
+      ],
+      "notes": "This validates the direct Anthropic model used by shared gateway-catalog selectors. Claude Code ACP presets remain separate and must not advertise unsupported model IDs.",
+      "durationMs": 0
+    },
+    {
+      "id": "model-provenance.opus-4-8-manual",
+      "name": "Opus 4.8 dispatch echoes the real active model",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "MODEL-02"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Anthropic account balance for the current window.",
+          "The Opus 4.8 selector visible in the UI."
+        ],
+        "steps": [
+          "Select Opus 4.8 in the UI.",
+          "Send a short prompt asking the model to echo its model id.",
+          "Inspect the response metadata and the API log for the returned model id."
+        ],
+        "expected": "Response metadata identifies claude-opus-4-8; no silent fallback.",
+        "evidence": [
+          "Truncated response metadata.",
+          "API log line with the response model id."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "metadata",
+            "API log"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.opus-5-live-manual",
+      "name": "Opus 5 dispatch is either supported or fails visibly",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "MODEL-03"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging Anthropic account balance and Opus 5 access."
+        ],
+        "steps": [
+          "Select a preset that references claude-opus-5 (canonical form only).",
+          "Send a short prompt.",
+          "Confirm the response identifies claude-opus-5 or the request fails with a visible error."
+        ],
+        "expected": "Silent fallback is impossible.",
+        "evidence": [
+          "Response metadata and error banner (if any)."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "metadata",
+            "banner"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.sol-provider-path-manual",
+      "name": "SOL 5.6 dispatch resolves to the correct provider path",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "MODEL-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Both openai-codex/gpt-5.6-sol and openai/gpt-5.6-sol paths configured in staging openclaw.json."
+        ],
+        "steps": [
+          "Select SOL 5.6 High in the UI.",
+          "Send a prompt.",
+          "Inspect the response metadata for the actual provider id used."
+        ],
+        "expected": "Response metadata identifies the intended SOL provider path; no silent GPT-5.5 fallback.",
+        "evidence": [
+          "Truncated response metadata."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "metadata"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.sol-atomic-send-manual",
+      "name": "SOL 5.6 model + thinking effort atomic across WS/HTTP/edit/retry",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "UI-02a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging UI checkpoint build with SOL presets enabled."
+        ],
+        "steps": [
+          "Send a WS message with SOL High selected; verify payload includes both model and thinking.",
+          "Repeat via HTTP file upload.",
+          "Edit and resend the message.",
+          "Retry from the error state."
+        ],
+        "expected": "In every path the resolved model id AND thinking effort are carried together; moving to Base clears prior effort.",
+        "evidence": [
+          "WebSocket / HTTP request captures for each path."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "request captures"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.sol-thinking-reset-manual",
+      "name": "SOL Base resets prior thinking; fallback exclusion for Off; ExtraHigh-Pro roundtrip; config rollback",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "UI-02b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging UI with SOL presets; ability to inspect params.thinking per send."
+        ],
+        "steps": [
+          "Select SOL High; send a turn (thinking=high).",
+          "Switch to SOL Base; send another turn.",
+          "Verify the new turn's params.thinking is a documented reset value (not stale high).",
+          "Switch to SOL Off; verify Off is excluded from fallback chain.",
+          "Roundtrip SOL ExtraHigh -> Pro -> ExtraHigh; verify each dispatch carries the correct pair.",
+          "Roll back to the prior config; verify the send behavior returns to baseline."
+        ],
+        "expected": "Base clears the prior effort; Off is not selected as a fallback; ExtraHigh-Pro roundtrip preserves identity; rollback returns to baseline.",
+        "evidence": [
+          "Request payloads and session config snapshots for each step."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "staging session config toggles"
+          ],
+          "cleanupRollback": [
+            "restore original session config after test"
+          ],
+          "evidenceCapture": [
+            "payloads",
+            "config snapshots"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.acp-preset-manual",
+      "name": "ACP preset routing echoes the resolved model on every path",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "UM-02",
+        "UM-21"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Live staging ACP session with a valid preset selected."
+        ],
+        "steps": [
+          "Send a prompt via the UI.",
+          "Send a prompt via HTTP.",
+          "Send an edit/resend and a retry."
+        ],
+        "expected": "Every route reports the same resolved model in response metadata; no SDK-default fallback.",
+        "evidence": [
+          "Response metadata for each path."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "metadata"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "model-provenance.per-turn-model-manual",
+      "name": "Per-turn model selection is honored end-to-end and reported in response metadata",
+      "groups": [
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "UM-08c"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging session with distinct model per turn."
+        ],
+        "steps": [
+          "Send turn 1 with model A; verify metadata identifies A.",
+          "Send turn 2 with model B in the same session; verify metadata identifies B.",
+          "Retry turn 1 while turn 2 was already sent; verify model A on the retry."
+        ],
+        "expected": "Each turn's response metadata reports the requested model; per-turn choice is stable.",
+        "evidence": [
+          "Response metadata for all three turns."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging balance only"
+          ],
+          "evidenceCapture": [
+            "metadata"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "fallback-persistence.dnd-inventory",
+      "name": "UI ModelMultiSelect has drag/drop and keyboard-accessible reorder controls",
+      "groups": [
+        "fallback-persistence"
+      ],
+      "matrixIds": [
+        "UI-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "onDragStart",
+          "value": true
+        },
+        {
+          "label": "onDrop and dataTransfer",
+          "value": true
+        },
+        {
+          "label": "move-up button",
+          "value": true
+        },
+        {
+          "label": "move-down button",
+          "value": true
+        },
+        {
+          "label": "button handlers call reorder",
+          "value": true
+        }
+      ],
+      "durationMs": 2
+    },
+    {
+      "id": "fallback-persistence.ui-source-manual",
+      "name": "Fallback order persists and drag reorder works",
+      "groups": [
+        "fallback-persistence"
+      ],
+      "matrixIds": [
+        "UI-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging UI checkpoint build with the fallback multi-select."
+        ],
+        "steps": [
+          "Add three fallback models via the UI.",
+          "Drag the third above the first; verify the new order.",
+          "Reload the page and confirm the order persists via projectApi.",
+          "Use the keyboard arrow buttons to move a model up; verify persistence again.",
+          "Drop a chip on empty space; confirm it moves to the end."
+        ],
+        "expected": "Both drag and keyboard reordering persist across reloads; drops on empty space append to the end.",
+        "evidence": [
+          "Screenshots or DOM captures pre- and post-reload."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "fallback model ordering persisted per project"
+          ],
+          "cleanupRollback": [
+            "restore prior fallback ordering after test"
+          ],
+          "evidenceCapture": [
+            "screenshots",
+            "DOM captures"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "fallback-persistence.fallback-chain-manual",
+      "name": "Cross-provider fallback chain honors persisted ordering, cooldown, and death-spiral breaker",
+      "groups": [
+        "fallback-persistence",
+        "model-provenance"
+      ],
+      "matrixIds": [
+        "RUN-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Staging session with a documented misconfigured primary model and >=2 fallback models."
+        ],
+        "steps": [
+          "Send a prompt; observe the primary fails.",
+          "Verify the fallback chain fires in the persisted order.",
+          "Trigger a cooldown / death-spiral condition; verify the breaker engages."
+        ],
+        "expected": "Fallback ordering, cooldown, and breaker all behave per documented spec.",
+        "evidence": [
+          "Runner log excerpt across the failover; fallback ordering snapshot from projectApi."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "invokesPaidApi": true,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "staging-only"
+          ],
+          "evidenceCapture": [
+            "log excerpt",
+            "ordering snapshot"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "project-files.server-inventory",
+      "name": "UI split-API server exposes project manifest routes",
+      "groups": [
+        "project-files"
+      ],
+      "matrixIds": [
+        "PF-01"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../server/projectManifest.js>"
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "project-files.generation-manual",
+      "name": "PROJECT.md and PROJECT_FILES.md generation flow",
+      "groups": [
+        "project-files"
+      ],
+      "matrixIds": [
+        "PF-01"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "UI checkpoint build.",
+          "A staging workspace directory with at least three source files."
+        ],
+        "steps": [
+          "Trigger PROJECT.md generation from the UI project view.",
+          "Verify the output matches the workspace snapshot.",
+          "Trigger PROJECT_FILES.md generation.",
+          "Verify each referenced file exists and the file list ordering matches the UI's chosen scope."
+        ],
+        "expected": "Both files are generated to the expected paths and reflect the workspace snapshot.",
+        "evidence": [
+          "Generated file contents (truncated).",
+          "Workspace directory listing at generation time."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "expectedMutations": [
+            "PROJECT.md and PROJECT_FILES.md in staging workspace"
+          ],
+          "cleanupRollback": [
+            "delete generated files after verification"
+          ],
+          "evidenceCapture": [
+            "file contents",
+            "directory listing"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "browser-isolation.ports-inventory",
+      "name": "Per-project browser port registry is present and non-empty with unique ports",
+      "groups": [
+        "browser-isolation"
+      ],
+      "matrixIds": [
+        "RT-06"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "profileCount",
+          "value": 25
+        },
+        {
+          "label": "uniquePortCount",
+          "value": 25
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "browser-isolation.per-project-manual",
+      "name": "Per-project Chrome containers isolate cookies and downloads",
+      "groups": [
+        "browser-isolation"
+      ],
+      "matrixIds": [
+        "RT-06"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "browser-manager.sh available",
+          "Two staging projects with browser profiles configured"
+        ],
+        "steps": [
+          "Start browser for staging project A; log into a distinct account or site.",
+          "Start browser for staging project B; open the same site.",
+          "Confirm project B does NOT inherit project A's session.",
+          "Download a file in project A; confirm it lands in the project A downloads directory only.",
+          "Stop and restart project A's browser; confirm the session persists."
+        ],
+        "expected": "Sessions and downloads are strictly isolated per project; data survives a container restart.",
+        "evidence": [
+          "Screenshots; per-project downloads directory listing."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "writesWorkspaceFiles": true,
+          "downloadsExternal": true,
+          "expectedMutations": [
+            "staging profile mutations; one downloaded canary file"
+          ],
+          "cleanupRollback": [
+            "delete downloaded canary file"
+          ],
+          "evidenceCapture": [
+            "screenshots",
+            "directory listing"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "auth.oauth-refresh-dedupe-manual",
+      "name": "Concurrent OAuth refresh requests are deduplicated",
+      "groups": [
+        "auth"
+      ],
+      "matrixIds": [
+        "UM-07"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging provider whose access token is close to expiry."
+        ],
+        "steps": [
+          "Fire two concurrent staging runs that will each trigger a refresh.",
+          "Inspect the OAuth server logs / gateway logs for the number of refresh calls."
+        ],
+        "expected": "Exactly one refresh call is issued across both concurrent runs.",
+        "evidence": [
+          "Redacted log excerpts from both sides."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "changesAuth": true,
+          "invokesPaidApi": true,
+          "expectedMutations": [
+            "one refresh token rotation on staging profile"
+          ],
+          "cleanupRollback": [
+            "confirm profile is not burned; observe re-runnable state"
+          ],
+          "evidenceCapture": [
+            "log excerpts"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "auth.burned-profile-manual",
+      "name": "Permanent refresh failures retire the burned profile",
+      "groups": [
+        "auth"
+      ],
+      "matrixIds": [
+        "UM-18"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A dedicated test OAuth profile with a deliberately invalid refresh token."
+        ],
+        "steps": [
+          "Trigger a refresh; observe the permanent-failure classification.",
+          "Confirm the profile is marked burned and the UI prompts for reauth.",
+          "Confirm no further refresh attempts are made until the operator reauthenticates the test profile through the normal UI flow (never by hand-editing credentials)."
+        ],
+        "expected": "Permanent failures retire the profile; transient failures do not.",
+        "evidence": [
+          "Gateway log excerpt and profile-state snapshot."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "changesAuth": true,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "burned state on test profile"
+          ],
+          "cleanupRollback": [
+            "reauth test profile through UI to restore state"
+          ],
+          "evidenceCapture": [
+            "log excerpt",
+            "profile snapshot"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "auth.stale-refresh-manual",
+      "name": "Stale on-disk credential is adopted before declaring the token burned",
+      "groups": [
+        "auth"
+      ],
+      "matrixIds": [
+        "UM-23"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Two staging agents sharing a provider profile.",
+          "A documented UI/tooling path that rotates the on-disk credential (never a hand-edit of live credentials)."
+        ],
+        "steps": [
+          "From agent A, refresh the token so a newer credential lands on disk.",
+          "From agent B, drive a stale in-memory refresh path; verify it adopts the on-disk credential rather than burning."
+        ],
+        "expected": "Stale in-memory credential is replaced by the newer on-disk one; no burn is recorded.",
+        "evidence": [
+          "Before/after credential file mtimes (redacted); gateway log excerpt."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": true,
+          "changesAuth": true,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [
+            "credential rotation via documented UI/tooling path"
+          ],
+          "cleanupRollback": [
+            "confirm both agents share a valid credential; no burn"
+          ],
+          "evidenceCapture": [
+            "mtime deltas",
+            "log excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "auth.acp-log-identity-manual",
+      "name": "ACP log events carry authenticated identity; no bypass via log fields",
+      "groups": [
+        "auth"
+      ],
+      "matrixIds": [
+        "UM-08a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A staging ACP session emitting log events and access to the receiving side."
+        ],
+        "steps": [
+          "Emit a log event with a plausibly forged identity field.",
+          "Confirm the receiving side ignores forged identity and uses the authenticated session identity."
+        ],
+        "expected": "Log identity is authenticated; forged fields are ignored.",
+        "evidence": [
+          "Log event capture and receiver-side identity resolution."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "changesAuth": false,
+          "invokesPaidApi": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "event capture",
+            "identity resolution"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "runtime-infra.dockerfile-inventory",
+      "name": "Custom Dockerfile is present",
+      "groups": [
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-13a"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../openclaw--openclaw/Dockerfile.custom>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "runtime-infra.build-config-inventory",
+      "name": "tsdown config and package.json build script inventory",
+      "groups": [
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-13b"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "tsdown config or script",
+          "value": "<redacted-path:.../openclaw--openclaw/tsdown.config.ts>"
+        },
+        {
+          "label": "package.json build script",
+          "value": true
+        },
+        {
+          "label": "package.json name",
+          "value": "openclaw"
+        }
+      ],
+      "durationMs": 2
+    },
+    {
+      "id": "runtime-infra.tooling-inventory",
+      "name": "Operational tooling set (patch/mount/reauth/routing/CA/upgrade scripts)",
+      "groups": [
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-15"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "required:patch-gateway-bundles.sh",
+          "value": true
+        },
+        {
+          "label": "required:openclaw-mount.sh",
+          "value": true
+        },
+        {
+          "label": "optional:openclaw-mount-restore.sh",
+          "value": false
+        },
+        {
+          "label": "optional:mount-registry-status.mjs",
+          "value": true
+        },
+        {
+          "label": "optional:reauth.sh",
+          "value": false
+        },
+        {
+          "label": "optional:route.sh",
+          "value": false
+        },
+        {
+          "label": "optional:ca-update.sh",
+          "value": false
+        }
+      ],
+      "durationMs": 3
+    },
+    {
+      "id": "runtime-infra.stale-bundle-inventory",
+      "name": "Bundle patch script removes stale mount directories",
+      "groups": [
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "CP-02"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:...<redacted:entropy>.sh>"
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "runtime-infra.gitignore-inventory",
+      "name": ".gitignore OR .git/info/exclude excludes local bundle/workspace artifacts",
+      "groups": [
+        "runtime-infra"
+      ],
+      "matrixIds": [
+        "UM-19"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "pattern:/gateway-cli/",
+          "value": true
+        },
+        {
+          "label": "pattern:/input-files/",
+          "value": true
+        },
+        {
+          "label": "pattern:/workspace/",
+          "value": true
+        },
+        {
+          "label": "pattern:/patch(?:es|-bundles)?/",
+          "value": true
+        }
+      ],
+      "durationMs": 2
+    },
+    {
+      "id": "runtime-infra.macos-dep-rationale-manual",
+      "name": "macOS resolution / provider metadata rationale documented",
+      "groups": [
+        "runtime-infra",
+        "providers"
+      ],
+      "matrixIds": [
+        "UM-27a"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Access to the maintainer release docs or the local runtime preservation doc."
+        ],
+        "steps": [
+          "Locate the rationale for the current macOS resolution/lockfile choices.",
+          "Confirm the rationale is documented and cross-referenced from OPENCLAW_UPGRADE_PLAN_V2.md."
+        ],
+        "expected": "The rationale is discoverable in the maintainer docs / runtime-preservation doc.",
+        "evidence": [
+          "Excerpt from the referenced doc."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "observational only"
+          ],
+          "evidenceCapture": [
+            "doc excerpt"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "providers.generated-bundle-manual",
+      "name": "Provider generated bundles are not carried onto the upgrade target",
+      "groups": [
+        "providers"
+      ],
+      "matrixIds": [
+        "UM-17a",
+        "UM-27b"
+      ],
+      "kind": "behavior",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "A clean v2026.7.1 worktree.",
+          "Access to the current runtime provider catalog."
+        ],
+        "steps": [
+          "In the stable worktree, run the standard provider catalog generator (pnpm run providers:generate or the documented equivalent).",
+          "Diff the freshly generated catalog against the current 2026.4.2 runtime catalog.",
+          "For each model missing from the fresh catalog, decide whether it is: (a) intentionally retired, or (b) still required — in which case add a source patch and regenerate."
+        ],
+        "expected": "The upgraded runtime uses regenerated provider catalogs; no hand-edited generated bundles remain.",
+        "evidence": [
+          "Diff output for the two catalogs and the decision log for each divergence."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only diff"
+          ],
+          "evidenceCapture": [
+            "diff output",
+            "decision log"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "providers.zap-baseline-manual",
+      "name": "ZAP security scan baselines preserved as evidence, not runtime carry-over",
+      "groups": [
+        "providers"
+      ],
+      "matrixIds": [
+        "UM-17b"
+      ],
+      "kind": "evidence",
+      "status": "manual",
+      "manual": {
+        "prerequisites": [
+          "Access to the ZAP baseline artifacts stored alongside the fork checkpoint."
+        ],
+        "steps": [
+          "Locate the ZAP baseline artifacts.",
+          "Confirm they are archived (not layered into the runtime image).",
+          "Cross-reference the artifact manifest with the current threat model doc."
+        ],
+        "expected": "Baselines are archived; not shipped in the runtime image.",
+        "evidence": [
+          "Archive location + artifact manifest."
+        ],
+        "safety": {
+          "stagingOnly": true,
+          "mutatesData": false,
+          "writesWorkspaceFiles": false,
+          "expectedMutations": [],
+          "cleanupRollback": [
+            "read-only"
+          ],
+          "evidenceCapture": [
+            "archive path",
+            "manifest"
+          ]
+        }
+      },
+      "durationMs": 0,
+      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "docs.upgrade-artifacts-inventory",
+      "name": "AGENTS.md is present in core repo",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "UM-14a"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../openclaw--openclaw/AGENTS.md>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "docs.pr-maintainer-skill-inventory",
+      "name": "PR maintainer skill file present",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "UM-14b"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../openclaw-pr-maintainer/SKILL.md>"
+        }
+      ],
+      "durationMs": 1
+    },
+    {
+      "id": "docs.upgrade-patches-inventory",
+      "name": "Upgrade patches inventory doc present",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "UM-14c"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../plugins/architecture.md>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "docs.local-runtime-inventory",
+      "name": "docs/local-runtime-preservation.md is present",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "CP-04"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../docs/local-runtime-preservation.md>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "docs.checkpoint-validation-inventory",
+      "name": "docs/pre-upgrade-checkpoint-validation.md is present",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "CP-05"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../docs/pre-upgrade-checkpoint-validation.md>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "docs.memory-firewall-inventory",
+      "name": "Memory-firewall deployment recorded",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "MEM-02"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../docs/local-runtime-preservation.md>"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "id": "docs.mount-baseline-inventory",
+      "name": "Mount baseline reconciliation recorded",
+      "groups": [
+        "docs"
+      ],
+      "matrixIds": [
+        "MOUNT-02",
+        "MOUNT-05"
+      ],
+      "kind": "inventory",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "path",
+          "value": "<redacted-path:.../audits/MOUNT_BASELINE_RECONCILIATION.md>"
+        }
+      ],
+      "durationMs": 0
+    }
+  ]
+}
