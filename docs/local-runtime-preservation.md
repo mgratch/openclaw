@@ -141,29 +141,36 @@ It contains before/after private config copies, the former global extension, a d
 
 Rollback requires restoring the private config from the recovery directory and moving the archived extension directories back to their prior locations. Do not re-enable the old plugin before restoring its matching config, because its shared mutable request state and unscoped delete path are the vulnerabilities this deployment removes.
 
-## Mount baseline and unresolved discrepancy
+## Reconciled mount baseline
 
-At checkpoint time:
-
-```text
-registry entries: 35
-openclaw-mount helper reports active: 35
-kernel-visible FUSE mounts: 32
-```
-
-Duplicate host-path mappings remain:
+The old `35/35 mounts` target conflated registry rows, directories, and physical FUSE mounts. The validated clean-start baseline is:
 
 ```text
-/Users/marcgratch/.ssh
-  desert-river-solutions--.ssh (ro)
-  lidar--.ssh (ro)
-
-/Users/marcgratch/tools/security-scanner-lando
-  desert-river-solutions--security-scanner-lando (rw)
-  lidar--security-scanner-lando (ro)
+logical registry rows: 35
+enabled logical rows: 33
+ready enabled rows: 33
+physical fuse.sshfs mounts: 32
+safe same-access aliases: 1
+explicitly disabled rows: 2
+failed enabled rows: 0
+stale directories: 0
+extra FUSE mounts: 0
 ```
 
-Do not normalize or replay the registry blindly. Before upgrade cutover, reconcile helper state with `/proc/mounts`, preserve intentional project sharing, and verify every logical mount's effective access mode.
+Special rows are explicit rather than dependent on JSON ordering:
+
+- `lidar--.ssh` is a safe read-only alias to the canonical DRS read-only SSH mount.
+- `lidar--security-scanner-lando` is preserved but blocked because DRS requires `rw` while Lidar requires `ro`; enforcing both requires separate mount namespaces or an independent read-only source.
+- `lidar--nighthawk-repos` is preserved but offline because its Mac symlink resolves to an unavailable external SSD target.
+- the browser manager now uses `openclaw--openclaw` instead of the obsolete duplicate `openclaw-docker` path.
+
+The helper-only runtime image `openclaw:custom-mountfix` layers the audited restore/status/helper files onto the exact prior `openclaw:custom` image. Startup validation produced `32 mounted, 1 alias, 2 disabled, 0 failed`; strict registry status and 7/7 read-only write-denial probes passed. Recovery material is stored at:
+
+```text
+/home/node/.openclaw/upgrade-checkpoints/mount-baseline-20260727-144836
+```
+
+Do not replace this model with 35 physical mounts during the stable upgrade. Preserve logical aliases and disabled policy records explicitly, or provide stronger per-project mount namespaces.
 
 ## Recovery scripts excluded from openclaw-ui Git
 

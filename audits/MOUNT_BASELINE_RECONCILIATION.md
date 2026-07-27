@@ -75,7 +75,7 @@ SSHFS does not mount that symlink as a directory, and the external target was un
 
 ### `openclaw-docker`
 
-This was an empty, inactive, unregistered directory left from a historical alias of the OpenClaw checkout. The canonical row is `openclaw--openclaw`. Only the empty container directory was removed; no host data or registry row was deleted.
+This was an empty, inactive, unregistered directory left from a historical alias of the OpenClaw checkout. A follow-up dependency check found that `~/.openclaw/bin/browser-manager.sh` still used it as an on-demand compose-control path. The browser manager was migrated to the existing canonical RW mount, `openclaw--openclaw`, before the empty directory was retired. This preserves dynamic browser compose generation without creating a duplicate SSHFS source. No host data or registry row was deleted.
 
 ### Nested `mg-media` source
 
@@ -105,9 +105,13 @@ Tracked source now provides:
   - retained duplicate-source collision protection;
   - IPv4-forced SSHFS transport.
 - `Dockerfile.custom`
-  - bakes the mount helper, restore script, and status implementation into the custom image.
+  - bakes the mount helper, restore script, and status implementation into the next normal custom image rebuild.
+- `Dockerfile.mountfix`
+  - temporary pre-upgrade overlay that layers only the audited mount helpers onto the currently deployed `openclaw:custom` image because the historical `openclaw:local` base tag is no longer available.
 - `docker-compose.override.yml`
-  - runs the baked deterministic restore instead of a mutable live-mounted restore script.
+  - selects the helper-only `openclaw:custom-mountfix` image and runs the baked deterministic restore instead of a mutable live-mounted restore script.
+- `~/.openclaw/bin/browser-manager.sh` runtime deployment
+  - uses `/mnt/host-projects/openclaw--openclaw` as its compose-control path instead of the obsolete duplicate `openclaw-docker` mount.
 
 ## Validation before restart
 
@@ -129,17 +133,34 @@ Pre-migration state is archived at:
 /home/node/.openclaw/upgrade-checkpoints/mount-baseline-20260727-144836
 ```
 
-It includes the current and pre-UI-dedup registries, old live restore/remount scripts, the old baked helper, the pre-change kernel mount table, and the pre-change validator report.
+It includes the current and pre-UI-dedup registries, old live restore/remount scripts, before/after browser-manager scripts, the old baked helper, the pre-change kernel mount table, and the pre-change validator report.
 
-## Remaining gate
+## Clean-start validation
 
-Rebuild and recreate `openclaw:custom`, then verify the same baseline from a clean container start:
+The historical full custom build could not run because its `openclaw:local` base tag no longer exists locally. No replacement base was pulled. Instead, `Dockerfile.mountfix` built from the exact deployed `openclaw:custom` digest and produced `openclaw:custom-mountfix`, changing only the three audited mount helper files.
+
+After a forced gateway recreation, startup produced:
 
 ```text
 32 physical FUSE mounts
 1 safe logical alias
 2 explicitly disabled logical rows
+33/33 enabled rows ready
 0 failed enabled rows
 0 stale directories
 0 extra FUSE mounts
 ```
+
+Additional post-restart checks:
+
+```text
+baked helper contains forced IPv4 transport: passed
+registry-aware helper strict status: passed
+read-only write-denial probes: 7/7 passed
+memory-lancedb-project reload: passed, zero plugin warnings/errors
+browser-manager canonical compose path: passed
+openclaw isolated browser restart + CDP health: passed
+session recovery after gateway recreation: passed
+```
+
+The startup log records `32 mounted, 0 already, 1 aliases, 2 disabled, 0 failed`. This closes the mount restoration gate for the current runtime.
