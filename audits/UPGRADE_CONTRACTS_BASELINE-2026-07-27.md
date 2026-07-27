@@ -1,14 +1,14 @@
 # OpenClaw upgrade-contracts baseline report
 
-_Schema:_ `openclaw-upgrade-contracts/v2`  ·  _Run:_ `2026-07-27T19-11-49-713Z-56927049`  ·  _Mode:_ `report-only`  ·  _Filtered:_ `no`
-_Started:_ 2026-07-27T19:11:49.713Z  ·  _Finished:_ 2026-07-27T19:12:14.558Z
-_Git HEAD:_ `ecb741e52cefa425c0daab7de800294e4e3d3c11`
+_Schema:_ `openclaw-upgrade-contracts/v2`  ·  _Run:_ `2026-07-27T19-35-19-729Z-e6975bde`  ·  _Mode:_ `report-only`  ·  _Filtered:_ `no`
+_Started:_ 2026-07-27T19:35:19.729Z  ·  _Finished:_ 2026-07-27T19:35:44.614Z
+_Git HEAD:_ `96384127ff86aabf634f12065a63a091a4451efc`
 _Runtime version:_ `2026.4.2`
 
 ## Gate decision
 
 - Result: **FAIL**
-- Blockers: **58**
+- Blockers: **56**
   - `check-manual` — memory-firewall.subagent-idempotency-manual pending manual attestation
   - `check-manual` — memory-firewall.target-runtime-manual pending manual attestation
   - `check-manual` — mounts-permissions.host-mount-access-manual pending manual attestation
@@ -24,7 +24,6 @@ _Runtime version:_ `2026.4.2`
   - `check-manual` — streaming-cleanup.terminal-cleanup-manual pending manual attestation
   - `check-manual` — streaming-cleanup.empty-final-manual pending manual attestation
   - `check-manual` — streaming-cleanup.wrap-up-idempotent-manual pending manual attestation
-  - `check-manual` — streaming-cleanup.toolcallid-correlation-manual pending manual attestation
   - `check-manual` — streaming-cleanup.ghost-stream-manual pending manual attestation
   - `check-manual` — two-tab-scoping.session-scoping-manual pending manual attestation
   - `check-manual` — steering.mid-run-manual pending manual attestation
@@ -55,7 +54,6 @@ _Runtime version:_ `2026.4.2`
   - `check-manual` — model-provenance.sol-thinking-reset-manual pending manual attestation
   - `check-manual` — model-provenance.acp-preset-manual pending manual attestation
   - `check-manual` — model-provenance.per-turn-model-manual pending manual attestation
-  - `check-manual` — fallback-persistence.ui-source-manual pending manual attestation
   - `check-manual` — fallback-persistence.fallback-chain-manual pending manual attestation
   - `check-manual` — project-files.generation-manual pending manual attestation
   - `check-manual` — browser-isolation.per-project-manual pending manual attestation
@@ -72,13 +70,13 @@ _Runtime version:_ `2026.4.2`
 
 | Class | Count |
 |---|---:|
-| behavior PASS | 5 |
+| behavior PASS | 6 |
 | inventory PASS | 33 |
 | evidence PASS | 1 |
 | FAIL | 0 |
 | SKIP | 0 |
-| MANUAL pending | 57 |
-| TOTAL | 96 |
+| MANUAL pending | 55 |
+| TOTAL | 95 |
 
 > Inventory PASS asserts the source/config/file inventory only. It is NOT proof of the behavior itself.
 > Evidence PASS attests to an immutable artifact for the current baseline; the target baseline requires a fresh artifact.
@@ -88,14 +86,14 @@ _Runtime version:_ `2026.4.2`
 - Total matrix rows: **80**
 - Terminal states: **0**  ·  Nonterminal states: **80**
 - Rows fully covered by this run: **80**
-- Behavior/Inventory/Evidence PASS counts across matrix rows: **8** / **37** / **1**
-- Manual pending: **62**  ·  Failed: **0**  ·  Skipped: **0**
+- Behavior/Inventory/Evidence PASS counts across matrix rows: **11** / **37** / **1**
+- Manual pending: **60**  ·  Failed: **0**  ·  Skipped: **0**
 
 ## Environment (redacted)
 
 ```json
 {
-  "now": "2026-07-27T19:11:49.718Z",
+  "now": "2026-07-27T19:35:19.734Z",
   "node": "24.14.0",
   "platform": "linux",
   "arch": "arm64",
@@ -109,7 +107,7 @@ _Runtime version:_ `2026.4.2`
   "procMountsPath": "/proc/self/mounts",
   "gatewayUrl": "http://127.0.0.1:18789",
   "git": {
-    "head": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
+    "head": "96384127ff86aabf634f12065a63a091a4451efc",
     "branch": "test/upgrade-golden-master-contracts",
     "dirty": false,
     "dirtyFileCount": 0
@@ -284,7 +282,7 @@ _Runtime version:_ `2026.4.2`
   "workspaceDb": {
     "path": "<redacted-path:.../workspace/conversations.db>",
     "sizeBytes": 1061588992,
-    "mtime": "2026-07-27T19:09:36.296Z"
+    "mtime": "2026-07-27T19:28:56.669Z"
   },
   "uiCheckpoint": {
     "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -295,7 +293,7 @@ _Runtime version:_ `2026.4.2`
 
 ## Results
 
-### MANUAL (pending) (57)
+### MANUAL (pending) (55)
 
 #### `memory-firewall.subagent-idempotency-manual` — Subagent announcement is idempotent; same subagent does not multi-register
 
@@ -365,7 +363,7 @@ _Safety declaration:_
 
 #### `mounts-permissions.host-mount-access-manual` — Host-mount access enforces RO/RW per registry (staging RW canary)
 
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
+- Status: **manual**  ·  kind: `behavior`  ·  duration: 1ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `UM-04a`
 - Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
@@ -797,39 +795,6 @@ _Safety declaration:_
   - expectedMutations: `one billed wrap-up turn`
   - cleanupRollback: `staging-only`
   - evidenceCapture: `billing snapshot`, `row count`
-
-────────────────────────────────────────────────────────────────────────
-
-#### `streaming-cleanup.toolcallid-correlation-manual` — Tool completion correlates by toolCallId; searches backward for owning assistant message
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `streaming-cleanup`
-- Matrix IDs: `UI-03a`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - A staging UI session with interleaved tool events; ability to inspect the message list state after each event.
-
-_Steps:_
-  1. Emit a tool-result whose toolCallId belongs to an older assistant message.
-  2. Verify the UI updates the OWNING message, not the last message.
-  3. Emit a stall-warning system message and then a real tool completion; verify the completion is not dropped.
-
-_Expected:_ Every tool completion updates the owning assistant message by toolCallId; no drop on interleaved system messages.
-
-_Evidence to capture:_
-  - Before/after message-list state around each event.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - invokesPaidApi: true
-  - writesWorkspaceFiles: false
-  - expectedMutations: `staging message-list mutations`
-  - cleanupRollback: `staging-only`
-  - evidenceCapture: `message state snapshots`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -1833,40 +1798,6 @@ _Safety declaration:_
 
 ────────────────────────────────────────────────────────────────────────
 
-#### `fallback-persistence.ui-source-manual` — Fallback order persists and drag reorder works
-
-- Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
-- Groups: `fallback-persistence`
-- Matrix IDs: `UI-01`
-- Notes: Manual contract. Requires operator-attached evidence before the gate can pass.
-
-**Manual contract**
-
-_Prerequisites:_
-  - Staging UI checkpoint build with the fallback multi-select.
-
-_Steps:_
-  1. Add three fallback models via the UI.
-  2. Drag the third above the first; verify the new order.
-  3. Reload the page and confirm the order persists via projectApi.
-  4. Use the keyboard arrow buttons to move a model up; verify persistence again.
-  5. Drop a chip on empty space; confirm it moves to the end.
-
-_Expected:_ Both drag and keyboard reordering persist across reloads; drops on empty space append to the end.
-
-_Evidence to capture:_
-  - Screenshots or DOM captures pre- and post-reload.
-
-_Safety declaration:_
-  - stagingOnly: true
-  - mutatesData: true
-  - writesWorkspaceFiles: true
-  - expectedMutations: `fallback model ordering persisted per project`
-  - cleanupRollback: `restore prior fallback ordering after test`
-  - evidenceCapture: `screenshots`, `DOM captures`
-
-────────────────────────────────────────────────────────────────────────
-
 #### `fallback-persistence.fallback-chain-manual` — Cross-provider fallback chain honors persisted ordering, cooldown, and death-spiral breaker
 
 - Status: **manual**  ·  kind: `behavior`  ·  duration: 0ms
@@ -2218,11 +2149,11 @@ Evidence:
 
 ────────────────────────────────────────────────────────────────────────
 
-### BEHAVIOR PASS (runtime invariant) (5)
+### BEHAVIOR PASS (runtime invariant) (6)
 
 #### `memory-firewall.isolated-suite-behavior` — Focused memory Vitest suite proves <redacted:entropy> isolation on a disposable LanceDB
 
-- Status: **pass**  ·  kind: `behavior`  ·  duration: 23107ms
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 21240ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`, `UM-06a`
 - Notes: Focused memory suite passed 28/28 tests across 3 files.
@@ -2230,10 +2161,10 @@ Evidence:
 Evidence:
   - exit code: `0`
   - timed out: `false`
-  - wall duration ms: `23106`
+  - wall duration ms: `21237`
   - test files: `3/3 passed`
   - tests: `28/28 passed`
-  - vitest duration ms: `22080`
+  - vitest duration ms: `20180`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2267,7 +2198,7 @@ Evidence:
 
 #### `mounts-permissions.exact-audit` — Exact per-row mount audit (<redacted:entropy>)
 
-- Status: **pass**  ·  kind: `behavior`  ·  duration: 8ms
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 9ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-01`, `MOUNT-02`, `MOUNT-03`
 - Notes: Every enabled row is exact per registry; reconciled shape matches 32+1+2.
@@ -2283,7 +2214,7 @@ Evidence:
 
 #### `mounts-permissions.git-trust-readonly` — Git trust is honored across every mounted repo root (RO probe)
 
-- Status: **pass**  ·  kind: `behavior`  ·  duration: 53ms
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 73ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-04`
 - Notes: RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.
@@ -2307,6 +2238,23 @@ Evidence:
   - <redacted:entropy>: `ref: refs/heads/main`
   - sunrail--sunrailv3: `ref: <redacted:entropy>`
   - theory-time--lms-migration-tool: `ref: refs/heads/update/learndash-importer`
+
+────────────────────────────────────────────────────────────────────────
+
+#### `ui-checkpoint.focused-behavior` — Focused UI Vitest suite proves fallback ordering, persisted fallback order, and toolCallId correlation (3 files, >=21 tests)
+
+- Status: **pass**  ·  kind: `behavior`  ·  duration: 2014ms
+- Groups: `fallback-persistence`, `model-provenance`, `streaming-cleanup`
+- Matrix IDs: `UI-01`, `UI-02b`, `UI-03a`
+- Notes: Focused UI checkpoint suite passed 21/21 tests across 3 files.
+
+Evidence:
+  - exit code: `0`
+  - timed out: `false`
+  - wall duration ms: `2010`
+  - test files: `3/3 passed`
+  - tests: `21/21 passed`
+  - vitest duration ms: `1220`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2344,7 +2292,7 @@ Evidence:
 
 #### `memory-schema.projectId-required-inventory` — memory table schema requires projectId column
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `memory-schema`
 - Matrix IDs: `MEM-01`
 
@@ -2368,7 +2316,7 @@ Evidence:
 
 #### `mounts-permissions.helper-baked-inventory` — Dockerfile bakes the reconciled mount helpers
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
 - Groups: `mounts-permissions`, `runtime-infra`
 - Matrix IDs: `UM-20`, `MOUNT-03`
 
@@ -2404,7 +2352,7 @@ Evidence:
 
 #### `history-recovery.tree-recovery-inventory` — conversation-tree recovery utility is present in the UI checkpoint
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 
@@ -2415,7 +2363,7 @@ Evidence:
 
 #### `transcript-archive.installed` — transcript-archive extension is installed
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `transcript-archive`
 - Matrix IDs: `RT-03`
 
@@ -2426,7 +2374,7 @@ Evidence:
 
 #### `streaming-cleanup.heartbeat-inventory` — UI useGatewayEvents separates liveness from progress and does not reset progress on generic heartbeat
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
 - Groups: `streaming-cleanup`
 - Matrix IDs: `UI-03b`
 - Notes: Inventory only — see streaming-cleanup manual contracts for behavior.
@@ -2441,7 +2389,7 @@ Evidence:
 
 #### `acp.preset-catalog-inventory` — ACP preset catalog module exists and declares supported routing symbols
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `acp`
 - Matrix IDs: `UM-02`
 - Notes: Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.
@@ -2458,7 +2406,7 @@ Evidence:
 
 #### `acp.context-preamble-inventory` — ACP context preamble file exists at ~/.openclaw/acp-context-preamble.md
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
 - Groups: `acp`
 - Matrix IDs: `RT-08`
 
@@ -2492,7 +2440,7 @@ Evidence:
 
 #### `mcp-bridge.lando-inventory` — lando-mcp-server exists in core repo
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `mcp-bridge`
 - Matrix IDs: `UM-16a`
 
@@ -2567,7 +2515,7 @@ Evidence:
 
 #### `browser-isolation.ports-inventory` — Per-project browser port registry is present and non-empty with unique ports
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
 - Groups: `browser-isolation`
 - Matrix IDs: `RT-06`
 
@@ -2590,7 +2538,7 @@ Evidence:
 
 #### `runtime-infra.build-config-inventory` — tsdown config and package.json build script inventory
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 3ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 6ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-13b`
 
@@ -2603,7 +2551,7 @@ Evidence:
 
 #### `runtime-infra.tooling-inventory` — Operational tooling set (patch/mount/reauth/routing/CA/upgrade scripts)
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 4ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 5ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-15`
 
@@ -2620,7 +2568,7 @@ Evidence:
 
 #### `runtime-infra.stale-bundle-inventory` — Bundle patch script removes stale mount directories
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `runtime-infra`
 - Matrix IDs: `CP-02`
 
@@ -2645,7 +2593,7 @@ Evidence:
 
 #### `docs.upgrade-artifacts-inventory` — AGENTS.md is present in core repo
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14a`
 
@@ -2656,7 +2604,7 @@ Evidence:
 
 #### `docs.pr-maintainer-skill-inventory` — PR maintainer skill file present
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14b`
 
@@ -2667,7 +2615,7 @@ Evidence:
 
 #### `docs.upgrade-patches-inventory` — Upgrade patches inventory doc present
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 2ms
 - Groups: `docs`
 - Matrix IDs: `UM-14c`
 
@@ -2689,7 +2637,7 @@ Evidence:
 
 #### `docs.checkpoint-validation-inventory` — docs/pre-upgrade-checkpoint-validation.md is present
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `CP-05`
 
@@ -2711,7 +2659,7 @@ Evidence:
 
 #### `docs.mount-baseline-inventory` — Mount baseline reconciliation recorded
 
-- Status: **pass**  ·  kind: `inventory`  ·  duration: 1ms
+- Status: **pass**  ·  kind: `inventory`  ·  duration: 0ms
 - Groups: `docs`
 - Matrix IDs: `MOUNT-02`, `MOUNT-05`
 

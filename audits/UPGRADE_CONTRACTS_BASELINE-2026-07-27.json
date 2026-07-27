@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-27T19-11-49-713Z-56927049",
+  "runId": "2026-07-27T19-35-19-729Z-e6975bde",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-27T19:11:49.713Z",
-  "finishedAt": "2026-07-27T19:12:14.558Z",
-  "gitHead": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
+  "startedAt": "2026-07-27T19:35:19.729Z",
+  "finishedAt": "2026-07-27T19:35:44.614Z",
+  "gitHead": "96384127ff86aabf634f12065a63a091a4451efc",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-27T19:11:49.718Z",
+    "now": "2026-07-27T19:35:19.734Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,7 +22,7 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "ecb741e52cefa425c0daab7de800294e4e3d3c11",
+      "head": "96384127ff86aabf634f12065a63a091a4451efc",
       "branch": "test/upgrade-golden-master-contracts",
       "dirty": false,
       "dirtyFileCount": 0
@@ -197,7 +197,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-27T19:09:36.296Z"
+      "mtime": "2026-07-27T19:28:56.669Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -220,10 +220,10 @@
     "totalRows": 80,
     "covered": 80,
     "uncoveredCheckIds": [],
-    "behaviorPass": 8,
+    "behaviorPass": 11,
     "inventoryPass": 37,
     "evidencePass": 1,
-    "manualPending": 62,
+    "manualPending": 60,
     "failed": 0,
     "skipped": 0,
     "stateNonterminal": 80,
@@ -1251,17 +1251,17 @@
       },
       {
         "id": "UI-01",
-        "state": "assumed",
+        "state": "test-only",
         "matrixTerminal": false,
         "checks": 2,
         "executed": 2,
         "missingInRun": [],
-        "pass": 1,
+        "pass": 2,
         "fail": 0,
-        "manual": 1,
+        "manual": 0,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 1,
           "evidence": 0
         }
@@ -1287,32 +1287,32 @@
         "id": "UI-02b",
         "state": "assumed",
         "matrixTerminal": false,
-        "checks": 1,
-        "executed": 1,
+        "checks": 2,
+        "executed": 2,
         "missingInRun": [],
-        "pass": 0,
+        "pass": 1,
         "fail": 0,
         "manual": 1,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 0,
           "evidence": 0
         }
       },
       {
         "id": "UI-03a",
-        "state": "assumed",
+        "state": "test-only",
         "matrixTerminal": false,
         "checks": 1,
         "executed": 1,
         "missingInRun": [],
-        "pass": 0,
+        "pass": 1,
         "fail": 0,
-        "manual": 1,
+        "manual": 0,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 0,
           "evidence": 0
         }
@@ -1592,18 +1592,18 @@
     ]
   },
   "summary": {
-    "total": 96,
-    "pass": 39,
+    "total": 95,
+    "pass": 40,
     "fail": 0,
     "skip": 0,
-    "manual": 57,
+    "manual": 55,
     "byClass": {
-      "behaviorPass": 5,
+      "behaviorPass": 6,
       "inventoryPass": 33,
       "evidencePass": 1,
       "fail": 0,
       "skip": 0,
-      "manual": 57
+      "manual": 55
     }
   },
   "gate": {
@@ -1668,10 +1668,6 @@
       {
         "code": "check-manual",
         "message": "streaming-cleanup.wrap-up-idempotent-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
-        "message": "streaming-cleanup.toolcallid-correlation-manual pending manual attestation"
       },
       {
         "code": "check-manual",
@@ -1795,10 +1791,6 @@
       },
       {
         "code": "check-manual",
-        "message": "fallback-persistence.ui-source-manual pending manual attestation"
-      },
-      {
-        "code": "check-manual",
         "message": "fallback-persistence.fallback-chain-manual pending manual attestation"
       },
       {
@@ -1867,7 +1859,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 23106
+          "value": 21237
         },
         {
           "label": "test files",
@@ -1879,11 +1871,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 22080
+          "value": 20180
         }
       ],
       "notes": "Focused memory suite passed 28/28 tests across 3 files.",
-      "durationMs": 23107
+      "durationMs": 21240
     },
     {
       "id": "memory-firewall.effective-plugin-config",
@@ -2011,7 +2003,7 @@
           "value": true
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "memory-schema.session-mapping-behavior",
@@ -2235,7 +2227,7 @@
         }
       ],
       "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
-      "durationMs": 8
+      "durationMs": 9
     },
     {
       "id": "mounts-permissions.ipv4-inventory",
@@ -2283,7 +2275,7 @@
           "value": true
         }
       ],
-      "durationMs": 4
+      "durationMs": 3
     },
     {
       "id": "mounts-permissions.helper-layered-inventory",
@@ -2399,7 +2391,7 @@
         }
       ],
       "notes": "RO probe OK across 18 mounted repos; the git-status semantic remains a manual verification.",
-      "durationMs": 53
+      "durationMs": 73
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -2444,7 +2436,7 @@
           ]
         }
       },
-      "durationMs": 0,
+      "durationMs": 1,
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
     },
     {
@@ -2570,7 +2562,7 @@
           ]
         }
       ],
-      "durationMs": 4
+      "durationMs": 2
     },
     {
       "id": "history-recovery.paginated-manual",
@@ -2845,7 +2837,7 @@
           "value": "<redacted-path:.../extensions/transcript-archive>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "transcript-archive.injection-manual",
@@ -2922,7 +2914,7 @@
         }
       ],
       "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
-      "durationMs": 4
+      "durationMs": 3
     },
     {
       "id": "streaming-cleanup.terminal-cleanup-manual",
@@ -3059,49 +3051,6 @@
           "evidenceCapture": [
             "billing snapshot",
             "row count"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
-      "id": "streaming-cleanup.toolcallid-correlation-manual",
-      "name": "Tool completion correlates by toolCallId; searches backward for owning assistant message",
-      "groups": [
-        "streaming-cleanup"
-      ],
-      "matrixIds": [
-        "UI-03a"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "A staging UI session with interleaved tool events; ability to inspect the message list state after each event."
-        ],
-        "steps": [
-          "Emit a tool-result whose toolCallId belongs to an older assistant message.",
-          "Verify the UI updates the OWNING message, not the last message.",
-          "Emit a stall-warning system message and then a real tool completion; verify the completion is not dropped."
-        ],
-        "expected": "Every tool completion updates the owning assistant message by toolCallId; no drop on interleaved system messages.",
-        "evidence": [
-          "Before/after message-list state around each event."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "invokesPaidApi": true,
-          "writesWorkspaceFiles": false,
-          "expectedMutations": [
-            "staging message-list mutations"
-          ],
-          "cleanupRollback": [
-            "staging-only"
-          ],
-          "evidenceCapture": [
-            "message state snapshots"
           ]
         }
       },
@@ -3282,7 +3231,7 @@
         }
       ],
       "notes": "Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "acp.context-preamble-inventory",
@@ -3305,7 +3254,7 @@
           "value": 10041
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "acp.preset-http-upload-manual",
@@ -3831,7 +3780,7 @@
           "value": "<redacted-path:.../mcp-servers/lando-mcp-server>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "mcp-bridge.gateway-bridge-manual",
@@ -4631,51 +4580,6 @@
       "durationMs": 2
     },
     {
-      "id": "fallback-persistence.ui-source-manual",
-      "name": "Fallback order persists and drag reorder works",
-      "groups": [
-        "fallback-persistence"
-      ],
-      "matrixIds": [
-        "UI-01"
-      ],
-      "kind": "behavior",
-      "status": "manual",
-      "manual": {
-        "prerequisites": [
-          "Staging UI checkpoint build with the fallback multi-select."
-        ],
-        "steps": [
-          "Add three fallback models via the UI.",
-          "Drag the third above the first; verify the new order.",
-          "Reload the page and confirm the order persists via projectApi.",
-          "Use the keyboard arrow buttons to move a model up; verify persistence again.",
-          "Drop a chip on empty space; confirm it moves to the end."
-        ],
-        "expected": "Both drag and keyboard reordering persist across reloads; drops on empty space append to the end.",
-        "evidence": [
-          "Screenshots or DOM captures pre- and post-reload."
-        ],
-        "safety": {
-          "stagingOnly": true,
-          "mutatesData": true,
-          "writesWorkspaceFiles": true,
-          "expectedMutations": [
-            "fallback model ordering persisted per project"
-          ],
-          "cleanupRollback": [
-            "restore prior fallback ordering after test"
-          ],
-          "evidenceCapture": [
-            "screenshots",
-            "DOM captures"
-          ]
-        }
-      },
-      "durationMs": 0,
-      "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
-    },
-    {
       "id": "fallback-persistence.fallback-chain-manual",
       "name": "Cross-provider fallback chain honors persisted ordering, cooldown, and death-spiral breaker",
       "groups": [
@@ -4717,6 +4621,50 @@
       },
       "durationMs": 0,
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
+    },
+    {
+      "id": "ui-checkpoint.focused-behavior",
+      "name": "Focused UI Vitest suite proves fallback ordering, persisted fallback order, and toolCallId correlation (3 files, >=21 tests)",
+      "groups": [
+        "fallback-persistence",
+        "model-provenance",
+        "streaming-cleanup"
+      ],
+      "matrixIds": [
+        "UI-01",
+        "UI-02b",
+        "UI-03a"
+      ],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "exit code",
+          "value": 0
+        },
+        {
+          "label": "timed out",
+          "value": false
+        },
+        {
+          "label": "wall duration ms",
+          "value": 2010
+        },
+        {
+          "label": "test files",
+          "value": "3/3 passed"
+        },
+        {
+          "label": "tests",
+          "value": "21/21 passed"
+        },
+        {
+          "label": "vitest duration ms",
+          "value": 1220
+        }
+      ],
+      "notes": "Focused UI checkpoint suite passed 21/21 tests across 3 files.",
+      "durationMs": 2014
     },
     {
       "id": "project-files.server-inventory",
@@ -4804,7 +4752,7 @@
           "value": 25
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "browser-isolation.per-project-manual",
@@ -5071,7 +5019,7 @@
           "value": "openclaw"
         }
       ],
-      "durationMs": 3
+      "durationMs": 6
     },
     {
       "id": "runtime-infra.tooling-inventory",
@@ -5114,7 +5062,7 @@
           "value": false
         }
       ],
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "id": "runtime-infra.stale-bundle-inventory",
@@ -5133,7 +5081,7 @@
           "value": "<redacted-path:...<redacted:entropy>.sh>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "runtime-infra.gitignore-inventory",
@@ -5307,7 +5255,7 @@
           "value": "<redacted-path:.../openclaw--openclaw/AGENTS.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.pr-maintainer-skill-inventory",
@@ -5326,7 +5274,7 @@
           "value": "<redacted-path:.../openclaw-pr-maintainer/SKILL.md>"
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "docs.upgrade-patches-inventory",
@@ -5345,7 +5293,7 @@
           "value": "<redacted-path:.../plugins/architecture.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "docs.local-runtime-inventory",
@@ -5383,7 +5331,7 @@
           "value": "<redacted-path:.../docs/pre-upgrade-checkpoint-validation.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.memory-firewall-inventory",
@@ -5422,7 +5370,7 @@
           "value": "<redacted-path:.../audits/MOUNT_BASELINE_RECONCILIATION.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     }
   ]
 }
