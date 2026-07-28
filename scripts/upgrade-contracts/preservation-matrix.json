@@ -747,7 +747,8 @@
       "state": "assumed",
       "checks": [
         "streaming-cleanup.terminal-cleanup-manual",
-        "streaming-cleanup.heartbeat-inventory"
+        "streaming-cleanup.heartbeat-inventory",
+        "ui-checkpoint.focused-behavior"
       ]
     },
     {

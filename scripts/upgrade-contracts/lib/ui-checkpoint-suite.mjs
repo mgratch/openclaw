@@ -10,9 +10,11 @@
 //   * src/utils/__tests__/modelFallbackOrder.test.ts     (UI-01)
 //   * src/utils/__tests__/projectApi.acp-presets.test.ts (UI-02b, model-provenance)
 //   * src/utils/__tests__/toolCallCorrelation.test.ts    (UI-03a)
+//   * src/utils/__tests__/runLifecycle.test.ts           (UI-03b)
 //
-// Together they cover the three focused fallback-persistence / model-provenance
-// / streaming-cleanup behaviors that this check is asked to prove.
+// Together they cover the focused fallback-persistence, model-provenance,
+// tool-correlation, heartbeat/stall, terminal-cleanup, and current-run tool
+// accounting behaviors that this check is asked to prove.
 
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -26,10 +28,11 @@ export const FOCUSED_UI_TEST_FILES = Object.freeze([
   "src/utils/__tests__/modelFallbackOrder.test.ts",
   "src/utils/__tests__/projectApi.acp-presets.test.ts",
   "src/utils/__tests__/toolCallCorrelation.test.ts",
+  "src/utils/__tests__/runLifecycle.test.ts",
 ]);
 
-/** Minimum tests that must have passed (bumped after two new tests landed). */
-export const MIN_FOCUSED_UI_TESTS = 21;
+/** Minimum tests that must pass across the exact focused file set. */
+export const MIN_FOCUSED_UI_TESTS = 52;
 
 /** Free-form label used in the passing notes string. */
 const UI_SUITE_LABEL = "Focused UI checkpoint suite";

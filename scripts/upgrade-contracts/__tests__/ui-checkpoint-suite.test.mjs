@@ -26,20 +26,22 @@ const PASSING_STDOUT = `
  ✓ src/utils/__tests__/modelFallbackOrder.test.ts (5)
  ✓ src/utils/__tests__/projectApi.acp-presets.test.ts (10)
  ✓ src/utils/__tests__/toolCallCorrelation.test.ts (6)
+ ✓ src/utils/__tests__/runLifecycle.test.ts (31)
 
- Test Files  3 passed (3)
-      Tests  21 passed (21)
+ Test Files  4 passed (4)
+      Tests  52 passed (52)
    Start at  19:20:17
    Duration  1.10s
 `;
 
-test("FOCUSED_UI_TEST_FILES lists exactly the three expected files, in order", () => {
+test("FOCUSED_UI_TEST_FILES lists exactly the four expected files, in order", () => {
   assert.deepEqual(
     [...FOCUSED_UI_TEST_FILES],
     [
       "src/utils/__tests__/modelFallbackOrder.test.ts",
       "src/utils/__tests__/projectApi.acp-presets.test.ts",
       "src/utils/__tests__/toolCallCorrelation.test.ts",
+      "src/utils/__tests__/runLifecycle.test.ts",
     ],
   );
   // Deliberate mutation must fail — accidental drift would silently drop
@@ -49,10 +51,10 @@ test("FOCUSED_UI_TEST_FILES lists exactly the three expected files, in order", (
   });
 });
 
-test("MIN_FOCUSED_UI_TESTS reflects the two new tests added to the focused suite", () => {
-  // 5 + 10 + 6 = 21 tests across the three files. If a test is removed the
-  // suite must fail loudly, not silently accept a smaller run.
-  assert.equal(MIN_FOCUSED_UI_TESTS, 21);
+test("MIN_FOCUSED_UI_TESTS reflects the exact focused suite", () => {
+  // 5 + 10 + 6 + 31 = 52 tests across the four files. If a test is removed
+  // the suite must fail loudly, not silently accept a smaller run.
+  assert.equal(MIN_FOCUSED_UI_TESTS, 52);
 });
 
 test("resolveUiRoot honors OPENCLAW_UI_ROOT override", () => {
@@ -183,7 +185,7 @@ test("runFocusedUiSuite spawns Node directly against vitest.mjs — no pnpm, no 
   assert.equal(captured.cwd, uiRoot);
   assert.equal(captured.args[0], vitest);
   assert.equal(captured.args[1], "run");
-  assert.deepEqual(captured.args.slice(-3), [...FOCUSED_UI_TEST_FILES]);
+  assert.deepEqual(captured.args.slice(-4), [...FOCUSED_UI_TEST_FILES]);
   // Any string that looks like pnpm/corepack must never appear in args/execPath.
   for (const s of [captured.execPath, ...captured.args]) {
     assert.doesNotMatch(String(s), /\b(pnpm|corepack)\b/);
@@ -199,7 +201,7 @@ test("runFocusedUiSuite classifies short/skipped runs as fail even with exit 0",
     exitCode: 0,
     signal: null,
     timedOut: false,
-    stdout: "Test Files  2 passed (2)\nTests  20 passed (20)\nDuration  1.0s",
+    stdout: "Test Files  3 passed (3)\nTests  51 passed (51)\nDuration  1.0s",
     stderr: "",
     durationMs: 1000,
     spawnError: null,
@@ -211,7 +213,7 @@ test("runFocusedUiSuite classifies short/skipped runs as fail even with exit 0",
     nodeExecPath: "/usr/local/bin/node",
   });
   assert.equal(short.status, "fail");
-  assert.match(short.notes, /2\/3 required files/);
+  assert.match(short.notes, /3\/4 required files/);
 });
 
 test("runFocusedUiSuite fails when tests reports a skipped case", async () => {
@@ -221,7 +223,7 @@ test("runFocusedUiSuite fails when tests reports a skipped case", async () => {
     exitCode: 0,
     signal: null,
     timedOut: false,
-    stdout: "Test Files  3 passed (3)\nTests  1 skipped | 20 passed (21)\nDuration  1.0s",
+    stdout: "Test Files  4 passed (4)\nTests  1 skipped | 51 passed (52)\nDuration  1.0s",
     stderr: "",
     durationMs: 1000,
     spawnError: null,
@@ -262,5 +264,5 @@ test("runFocusedUiSuite passes on a green run and never leaks env values into ev
   const serialized = JSON.stringify(result.evidence);
   assert.ok(!serialized.includes("sk-proj-"), "evidence must not include env secrets");
   assert.ok(!serialized.includes("OPENAI_API_KEY"), "evidence must not include env keys");
-  assert.match(result.notes, /Focused UI checkpoint suite passed 21\/21/);
+  assert.match(result.notes, /Focused UI checkpoint suite passed 52\/52/);
 });
