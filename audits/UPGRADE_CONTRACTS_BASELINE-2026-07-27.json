@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-28T02-28-43-991Z-b8bcd454",
+  "runId": "2026-07-28T02-46-36-821Z-2af026b6",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-28T02:28:43.991Z",
-  "finishedAt": "2026-07-28T02:29:39.278Z",
-  "gitHead": "d0202f181ecd6e26cc377d36779de1eaf018c807",
+  "startedAt": "2026-07-28T02:46:36.822Z",
+  "finishedAt": "2026-07-28T02:47:33.960Z",
+  "gitHead": "a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-28T02:28:43.996Z",
+    "now": "2026-07-28T02:46:36.826Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,7 +22,7 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "d0202f181ecd6e26cc377d36779de1eaf018c807",
+      "head": "a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00",
       "branch": "test/upgrade-golden-master-contracts",
       "dirty": false,
       "dirtyFileCount": 0
@@ -184,7 +184,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-28T02:23:57.563Z"
+      "mtime": "2026-07-28T02:33:57.568Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -207,7 +207,7 @@
     "totalRows": 80,
     "covered": 80,
     "uncoveredCheckIds": [],
-    "behaviorPass": 12,
+    "behaviorPass": 13,
     "inventoryPass": 37,
     "evidencePass": 1,
     "manualPending": 58,
@@ -1308,15 +1308,15 @@
         "id": "UI-03b",
         "state": "assumed",
         "matrixTerminal": false,
-        "checks": 2,
-        "executed": 2,
+        "checks": 3,
+        "executed": 3,
         "missingInRun": [],
-        "pass": 1,
+        "pass": 2,
         "fail": 0,
         "manual": 1,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 1,
           "evidence": 0
         }
@@ -1833,7 +1833,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 18199
+          "value": 19853
         },
         {
           "label": "test files",
@@ -1845,11 +1845,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 17200
+          "value": 19030
         }
       ],
       "notes": "Focused memory suite passed 28/28 tests across 3 files.",
-      "durationMs": 18200
+      "durationMs": 19854
     },
     {
       "id": "memory-firewall.effective-plugin-config",
@@ -1959,7 +1959,7 @@
           "value": true
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "memory-schema.session-mapping-behavior",
@@ -2130,7 +2130,7 @@
         }
       ],
       "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
-      "durationMs": 7
+      "durationMs": 8
     },
     {
       "id": "mounts-permissions.ipv4-inventory",
@@ -2149,7 +2149,7 @@
           "value": true
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "mounts-permissions.helper-baked-inventory",
@@ -2168,7 +2168,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "mounts-permissions.helper-layered-inventory",
@@ -2275,7 +2275,7 @@
         }
       ],
       "notes": "git rev-parse passed with optional locks disabled across 18 mounted repos.",
-      "durationMs": 151
+      "durationMs": 155
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -2373,7 +2373,7 @@
           "value": ["conversationDbApi.ts", "conversationTree.ts"]
         }
       ],
-      "durationMs": 4
+      "durationMs": 2
     },
     {
       "id": "history-recovery.paginated-behavior",
@@ -2429,11 +2429,11 @@
         },
         {
           "label": "elapsed ms",
-          "value": 34140
+          "value": 34409
         }
       ],
       "notes": "Confirmed offset/hasMore/total continuity across 2 partitionings; aggregated checksum equals the full-history checksum. Used 6/8 RPC slots.",
-      "durationMs": 34141
+      "durationMs": 34409
     },
     {
       "id": "history-recovery.large-history-manual",
@@ -2668,7 +2668,7 @@
         }
       ],
       "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
-      "durationMs": 5
+      "durationMs": 4
     },
     {
       "id": "streaming-cleanup.terminal-cleanup-manual",
@@ -2908,7 +2908,7 @@
         }
       ],
       "notes": "Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "acp.context-preamble-inventory",
@@ -2927,7 +2927,7 @@
           "value": 10041
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "acp.preset-http-upload-manual",
@@ -3922,9 +3922,9 @@
     },
     {
       "id": "ui-checkpoint.focused-behavior",
-      "name": "Focused UI Vitest suite proves fallback ordering, persisted fallback order, and toolCallId correlation (3 files, >=21 tests)",
+      "name": "Focused UI Vitest suite proves fallback ordering, toolCallId correlation, and run-lifecycle cleanup (4 files, >=52 tests)",
       "groups": ["fallback-persistence", "model-provenance", "streaming-cleanup"],
-      "matrixIds": ["UI-01", "UI-02b", "UI-03a"],
+      "matrixIds": ["UI-01", "UI-02b", "UI-03a", "UI-03b"],
       "kind": "behavior",
       "status": "pass",
       "evidence": [
@@ -3938,23 +3938,23 @@
         },
         {
           "label": "wall duration ms",
-          "value": 1546
+          "value": 1581
         },
         {
           "label": "test files",
-          "value": "3/3 passed"
+          "value": "4/4 passed"
         },
         {
           "label": "tests",
-          "value": "21/21 passed"
+          "value": "52/52 passed"
         },
         {
           "label": "vitest duration ms",
-          "value": 800
+          "value": 822
         }
       ],
-      "notes": "Focused UI checkpoint suite passed 21/21 tests across 3 files.",
-      "durationMs": 1550
+      "notes": "Focused UI checkpoint suite passed 52/52 tests across 4 files.",
+      "durationMs": 1585
     },
     {
       "id": "project-files.server-inventory",
@@ -4218,7 +4218,7 @@
           "value": "openclaw"
         }
       ],
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "runtime-infra.tooling-inventory",
@@ -4272,7 +4272,7 @@
           "value": "<redacted-path:...<redacted:entropy>.sh>"
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "runtime-infra.gitignore-inventory",
@@ -4299,7 +4299,7 @@
           "value": true
         }
       ],
-      "durationMs": 4
+      "durationMs": 3
     },
     {
       "id": "runtime-infra.macos-dep-rationale-manual",
@@ -4419,7 +4419,7 @@
           "value": "<redacted-path:.../openclaw-pr-maintainer/SKILL.md>"
         }
       ],
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "docs.upgrade-patches-inventory",

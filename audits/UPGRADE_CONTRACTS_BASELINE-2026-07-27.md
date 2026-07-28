@@ -1,8 +1,8 @@
 # OpenClaw upgrade-contracts baseline report
 
-_Schema:_ `openclaw-upgrade-contracts/v2` · _Run:_ `2026-07-28T02-28-43-991Z-b8bcd454` · _Mode:_ `report-only` · _Filtered:_ `no`
-_Started:_ 2026-07-28T02:28:43.991Z · _Finished:_ 2026-07-28T02:29:39.278Z
-_Git HEAD:_ `d0202f181ecd6e26cc377d36779de1eaf018c807`
+_Schema:_ `openclaw-upgrade-contracts/v2` · _Run:_ `2026-07-28T02-46-36-821Z-2af026b6` · _Mode:_ `report-only` · _Filtered:_ `no`
+_Started:_ 2026-07-28T02:46:36.822Z · _Finished:_ 2026-07-28T02:47:33.960Z
+_Git HEAD:_ `a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00`
 _Runtime version:_ `2026.4.2`
 
 ## Gate decision
@@ -84,14 +84,14 @@ _Runtime version:_ `2026.4.2`
 - Total matrix rows: **80**
 - Terminal states: **0** · Nonterminal states: **80**
 - Rows fully covered by this run: **80**
-- Behavior/Inventory/Evidence PASS counts across matrix rows: **12** / **37** / **1**
+- Behavior/Inventory/Evidence PASS counts across matrix rows: **13** / **37** / **1**
 - Manual pending: **58** · Failed: **0** · Skipped: **0**
 
 ## Environment (redacted)
 
 ```json
 {
-  "now": "2026-07-28T02:28:43.996Z",
+  "now": "2026-07-28T02:46:36.826Z",
   "node": "24.14.0",
   "platform": "linux",
   "arch": "arm64",
@@ -105,7 +105,7 @@ _Runtime version:_ `2026.4.2`
   "procMountsPath": "/proc/self/mounts",
   "gatewayUrl": "http://127.0.0.1:18789",
   "git": {
-    "head": "d0202f181ecd6e26cc377d36779de1eaf018c807",
+    "head": "a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00",
     "branch": "test/upgrade-golden-master-contracts",
     "dirty": false,
     "dirtyFileCount": 0
@@ -267,7 +267,7 @@ _Runtime version:_ `2026.4.2`
   "workspaceDb": {
     "path": "<redacted-path:.../workspace/conversations.db>",
     "sizeBytes": 1061588992,
-    "mtime": "2026-07-28T02:23:57.563Z"
+    "mtime": "2026-07-28T02:33:57.568Z"
   },
   "uiCheckpoint": {
     "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -2285,7 +2285,7 @@ Evidence:
 
 #### `memory-firewall.isolated-suite-behavior` — Focused memory Vitest suite proves <redacted:entropy> isolation on a disposable LanceDB
 
-- Status: **pass** · kind: `behavior` · duration: 18200ms
+- Status: **pass** · kind: `behavior` · duration: 19854ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`, `UM-06a`
 - Notes: Focused memory suite passed 28/28 tests across 3 files.
@@ -2294,10 +2294,10 @@ Evidence:
 
 - exit code: `0`
 - timed out: `false`
-- wall duration ms: `18199`
+- wall duration ms: `19853`
 - test files: `3/3 passed`
 - tests: `28/28 passed`
-- vitest duration ms: `17200`
+- vitest duration ms: `19030`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2333,7 +2333,7 @@ Evidence:
 
 #### `mounts-permissions.exact-audit` — Exact per-row mount audit (<redacted:entropy>)
 
-- Status: **pass** · kind: `behavior` · duration: 7ms
+- Status: **pass** · kind: `behavior` · duration: 8ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-01`, `MOUNT-02`, `MOUNT-03`
 - Notes: Every enabled row is exact per registry; reconciled shape matches 32+1+2.
@@ -2350,7 +2350,7 @@ Evidence:
 
 #### `mounts-permissions.git-trust-readonly` — Git ownership trust is honored across every mounted repo root
 
-- Status: **pass** · kind: `behavior` · duration: 151ms
+- Status: **pass** · kind: `behavior` · duration: 155ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-04`
 - Notes: git rev-parse passed with optional locks disabled across 18 mounted repos.
@@ -2380,7 +2380,7 @@ Evidence:
 
 #### `history-recovery.paginated-behavior` — chat.history.full paginates correctly and matches the full-history checksum
 
-- Status: **pass** · kind: `behavior` · duration: 34141ms
+- Status: **pass** · kind: `behavior` · duration: 34409ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 - Notes: Confirmed offset/hasMore/total continuity across 2 partitionings; aggregated checksum equals the full-history checksum. Used 6/8 RPC slots.
@@ -2398,25 +2398,25 @@ Evidence:
 - min messages required: `8`
 - hard page limit: `2000`
 - candidates attempted: `1`
-- elapsed ms: `34140`
+- elapsed ms: `34409`
 
 ────────────────────────────────────────────────────────────────────────
 
-#### `ui-checkpoint.focused-behavior` — Focused UI Vitest suite proves fallback ordering, persisted fallback order, and toolCallId correlation (3 files, >=21 tests)
+#### `ui-checkpoint.focused-behavior` — Focused UI Vitest suite proves fallback ordering, toolCallId correlation, and run-lifecycle cleanup (4 files, >=52 tests)
 
-- Status: **pass** · kind: `behavior` · duration: 1550ms
+- Status: **pass** · kind: `behavior` · duration: 1585ms
 - Groups: `fallback-persistence`, `model-provenance`, `streaming-cleanup`
-- Matrix IDs: `UI-01`, `UI-02b`, `UI-03a`
-- Notes: Focused UI checkpoint suite passed 21/21 tests across 3 files.
+- Matrix IDs: `UI-01`, `UI-02b`, `UI-03a`, `UI-03b`
+- Notes: Focused UI checkpoint suite passed 52/52 tests across 4 files.
 
 Evidence:
 
 - exit code: `0`
 - timed out: `false`
-- wall duration ms: `1546`
-- test files: `3/3 passed`
-- tests: `21/21 passed`
-- vitest duration ms: `800`
+- wall duration ms: `1581`
+- test files: `4/4 passed`
+- tests: `52/52 passed`
+- vitest duration ms: `822`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2456,7 +2456,7 @@ Evidence:
 
 #### `memory-schema.projectId-required-inventory` — memory table schema requires projectId column
 
-- Status: **pass** · kind: `inventory` · duration: 0ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `memory-schema`
 - Matrix IDs: `MEM-01`
 
@@ -2469,7 +2469,7 @@ Evidence:
 
 #### `mounts-permissions.ipv4-inventory` — openclaw-mount.sh forces IPv4 for SSHFS (source inventory)
 
-- Status: **pass** · kind: `inventory` · duration: 1ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `CP-01`
 
@@ -2482,7 +2482,7 @@ Evidence:
 
 #### `mounts-permissions.helper-baked-inventory` — Dockerfile bakes the reconciled mount helpers
 
-- Status: **pass** · kind: `inventory` · duration: 2ms
+- Status: **pass** · kind: `inventory` · duration: 3ms
 - Groups: `mounts-permissions`, `runtime-infra`
 - Matrix IDs: `UM-20`, `MOUNT-03`
 
@@ -2521,7 +2521,7 @@ Evidence:
 
 #### `history-recovery.tree-recovery-inventory` — conversation-tree recovery utility is present in the UI checkpoint
 
-- Status: **pass** · kind: `inventory` · duration: 4ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 
@@ -2545,7 +2545,7 @@ Evidence:
 
 #### `streaming-cleanup.heartbeat-inventory` — UI useGatewayEvents separates liveness from progress and does not reset progress on generic heartbeat
 
-- Status: **pass** · kind: `inventory` · duration: 5ms
+- Status: **pass** · kind: `inventory` · duration: 4ms
 - Groups: `streaming-cleanup`
 - Matrix IDs: `UI-03b`
 - Notes: Inventory only — see streaming-cleanup manual contracts for behavior.
@@ -2561,7 +2561,7 @@ Evidence:
 
 #### `acp.preset-catalog-inventory` — ACP preset catalog module exists and declares supported routing symbols
 
-- Status: **pass** · kind: `inventory` · duration: 2ms
+- Status: **pass** · kind: `inventory` · duration: 3ms
 - Groups: `acp`
 - Matrix IDs: `UM-02`
 - Notes: Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.
@@ -2579,7 +2579,7 @@ Evidence:
 
 #### `acp.context-preamble-inventory` — ACP context preamble file exists at ~/.openclaw/acp-context-preamble.md
 
-- Status: **pass** · kind: `inventory` · duration: 0ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `acp`
 - Matrix IDs: `RT-08`
 
@@ -2722,7 +2722,7 @@ Evidence:
 
 #### `runtime-infra.build-config-inventory` — tsdown config and package.json build script inventory
 
-- Status: **pass** · kind: `inventory` · duration: 3ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-13b`
 
@@ -2754,7 +2754,7 @@ Evidence:
 
 #### `runtime-infra.stale-bundle-inventory` — Bundle patch script removes stale mount directories
 
-- Status: **pass** · kind: `inventory` · duration: 2ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `runtime-infra`
 - Matrix IDs: `CP-02`
 
@@ -2766,7 +2766,7 @@ Evidence:
 
 #### `runtime-infra.gitignore-inventory` — .gitignore OR .git/info/exclude excludes local bundle/workspace artifacts
 
-- Status: **pass** · kind: `inventory` · duration: 4ms
+- Status: **pass** · kind: `inventory` · duration: 3ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-19`
 
@@ -2793,7 +2793,7 @@ Evidence:
 
 #### `docs.pr-maintainer-skill-inventory` — PR maintainer skill file present
 
-- Status: **pass** · kind: `inventory` · duration: 2ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14b`
 
