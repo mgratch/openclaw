@@ -190,7 +190,7 @@
       "intent": "Paginated + full history equivalence and behavior on very large session histories.",
       "state": "assumed",
       "checks": [
-        "history-recovery.paginated-manual",
+        "history-recovery.paginated-behavior",
         "history-recovery.large-history-manual",
         "history-recovery.tree-recovery-inventory"
       ]
