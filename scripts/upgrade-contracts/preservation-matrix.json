@@ -782,7 +782,10 @@
       "audit": "docs/local-runtime-preservation.md",
       "intent": "Compaction/context recovery extension.",
       "state": "test-only",
-      "checks": ["history-recovery.session-context-recovery-installed"]
+      "checks": [
+        "history-recovery.session-context-recovery-installed",
+        "recovery-extensions.disposable-behavior"
+      ]
     },
     {
       "id": "RT-03",
@@ -793,7 +796,7 @@
       "audit": "docs/local-runtime-preservation.md",
       "intent": "Transcript archive extension preserving conversations across compaction.",
       "state": "test-only",
-      "checks": ["transcript-archive.installed"]
+      "checks": ["transcript-archive.installed", "recovery-extensions.disposable-behavior"]
     },
     {
       "id": "RT-04",

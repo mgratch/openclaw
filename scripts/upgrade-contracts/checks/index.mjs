@@ -5,6 +5,7 @@ import "./memory-firewall.mjs";
 import "./mounts-permissions.mjs";
 import "./history-recovery.mjs";
 import "./transcript-archive.mjs";
+import "./recovery-extensions.mjs";
 import "./streaming-cleanup.mjs";
 import "./runner-recovery.mjs";
 import "./two-tab-scoping.mjs";
