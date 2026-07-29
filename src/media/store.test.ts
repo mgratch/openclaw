@@ -628,4 +628,102 @@ describe("media store", () => {
       await expectSavedOriginalFilenameCase(testCase);
     });
   });
+
+  describe("saveMediaBuffer hostile originalFilename containment", () => {
+    // saveMediaBuffer must never produce an ID that contains a path separator,
+    // null byte, or otherwise escapes the resolved inbound directory. The
+    // parser gates against the SAME shape (see chat-attachments.assertSavedMedia),
+    // so this proves the write side upholds the invariant the read side
+    // enforces.
+    async function expectContainedHostileCase(params: {
+      originalFilename: string;
+      /** A `.` extension the sanitized id MUST end with (mime-derived). */
+      expectedExt: string;
+      /** If provided, asserts a specific ID regex. */
+      expectedIdPattern?: RegExp;
+    }) {
+      await withTempStore(async (store, home) => {
+        const saved = await store.saveMediaBuffer(
+          Buffer.from("test content"),
+          "text/plain",
+          "inbound",
+          5 * 1024 * 1024,
+          params.originalFilename,
+        );
+
+        // Containment invariants — every hostile label must satisfy ALL of
+        // these regardless of shape.
+        expect(saved.id).not.toContain("/");
+        expect(saved.id).not.toContain("\\");
+        expect(saved.id).not.toContain("\0");
+        // Consecutive dots inside a basename are permitted (see the
+        // resolveMediaBufferPath contract in store.ts), so we do not forbid
+        // them; the exact bare ".." would be caught by the read-side guard.
+        expect(saved.id).not.toBe("..");
+        expect(saved.id.endsWith(params.expectedExt)).toBe(true);
+
+        // The saved path must live directly under the resolved inbound dir.
+        const dir = path.dirname(saved.path);
+        const expectedInboundDir = path.join(home, ".openclaw", "media", "inbound");
+        expect(path.basename(saved.path)).toBe(saved.id);
+        expect(path.resolve(dir)).toBe(path.resolve(expectedInboundDir));
+
+        // The file must actually exist at the returned path.
+        const savedStat = await fs.stat(saved.path);
+        expect(savedStat.isFile()).toBe(true);
+
+        if (params.expectedIdPattern) {
+          expect(saved.id).toMatch(params.expectedIdPattern);
+        }
+      });
+    }
+
+    it.each([
+      {
+        name: "contains a traversal-shaped label as a plain sanitized basename",
+        originalFilename: "../../etc/passwd.txt",
+        expectedExt: ".txt",
+        // path.parse strips the directory, so the sanitized basename is "passwd".
+        expectedIdPattern: /^passwd---[a-f0-9-]{36}\.txt$/,
+      },
+      {
+        name: "contains a Windows-style traversal label as a sanitized basename with no separators",
+        originalFilename: "..\\..\\evil.txt",
+        expectedExt: ".txt",
+      },
+      {
+        name: "sanitizes null bytes out of the label",
+        originalFilename: "bad\0name.txt",
+        expectedExt: ".txt",
+        expectedIdPattern: /^bad_name---[a-f0-9-]{36}\.txt$/,
+      },
+      {
+        name: "truncates oversized labels to a bounded length",
+        originalFilename: `${"z".repeat(1024)}.txt`,
+        expectedExt: ".txt",
+        // Sanitized base must fit in 60 chars regardless of input length.
+        expectedIdPattern: /^z{1,60}---[a-f0-9-]{36}\.txt$/,
+      },
+      {
+        name: "collapses control characters to a single underscore",
+        originalFilename: "a\r\n\t\vb.txt",
+        expectedExt: ".txt",
+        expectedIdPattern: /^a_b---[a-f0-9-]{36}\.txt$/,
+      },
+      {
+        name: "falls back to UUID-only when the label is entirely unsafe characters",
+        originalFilename: '<>:"|?*',
+        expectedExt: ".txt",
+        expectedIdPattern: /^[a-f0-9-]{36}\.txt$/,
+      },
+      {
+        name: "keeps unicode letters in special-character labels and drops the rest",
+        originalFilename: "报告☃.txt",
+        expectedExt: ".txt",
+        expectedIdPattern: /^报告---[a-f0-9-]{36}\.txt$/u,
+      },
+    ] as const)("$name", async (testCase) => {
+      await expectContainedHostileCase(testCase);
+    });
+  });
 });

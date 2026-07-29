@@ -32,8 +32,17 @@ beforeAll(async () => {
 });
 
 describe("default input file MIME policy", () => {
-  it("allows calendar files explicitly without bypassing the MIME allowlist", () => {
+  it("allows calendar and JSONL variants explicitly without bypassing the MIME allowlist", () => {
     expect(defaultInputFileMimes).toContain("text/calendar");
+    expect(defaultInputFileMimes).toContain("application/jsonl");
+    expect(defaultInputFileMimes).toContain("application/x-ndjson");
+    // Regression: the allowlist must NOT contain a blanket `text/*` entry —
+    // every accepted text-family MIME has to be listed explicitly so that
+    // arbitrary text/* subtypes cannot pass the guard.
+    expect(defaultInputFileMimes).not.toContain("text/*");
+    for (const entry of defaultInputFileMimes) {
+      expect(entry.endsWith("/*"), `wildcard MIME entry not allowed: ${entry}`).toBe(false);
+    }
   });
 });
 
