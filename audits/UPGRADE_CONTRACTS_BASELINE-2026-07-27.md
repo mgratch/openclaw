@@ -1,8 +1,8 @@
 # OpenClaw upgrade-contracts baseline report
 
-_Schema:_ `openclaw-upgrade-contracts/v2` · _Run:_ `2026-07-29T16-45-33-145Z-e7a15dab` · _Mode:_ `report-only` · _Filtered:_ `no`
-_Started:_ 2026-07-29T16:45:33.145Z · _Finished:_ 2026-07-29T16:46:51.059Z
-_Git HEAD:_ `470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc`
+_Schema:_ `openclaw-upgrade-contracts/v2` · _Run:_ `2026-07-29T17-13-36-662Z-220ead7a` · _Mode:_ `report-only` · _Filtered:_ `no`
+_Started:_ 2026-07-29T17:13:36.663Z · _Finished:_ 2026-07-29T17:14:52.715Z
+_Git HEAD:_ `28e2cf46bc3f1709427f9483e64b62bef6b14dfe`
 _Runtime version:_ `2026.4.2`
 
 ## Gate decision
@@ -68,13 +68,13 @@ _Runtime version:_ `2026.4.2`
 
 | Class          | Count |
 | -------------- | ----: |
-| behavior PASS  |     8 |
+| behavior PASS  |     9 |
 | inventory PASS |    33 |
 | evidence PASS  |     1 |
 | FAIL           |     0 |
 | SKIP           |     0 |
 | MANUAL pending |    53 |
-| TOTAL          |    95 |
+| TOTAL          |    96 |
 
 > Inventory PASS asserts the source/config/file inventory only. It is NOT proof of the behavior itself.
 > Evidence PASS attests to an immutable artifact for the current baseline; the target baseline requires a fresh artifact.
@@ -84,14 +84,14 @@ _Runtime version:_ `2026.4.2`
 - Total matrix rows: **80**
 - Terminal states: **0** · Nonterminal states: **80**
 - Rows fully covered by this run: **80**
-- Behavior/Inventory/Evidence PASS counts across matrix rows: **15** / **37** / **1**
+- Behavior/Inventory/Evidence PASS counts across matrix rows: **17** / **37** / **1**
 - Manual pending: **58** · Failed: **0** · Skipped: **0**
 
 ## Environment (redacted)
 
 ```json
 {
-  "now": "2026-07-29T16:45:33.149Z",
+  "now": "2026-07-29T17:13:36.667Z",
   "node": "24.14.0",
   "platform": "linux",
   "arch": "arm64",
@@ -105,7 +105,7 @@ _Runtime version:_ `2026.4.2`
   "procMountsPath": "/proc/self/mounts",
   "gatewayUrl": "http://127.0.0.1:18789",
   "git": {
-    "head": "470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc",
+    "head": "28e2cf46bc3f1709427f9483e64b62bef6b14dfe",
     "branch": "test/upgrade-golden-master-contracts",
     "dirty": false,
     "dirtyFileCount": 0
@@ -267,7 +267,7 @@ _Runtime version:_ `2026.4.2`
   "workspaceDb": {
     "path": "<redacted-path:.../workspace/conversations.db>",
     "sizeBytes": 1061588992,
-    "mtime": "2026-07-29T16:26:58.270Z"
+    "mtime": "2026-07-29T17:11:58.315Z"
   },
   "uiCheckpoint": {
     "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -2266,7 +2266,7 @@ _Safety declaration:_
 
 #### `memory-firewall.current-runtime-evidence` — Immutable canary checkpoint proves 13 assertions and zero residual rows (CURRENT baseline only)
 
-- Status: **pass** · kind: `evidence` · duration: 6ms
+- Status: **pass** · kind: `evidence` · duration: 3ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`
 - Notes: Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.
@@ -2281,11 +2281,11 @@ Evidence:
 
 ────────────────────────────────────────────────────────────────────────
 
-### BEHAVIOR PASS (runtime invariant) (8)
+### BEHAVIOR PASS (runtime invariant) (9)
 
 #### `memory-firewall.isolated-suite-behavior` — Focused memory Vitest suite proves <redacted:entropy> isolation on a disposable LanceDB
 
-- Status: **pass** · kind: `behavior` · duration: 17869ms
+- Status: **pass** · kind: `behavior` · duration: 16412ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`, `UM-06a`
 - Notes: Focused memory suite passed 28/28 tests across 3 files.
@@ -2294,10 +2294,10 @@ Evidence:
 
 - exit code: `0`
 - timed out: `false`
-- wall duration ms: `17867`
+- wall duration ms: `16410`
 - test files: `3/3 passed`
 - tests: `28/28 passed`
-- vitest duration ms: `16870`
+- vitest duration ms: `15590`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2320,7 +2320,7 @@ Evidence:
 
 #### `memory-schema.session-mapping-behavior` — conversations.db sessions table exposes the columns project resolution needs
 
-- Status: **pass** · kind: `behavior` · duration: 2ms
+- Status: **pass** · kind: `behavior` · duration: 3ms
 - Groups: `memory-schema`
 - Matrix IDs: `MEM-01`
 
@@ -2350,7 +2350,7 @@ Evidence:
 
 #### `mounts-permissions.git-trust-readonly` — Git ownership trust is honored across every mounted repo root
 
-- Status: **pass** · kind: `behavior` · duration: 142ms
+- Status: **pass** · kind: `behavior` · duration: 133ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `MOUNT-04`
 - Notes: git rev-parse passed with optional locks disabled across 18 mounted repos.
@@ -2380,7 +2380,7 @@ Evidence:
 
 #### `history-recovery.paginated-behavior` — chat.history.full paginates correctly and matches the full-history checksum
 
-- Status: **pass** · kind: `behavior` · duration: 31866ms
+- Status: **pass** · kind: `behavior` · duration: 31592ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 - Notes: Confirmed offset/hasMore/total continuity across 2 partitionings; aggregated checksum equals the full-history checksum. Used 6/8 RPC slots.
@@ -2398,13 +2398,36 @@ Evidence:
 - min messages required: `8`
 - hard page limit: `2000`
 - candidates attempted: `1`
-- elapsed ms: `31866`
+- elapsed ms: `31592`
+
+────────────────────────────────────────────────────────────────────────
+
+#### `recovery-extensions.disposable-behavior` — Deployed session-context-recovery and transcript-archive extensions behave as expected against disposable fixtures in an isolated child Node 24 process (--experimental-strip-types)
+
+- Status: **pass** · kind: `behavior` · duration: 56ms
+- Groups: `history-recovery`, `transcript-archive`
+- Matrix IDs: `RT-02`, `RT-03`
+- Notes: Proves deployed extension behavior on disposable fixtures, not real compaction/runtime-flip continuity. All 13 session-context-recovery and 12 transcript-archive assertions passed; 15 lifecycle/message/tool/compaction hooks installed on the disposable API. Proves deployed extension behavior on disposable fixtures, not real compaction/runtime-flip continuity. session-context-recovery: sync before_prompt_build registration at priority 10; UI transcript preferred over archive with role ordering preserved; malformed JSONL ignored; archive-only sentinel absent when UI is available; >2-message contexts return no prependContext; subagent/run session keys skipped; missing transcript returns no prependContext; archive fallback works; per-message and total recovery bounds are enforced. transcript-archive: synchronous registration installing all expected lifecycle/message/tool/compaction hooks plus CLI/service; session_start + sparse hooks route through the session tracker to the same sanitized in-root archive directory; a traversal-shaped session key stays inside the disposable archive root; hook order is preserved in the transcript JSONL; a tiny toolResultSplitThreshold splits a large tool result to a file under the same in-root session directory with the transcript entry recording only reference metadata; before_compaction snapshot copy completes inside the disposable session archive and the source fixture is unchanged.
+
+Evidence:
+
+- exit code: `0`
+- timed out: `false`
+- wall duration ms: `54`
+- probe total ms: `3`
+- session-context-recovery duration ms: `1`
+- session-context-recovery assertions: `13/13 passed`
+- transcript-archive duration ms: `2`
+- transcript-archive assertions: `12/12 passed`
+- transcript-archive hooks registered: `15`
+- transcript-archive required hook count: `15`
+- disposable cleanup succeeded: `true`
 
 ────────────────────────────────────────────────────────────────────────
 
 #### `runner-recovery.focused-behavior` — Focused runner-recovery Vitest suite proves conservative empty-final trigger and Codex overflow classification / auto-compaction retry (4 files, >=57 tests)
 
-- Status: **pass** · kind: `behavior` · duration: 25898ms
+- Status: **pass** · kind: `behavior` · duration: 25293ms
 - Groups: `streaming-cleanup`, `history-recovery`
 - Matrix IDs: `UM-28a`, `UM-24`
 - Notes: Focused runner-recovery suite passed 57/57 tests across 4 files. Proves: conservative empty-final trigger and wrap-up prompt behavior; Codex context-overflow classification (context_length_exceeded, 'exceeds the context window', provider-specific patterns); pi-embedded-runner auto-compaction retry loop with bounded retry limits. Does NOT prove live transcript persistence, billing semantics, or duplicate-wrap-up idempotency (see UM-28b manual contract).
@@ -2413,16 +2436,16 @@ Evidence:
 
 - exit code: `0`
 - timed out: `false`
-- wall duration ms: `25896`
+- wall duration ms: `25292`
 - test files: `4/4 passed`
 - tests: `57/57 passed`
-- vitest duration ms: `24980`
+- vitest duration ms: `24430`
 
 ────────────────────────────────────────────────────────────────────────
 
 #### `ui-checkpoint.focused-behavior` — Focused UI Vitest suite proves fallback ordering, toolCallId correlation, and run-lifecycle cleanup (4 files, >=52 tests)
 
-- Status: **pass** · kind: `behavior` · duration: 1666ms
+- Status: **pass** · kind: `behavior` · duration: 1501ms
 - Groups: `fallback-persistence`, `model-provenance`, `streaming-cleanup`
 - Matrix IDs: `UI-01`, `UI-02b`, `UI-03a`, `UI-03b`
 - Notes: Focused UI checkpoint suite passed 52/52 tests across 4 files.
@@ -2431,10 +2454,10 @@ Evidence:
 
 - exit code: `0`
 - timed out: `false`
-- wall duration ms: `1661`
+- wall duration ms: `1496`
 - test files: `4/4 passed`
 - tests: `52/52 passed`
-- vitest duration ms: `847`
+- vitest duration ms: `809`
 
 ────────────────────────────────────────────────────────────────────────
 
@@ -2442,7 +2465,7 @@ Evidence:
 
 #### `memory-firewall.project-plugin-installed` — memory-lancedb-project extension is installed and no duplicate lancedb ext discovered
 
-- Status: **pass** · kind: `inventory` · duration: 1ms
+- Status: **pass** · kind: `inventory` · duration: 0ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`, `RT-01`
 
@@ -2456,7 +2479,7 @@ Evidence:
 
 #### `memory-firewall.source-fail-closed-inventory` — extension source contains fail-closed session mapping and exact projectId filters
 
-- Status: **pass** · kind: `inventory` · duration: 1ms
+- Status: **pass** · kind: `inventory` · duration: 0ms
 - Groups: `memory-firewall`
 - Matrix IDs: `MEM-01`
 - Notes: Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.
@@ -2487,7 +2510,7 @@ Evidence:
 
 #### `mounts-permissions.ipv4-inventory` — openclaw-mount.sh forces IPv4 for SSHFS (source inventory)
 
-- Status: **pass** · kind: `inventory` · duration: 5ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `mounts-permissions`
 - Matrix IDs: `CP-01`
 
@@ -2500,7 +2523,7 @@ Evidence:
 
 #### `mounts-permissions.helper-baked-inventory` — Dockerfile bakes the reconciled mount helpers
 
-- Status: **pass** · kind: `inventory` · duration: 5ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `mounts-permissions`, `runtime-infra`
 - Matrix IDs: `UM-20`, `MOUNT-03`
 
@@ -2527,7 +2550,7 @@ Evidence:
 
 #### `history-recovery.session-context-recovery-installed` — session-context-recovery extension is installed
 
-- Status: **pass** · kind: `inventory` · duration: 1ms
+- Status: **pass** · kind: `inventory` · duration: 0ms
 - Groups: `history-recovery`
 - Matrix IDs: `RT-02`
 
@@ -2539,7 +2562,7 @@ Evidence:
 
 #### `history-recovery.tree-recovery-inventory` — conversation-tree recovery utility is present in the UI checkpoint
 
-- Status: **pass** · kind: `inventory` · duration: 4ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `history-recovery`
 - Matrix IDs: `UM-08b`
 
@@ -2597,7 +2620,7 @@ Evidence:
 
 #### `acp.context-preamble-inventory` — ACP context preamble file exists at ~/.openclaw/acp-context-preamble.md
 
-- Status: **pass** · kind: `inventory` · duration: 1ms
+- Status: **pass** · kind: `inventory` · duration: 0ms
 - Groups: `acp`
 - Matrix IDs: `RT-08`
 
@@ -2660,7 +2683,7 @@ Evidence:
 
 #### `model-provenance.opus-5-canonical-inventory` — No source file exposes claude-opus-5-0 as a selectable option
 
-- Status: **pass** · kind: `inventory` · duration: 3ms
+- Status: **pass** · kind: `inventory` · duration: 4ms
 - Groups: `model-provenance`
 - Matrix IDs: `MODEL-03`
 
@@ -2687,7 +2710,7 @@ Evidence:
 
 #### `fallback-persistence.dnd-inventory` — UI ModelMultiSelect has drag/drop and keyboard-accessible reorder controls
 
-- Status: **pass** · kind: `inventory` · duration: 3ms
+- Status: **pass** · kind: `inventory` · duration: 2ms
 - Groups: `fallback-persistence`
 - Matrix IDs: `UI-01`
 
@@ -2740,7 +2763,7 @@ Evidence:
 
 #### `runtime-infra.build-config-inventory` — tsdown config and package.json build script inventory
 
-- Status: **pass** · kind: `inventory` · duration: 2ms
+- Status: **pass** · kind: `inventory` · duration: 3ms
 - Groups: `runtime-infra`
 - Matrix IDs: `UM-13b`
 
@@ -2799,7 +2822,7 @@ Evidence:
 
 #### `docs.upgrade-artifacts-inventory` — AGENTS.md is present in core repo
 
-- Status: **pass** · kind: `inventory` · duration: 0ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14a`
 
@@ -2823,7 +2846,7 @@ Evidence:
 
 #### `docs.upgrade-patches-inventory` — Upgrade patches inventory doc present
 
-- Status: **pass** · kind: `inventory` · duration: 0ms
+- Status: **pass** · kind: `inventory` · duration: 1ms
 - Groups: `docs`
 - Matrix IDs: `UM-14c`
 

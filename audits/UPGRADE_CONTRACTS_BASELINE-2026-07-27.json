@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-29T16-45-33-145Z-e7a15dab",
+  "runId": "2026-07-29T17-13-36-662Z-220ead7a",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-29T16:45:33.145Z",
-  "finishedAt": "2026-07-29T16:46:51.059Z",
-  "gitHead": "470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc",
+  "startedAt": "2026-07-29T17:13:36.663Z",
+  "finishedAt": "2026-07-29T17:14:52.715Z",
+  "gitHead": "28e2cf46bc3f1709427f9483e64b62bef6b14dfe",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-29T16:45:33.149Z",
+    "now": "2026-07-29T17:13:36.667Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,7 +22,7 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc",
+      "head": "28e2cf46bc3f1709427f9483e64b62bef6b14dfe",
       "branch": "test/upgrade-golden-master-contracts",
       "dirty": false,
       "dirtyFileCount": 0
@@ -184,7 +184,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-29T16:26:58.270Z"
+      "mtime": "2026-07-29T17:11:58.315Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -207,7 +207,7 @@
     "totalRows": 80,
     "covered": 80,
     "uncoveredCheckIds": [],
-    "behaviorPass": 15,
+    "behaviorPass": 17,
     "inventoryPass": 37,
     "evidencePass": 1,
     "manualPending": 58,
@@ -1359,15 +1359,15 @@
         "id": "RT-02",
         "state": "test-only",
         "matrixTerminal": false,
-        "checks": 1,
-        "executed": 1,
+        "checks": 2,
+        "executed": 2,
         "missingInRun": [],
-        "pass": 1,
+        "pass": 2,
         "fail": 0,
         "manual": 0,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 1,
           "evidence": 0
         }
@@ -1376,15 +1376,15 @@
         "id": "RT-03",
         "state": "test-only",
         "matrixTerminal": false,
-        "checks": 1,
-        "executed": 1,
+        "checks": 2,
+        "executed": 2,
         "missingInRun": [],
-        "pass": 1,
+        "pass": 2,
         "fail": 0,
         "manual": 0,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 1,
           "evidence": 0
         }
@@ -1579,13 +1579,13 @@
     ]
   },
   "summary": {
-    "total": 95,
-    "pass": 42,
+    "total": 96,
+    "pass": 43,
     "fail": 0,
     "skip": 0,
     "manual": 53,
     "byClass": {
-      "behaviorPass": 8,
+      "behaviorPass": 9,
       "inventoryPass": 33,
       "evidencePass": 1,
       "fail": 0,
@@ -1833,7 +1833,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 17867
+          "value": 16410
         },
         {
           "label": "test files",
@@ -1845,11 +1845,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 16870
+          "value": 15590
         }
       ],
       "notes": "Focused memory suite passed 28/28 tests across 3 files.",
-      "durationMs": 17869
+      "durationMs": 16412
     },
     {
       "id": "memory-firewall.effective-plugin-config",
@@ -1904,7 +1904,7 @@
           "value": false
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "memory-firewall.source-fail-closed-inventory",
@@ -1940,7 +1940,7 @@
         }
       ],
       "notes": "Source inventory OK — this is not proof of runtime behavior; see memory-firewall.current-runtime-evidence and memory-firewall.isolated-suite-behavior.",
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "memory-schema.projectId-required-inventory",
@@ -1990,7 +1990,7 @@
           "value": ["id", "name", "description", "icon", "color", "created_at", "updated_at"]
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "memory-firewall.current-runtime-evidence",
@@ -2022,7 +2022,7 @@
         }
       ],
       "notes": "Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.",
-      "durationMs": 6
+      "durationMs": 3
     },
     {
       "id": "memory-firewall.subagent-idempotency-manual",
@@ -2149,7 +2149,7 @@
           "value": true
         }
       ],
-      "durationMs": 5
+      "durationMs": 1
     },
     {
       "id": "mounts-permissions.helper-baked-inventory",
@@ -2168,7 +2168,7 @@
           "value": true
         }
       ],
-      "durationMs": 5
+      "durationMs": 2
     },
     {
       "id": "mounts-permissions.helper-layered-inventory",
@@ -2275,7 +2275,7 @@
         }
       ],
       "notes": "git rev-parse passed with optional locks disabled across 18 mounted repos.",
-      "durationMs": 142
+      "durationMs": 133
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -2358,7 +2358,7 @@
           "value": "<redacted-path:.../extensions/session-context-recovery>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "history-recovery.tree-recovery-inventory",
@@ -2373,7 +2373,7 @@
           "value": ["conversationDbApi.ts", "conversationTree.ts"]
         }
       ],
-      "durationMs": 4
+      "durationMs": 2
     },
     {
       "id": "history-recovery.paginated-behavior",
@@ -2429,11 +2429,11 @@
         },
         {
           "label": "elapsed ms",
-          "value": 31866
+          "value": 31592
         }
       ],
       "notes": "Confirmed offset/hasMore/total continuity across 2 partitionings; aggregated checksum equals the full-history checksum. Used 6/8 RPC slots.",
-      "durationMs": 31866
+      "durationMs": 31592
     },
     {
       "id": "history-recovery.large-history-manual",
@@ -2643,6 +2643,62 @@
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
     },
     {
+      "id": "recovery-extensions.disposable-behavior",
+      "name": "Deployed session-context-recovery and transcript-archive extensions behave as expected against disposable fixtures in an isolated child Node 24 process (--experimental-strip-types)",
+      "groups": ["history-recovery", "transcript-archive"],
+      "matrixIds": ["RT-02", "RT-03"],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "exit code",
+          "value": 0
+        },
+        {
+          "label": "timed out",
+          "value": false
+        },
+        {
+          "label": "wall duration ms",
+          "value": 54
+        },
+        {
+          "label": "probe total ms",
+          "value": 3
+        },
+        {
+          "label": "session-context-recovery duration ms",
+          "value": 1
+        },
+        {
+          "label": "session-context-recovery assertions",
+          "value": "13/13 passed"
+        },
+        {
+          "label": "transcript-archive duration ms",
+          "value": 2
+        },
+        {
+          "label": "transcript-archive assertions",
+          "value": "12/12 passed"
+        },
+        {
+          "label": "transcript-archive hooks registered",
+          "value": 15
+        },
+        {
+          "label": "transcript-archive required hook count",
+          "value": 15
+        },
+        {
+          "label": "disposable cleanup succeeded",
+          "value": true
+        }
+      ],
+      "notes": "Proves deployed extension behavior on disposable fixtures, not real compaction/runtime-flip continuity. All 13 session-context-recovery and 12 transcript-archive assertions passed; 15 lifecycle/message/tool/compaction hooks installed on the disposable API. Proves deployed extension behavior on disposable fixtures, not real compaction/runtime-flip continuity. session-context-recovery: sync before_prompt_build registration at priority 10; UI transcript preferred over archive with role ordering preserved; malformed JSONL ignored; archive-only sentinel absent when UI is available; >2-message contexts return no prependContext; subagent/run session keys skipped; missing transcript returns no prependContext; archive fallback works; per-message and total recovery bounds are enforced. transcript-archive: synchronous registration installing all expected lifecycle/message/tool/compaction hooks plus CLI/service; session_start + sparse hooks route through the session tracker to the same sanitized in-root archive directory; a traversal-shaped session key stays inside the disposable archive root; hook order is preserved in the transcript JSONL; a tiny toolResultSplitThreshold splits a large tool result to a file under the same in-root session directory with the transcript entry recording only reference metadata; before_compaction snapshot copy completes inside the disposable session archive and the source fixture is unchanged.",
+      "durationMs": 56
+    },
+    {
       "id": "streaming-cleanup.heartbeat-inventory",
       "name": "UI useGatewayEvents separates liveness from progress and does not reset progress on generic heartbeat",
       "groups": ["streaming-cleanup"],
@@ -2821,7 +2877,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 25896
+          "value": 25292
         },
         {
           "label": "test files",
@@ -2833,11 +2889,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 24980
+          "value": 24430
         }
       ],
       "notes": "Focused runner-recovery suite passed 57/57 tests across 4 files. Proves: conservative empty-final trigger and wrap-up prompt behavior; Codex context-overflow classification (context_length_exceeded, 'exceeds the context window', provider-specific patterns); pi-embedded-runner auto-compaction retry loop with bounded retry limits. Does NOT prove live transcript persistence, billing semantics, or duplicate-wrap-up idempotency (see UM-28b manual contract).",
-      "durationMs": 25898
+      "durationMs": 25293
     },
     {
       "id": "two-tab-scoping.session-scoping-manual",
@@ -2963,7 +3019,7 @@
           "value": 10041
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "acp.preset-http-upload-manual",
@@ -3656,7 +3712,7 @@
           "value": "absent"
         }
       ],
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "model-provenance.opus-4-8-inventory",
@@ -3921,7 +3977,7 @@
           "value": true
         }
       ],
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "fallback-persistence.fallback-chain-manual",
@@ -3974,7 +4030,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 1661
+          "value": 1496
         },
         {
           "label": "test files",
@@ -3986,11 +4042,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 847
+          "value": 809
         }
       ],
       "notes": "Focused UI checkpoint suite passed 52/52 tests across 4 files.",
-      "durationMs": 1666
+      "durationMs": 1501
     },
     {
       "id": "project-files.server-inventory",
@@ -4254,7 +4310,7 @@
           "value": "openclaw"
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "runtime-infra.tooling-inventory",
@@ -4440,7 +4496,7 @@
           "value": "<redacted-path:.../openclaw--openclaw/AGENTS.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.pr-maintainer-skill-inventory",
@@ -4470,7 +4526,7 @@
           "value": "<redacted-path:.../plugins/architecture.md>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "docs.local-runtime-inventory",
