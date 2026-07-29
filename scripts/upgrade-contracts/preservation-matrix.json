@@ -280,8 +280,12 @@
       "groups": ["attachments"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
       "intent": "Accept JSONL uploads; the concurrency-unsafe agent-scoped memory implementation is intentionally superseded by MEM-01.",
-      "state": "assumed",
-      "checks": ["attachments.jsonl-mime-manual", "attachments.mime-allowlist-inventory"]
+      "state": "test-only",
+      "checks": [
+        "attachments.jsonl-mime-manual",
+        "attachments.mime-allowlist-inventory",
+        "attachments.focused-behavior"
+      ]
     },
     {
       "id": "UM-13a",
@@ -445,8 +449,8 @@
       "groups": ["attachments"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
       "intent": "Bound base64 parsing; partial-cleanup path on failure; TTL/path-safety for tempfiles; MediaPaths hydration.",
-      "state": "assumed",
-      "checks": ["attachments.large-parsing-manual"]
+      "state": "test-only",
+      "checks": ["attachments.large-parsing-manual", "attachments.focused-behavior"]
     },
     {
       "id": "UM-22b",
@@ -455,9 +459,9 @@
       "phase": "1",
       "groups": ["attachments"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
-      "intent": "Hostile labels/limits are refused with a bounded error and correct order of operations.",
-      "state": "assumed",
-      "checks": ["attachments.hostile-labels-manual"]
+      "intent": "Hostile labels/limits are safely refused or persisted with sanitized, contained media IDs; validation precedes persistence.",
+      "state": "test-only",
+      "checks": ["attachments.hostile-labels-manual", "attachments.focused-behavior"]
     },
     {
       "id": "UM-23",
@@ -578,7 +582,11 @@
       "audit": "docs/pre-upgrade-checkpoint-validation.md",
       "intent": "Add text/calendar to the allowlist without a blanket text/* bypass.",
       "state": "test-only",
-      "checks": ["attachments.mime-allowlist-inventory", "attachments.jsonl-mime-manual"]
+      "checks": [
+        "attachments.mime-allowlist-inventory",
+        "attachments.jsonl-mime-manual",
+        "attachments.focused-behavior"
+      ]
     },
     {
       "id": "CP-04",
