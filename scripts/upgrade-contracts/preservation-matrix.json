@@ -478,8 +478,8 @@
       "groups": ["history-recovery"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
       "intent": "Recognize context_length_exceeded and 'exceeds the context window' for auto-compaction.",
-      "state": "assumed",
-      "checks": ["history-recovery.codex-overflow-manual"]
+      "state": "test-only",
+      "checks": ["runner-recovery.focused-behavior", "history-recovery.codex-overflow-manual"]
     },
     {
       "id": "UM-25",
@@ -533,8 +533,8 @@
       "groups": ["streaming-cleanup"],
       "audit": "audits/CORE_COMMIT_AUDIT.md",
       "intent": "One conservative wrap-up after successful tool work with no assistant text; abort/yield are honored.",
-      "state": "assumed",
-      "checks": ["streaming-cleanup.empty-final-manual"]
+      "state": "test-only",
+      "checks": ["runner-recovery.focused-behavior", "streaming-cleanup.empty-final-manual"]
     },
     {
       "id": "UM-28b",

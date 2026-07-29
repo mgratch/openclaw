@@ -6,6 +6,7 @@ import "./mounts-permissions.mjs";
 import "./history-recovery.mjs";
 import "./transcript-archive.mjs";
 import "./streaming-cleanup.mjs";
+import "./runner-recovery.mjs";
 import "./two-tab-scoping.mjs";
 import "./steering.mjs";
 import "./acp.mjs";
