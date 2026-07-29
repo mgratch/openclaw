@@ -1,14 +1,14 @@
 {
   "schemaVersion": "openclaw-upgrade-contracts/v2",
-  "runId": "2026-07-28T02-46-36-821Z-2af026b6",
+  "runId": "2026-07-29T16-45-33-145Z-e7a15dab",
   "mode": "report-only",
   "filtered": false,
-  "startedAt": "2026-07-28T02:46:36.822Z",
-  "finishedAt": "2026-07-28T02:47:33.960Z",
-  "gitHead": "a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00",
+  "startedAt": "2026-07-29T16:45:33.145Z",
+  "finishedAt": "2026-07-29T16:46:51.059Z",
+  "gitHead": "470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc",
   "version": "2026.4.2",
   "environment": {
-    "now": "2026-07-28T02:46:36.826Z",
+    "now": "2026-07-29T16:45:33.149Z",
     "node": "24.14.0",
     "platform": "linux",
     "arch": "arm64",
@@ -22,7 +22,7 @@
     "procMountsPath": "/proc/self/mounts",
     "gatewayUrl": "http://127.0.0.1:18789",
     "git": {
-      "head": "a0cfa5090b00f1deeec9aef21f9a3a8e537d0d00",
+      "head": "470ccb83a4b9ad5b3b540084b8a44ae8a71aa7bc",
       "branch": "test/upgrade-golden-master-contracts",
       "dirty": false,
       "dirtyFileCount": 0
@@ -184,7 +184,7 @@
     "workspaceDb": {
       "path": "<redacted-path:.../workspace/conversations.db>",
       "sizeBytes": 1061588992,
-      "mtime": "2026-07-28T02:33:57.568Z"
+      "mtime": "2026-07-29T16:26:58.270Z"
     },
     "uiCheckpoint": {
       "path": "<redacted-path:.../host-projects/openclaw--openclaw-ui>",
@@ -207,7 +207,7 @@
     "totalRows": 80,
     "covered": 80,
     "uncoveredCheckIds": [],
-    "behaviorPass": 13,
+    "behaviorPass": 15,
     "inventoryPass": 37,
     "evidencePass": 1,
     "manualPending": 58,
@@ -915,17 +915,17 @@
       },
       {
         "id": "UM-24",
-        "state": "assumed",
+        "state": "test-only",
         "matrixTerminal": false,
-        "checks": 1,
-        "executed": 1,
+        "checks": 2,
+        "executed": 2,
         "missingInRun": [],
-        "pass": 0,
+        "pass": 1,
         "fail": 0,
         "manual": 1,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 0,
           "evidence": 0
         }
@@ -1000,17 +1000,17 @@
       },
       {
         "id": "UM-28a",
-        "state": "assumed",
+        "state": "test-only",
         "matrixTerminal": false,
-        "checks": 1,
-        "executed": 1,
+        "checks": 2,
+        "executed": 2,
         "missingInRun": [],
-        "pass": 0,
+        "pass": 1,
         "fail": 0,
         "manual": 1,
         "skip": 0,
         "byClass": {
-          "behavior": 0,
+          "behavior": 1,
           "inventory": 0,
           "evidence": 0
         }
@@ -1579,13 +1579,13 @@
     ]
   },
   "summary": {
-    "total": 94,
-    "pass": 41,
+    "total": 95,
+    "pass": 42,
     "fail": 0,
     "skip": 0,
     "manual": 53,
     "byClass": {
-      "behaviorPass": 7,
+      "behaviorPass": 8,
       "inventoryPass": 33,
       "evidencePass": 1,
       "fail": 0,
@@ -1833,7 +1833,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 19853
+          "value": 17867
         },
         {
           "label": "test files",
@@ -1845,11 +1845,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 19030
+          "value": 16870
         }
       ],
       "notes": "Focused memory suite passed 28/28 tests across 3 files.",
-      "durationMs": 19854
+      "durationMs": 17869
     },
     {
       "id": "memory-firewall.effective-plugin-config",
@@ -1990,7 +1990,7 @@
           "value": ["id", "name", "description", "icon", "color", "created_at", "updated_at"]
         }
       ],
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "memory-firewall.current-runtime-evidence",
@@ -2022,7 +2022,7 @@
         }
       ],
       "notes": "Evidence class only. Authoritative for the CURRENT baseline; the target baseline requires a fresh evidence artifact.",
-      "durationMs": 7
+      "durationMs": 6
     },
     {
       "id": "memory-firewall.subagent-idempotency-manual",
@@ -2130,7 +2130,7 @@
         }
       ],
       "notes": "Every enabled row is exact per registry; reconciled shape matches 32+1+2.",
-      "durationMs": 8
+      "durationMs": 7
     },
     {
       "id": "mounts-permissions.ipv4-inventory",
@@ -2149,7 +2149,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 5
     },
     {
       "id": "mounts-permissions.helper-baked-inventory",
@@ -2168,7 +2168,7 @@
           "value": true
         }
       ],
-      "durationMs": 3
+      "durationMs": 5
     },
     {
       "id": "mounts-permissions.helper-layered-inventory",
@@ -2275,7 +2275,7 @@
         }
       ],
       "notes": "git rev-parse passed with optional locks disabled across 18 mounted repos.",
-      "durationMs": 155
+      "durationMs": 142
     },
     {
       "id": "mounts-permissions.host-mount-access-manual",
@@ -2358,7 +2358,7 @@
           "value": "<redacted-path:.../extensions/session-context-recovery>"
         }
       ],
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "history-recovery.tree-recovery-inventory",
@@ -2373,7 +2373,7 @@
           "value": ["conversationDbApi.ts", "conversationTree.ts"]
         }
       ],
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "id": "history-recovery.paginated-behavior",
@@ -2429,11 +2429,11 @@
         },
         {
           "label": "elapsed ms",
-          "value": 34409
+          "value": 31866
         }
       ],
       "notes": "Confirmed offset/hasMore/total continuity across 2 partitionings; aggregated checksum equals the full-history checksum. Used 6/8 RPC slots.",
-      "durationMs": 34409
+      "durationMs": 31866
     },
     {
       "id": "history-recovery.large-history-manual",
@@ -2668,7 +2668,7 @@
         }
       ],
       "notes": "Inventory only — see streaming-cleanup manual contracts for behavior.",
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "id": "streaming-cleanup.terminal-cleanup-manual",
@@ -2804,6 +2804,42 @@
       "notes": "Manual contract. Requires operator-attached evidence before the gate can pass."
     },
     {
+      "id": "runner-recovery.focused-behavior",
+      "name": "Focused runner-recovery Vitest suite proves conservative empty-final trigger and Codex overflow classification / auto-compaction retry (4 files, >=57 tests)",
+      "groups": ["streaming-cleanup", "history-recovery"],
+      "matrixIds": ["UM-28a", "UM-24"],
+      "kind": "behavior",
+      "status": "pass",
+      "evidence": [
+        {
+          "label": "exit code",
+          "value": 0
+        },
+        {
+          "label": "timed out",
+          "value": false
+        },
+        {
+          "label": "wall duration ms",
+          "value": 25896
+        },
+        {
+          "label": "test files",
+          "value": "4/4 passed"
+        },
+        {
+          "label": "tests",
+          "value": "57/57 passed"
+        },
+        {
+          "label": "vitest duration ms",
+          "value": 24980
+        }
+      ],
+      "notes": "Focused runner-recovery suite passed 57/57 tests across 4 files. Proves: conservative empty-final trigger and wrap-up prompt behavior; Codex context-overflow classification (context_length_exceeded, 'exceeds the context window', provider-specific patterns); pi-embedded-runner auto-compaction retry loop with bounded retry limits. Does NOT prove live transcript persistence, billing semantics, or duplicate-wrap-up idempotency (see UM-28b manual contract).",
+      "durationMs": 25898
+    },
+    {
       "id": "two-tab-scoping.session-scoping-manual",
       "name": "Two tabs on the same session do not cross events",
       "groups": ["two-tab-scoping"],
@@ -2908,7 +2944,7 @@
         }
       ],
       "notes": "Direct Opus 4.8/5 selectors come from the gateway model catalog. This ACP inventory intentionally does not require unverified Claude Code ACP presets.",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "acp.context-preamble-inventory",
@@ -3885,7 +3921,7 @@
           "value": true
         }
       ],
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "fallback-persistence.fallback-chain-manual",
@@ -3938,7 +3974,7 @@
         },
         {
           "label": "wall duration ms",
-          "value": 1581
+          "value": 1661
         },
         {
           "label": "test files",
@@ -3950,11 +3986,11 @@
         },
         {
           "label": "vitest duration ms",
-          "value": 822
+          "value": 847
         }
       ],
       "notes": "Focused UI checkpoint suite passed 52/52 tests across 4 files.",
-      "durationMs": 1585
+      "durationMs": 1666
     },
     {
       "id": "project-files.server-inventory",
@@ -4023,7 +4059,7 @@
           "value": 25
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "browser-isolation.per-project-manual",
@@ -4272,7 +4308,7 @@
           "value": "<redacted-path:...<redacted:entropy>.sh>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "runtime-infra.gitignore-inventory",
@@ -4449,7 +4485,7 @@
           "value": "<redacted-path:.../docs/local-runtime-preservation.md>"
         }
       ],
-      "durationMs": 1
+      "durationMs": 0
     },
     {
       "id": "docs.checkpoint-validation-inventory",
