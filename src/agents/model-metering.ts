@@ -48,6 +48,16 @@ export function classifyProviderBilling(params: {
         return "metered";
       }
       if (profile.type === "token" || profile.type === "oauth") {
+        // Claude Code OAuth tokens (sk-ant-oat...) cannot serve direct
+        // anthropic-messages inference: the anthropic client sends creds as
+        // `x-api-key` (no `authHeader: true` on the provider, and messages
+        // requires the oauth beta header + Bearer). Such profiles exist for
+        // the usage-dashboard fetcher and ACP flows only — the runtime 401s
+        // on them and rotates onto the env API key. Skip them so direct
+        // anthropic traffic classifies as what it actually bills: metered.
+        if (profile.type === "token" && profile.token?.trim().startsWith("sk-ant-oat")) {
+          continue;
+        }
         // An expired, non-refreshable plan credential cannot serve requests:
         // the runtime will rotate past it (possibly onto an env API key), so
         // keep walking to the next profile instead of declaring "plan".

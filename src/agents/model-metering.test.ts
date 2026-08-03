@@ -32,6 +32,21 @@ describe("classifyProviderBilling", () => {
     expect(classifyProviderBilling({ provider: "acme", store })).toBe("plan");
   });
 
+  it("skips Claude Code OAuth tokens (sk-ant-oat...) — ACP-only, cannot serve direct inference", () => {
+    const store = makeStore({
+      "anthropic:sub": { type: "token", provider: "anthropic", token: "sk-ant-oat01-deadbeef" },
+      "anthropic:key": { type: "api_key", provider: "anthropic", key: "sk-ant-api03-test" },
+    });
+    expect(classifyProviderBilling({ provider: "anthropic", store })).toBe("metered");
+  });
+
+  it("returns unknown when only a Claude Code OAuth token exists and no env key", () => {
+    const store = makeStore({
+      "anthropic:sub": { type: "token", provider: "anthropic", token: "sk-ant-oat01-deadbeef" },
+    });
+    expect(classifyProviderBilling({ provider: "anthropic", store })).toBe("unknown");
+  });
+
   it("classifies oauth-backed providers as plan", () => {
     const store = makeStore({
       "acme:oauth": {
