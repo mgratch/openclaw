@@ -71,6 +71,14 @@ export const ACP_MODEL_PRESETS: readonly AcpModelPreset[] = [
   // support it'll start working without a config change. Until then
   // there's also `claude-code-opus-4-6` which DOES emit thinking events,
   // for users who want thinking working today.
+  //
+  // 2026-07-31: the bundled Claude Code CLI is now 2.1.220, which
+  // recognizes `claude-opus-4-8`, `claude-opus-5`, and `claude-fable-5`
+  // (verified by grepping the CLI binary in the built image) — hence the
+  // opus-4-8 / opus-5 / fable presets below. The acpx `--model` flag is
+  // forwarded verbatim (no silent remap anywhere in the chain), so a
+  // preset pinning an ID the bundled CLI does not know fails visibly at
+  // the acpx/CLI layer rather than being quietly rewritten.
   {
     id: "claude-code-opus",
     label: "Claude Code · Opus 4.7",
@@ -93,6 +101,30 @@ export const ACP_MODEL_PRESETS: readonly AcpModelPreset[] = [
     agent: "claude-code",
     acpxModel: "claude-opus-4-5-20251101",
     description: "Claude Code pinned to claude-opus-4-5-20251101 (extended thinking on)",
+    maxThinkingTokens: 16000,
+  },
+  {
+    id: "claude-code-opus-4-8",
+    label: "Claude Code · Opus 4.8",
+    agent: "claude-code",
+    acpxModel: "claude-opus-4-8",
+    description: "Claude Code pinned to claude-opus-4-8 (extended thinking on)",
+    maxThinkingTokens: 16000,
+  },
+  {
+    id: "claude-code-opus-5",
+    label: "Claude Code · Opus 5.0",
+    agent: "claude-code",
+    acpxModel: "claude-opus-5",
+    description: "Claude Code pinned to claude-opus-5 (extended thinking on)",
+    maxThinkingTokens: 16000,
+  },
+  {
+    id: "claude-code-fable",
+    label: "Claude Code · Fable 5",
+    agent: "claude-code",
+    acpxModel: "claude-fable-5",
+    description: "Claude Code pinned to claude-fable-5 (extended thinking on)",
     maxThinkingTokens: 16000,
   },
   {

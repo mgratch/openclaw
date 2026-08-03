@@ -11,8 +11,23 @@ describe("ACP model presets", () => {
     const ids = ACP_MODEL_PRESETS.map((p) => p.id);
     expect(ids).toContain("claude-code");
     expect(ids).toContain("claude-code-opus");
+    expect(ids).toContain("claude-code-opus-4-8");
+    expect(ids).toContain("claude-code-opus-5");
+    expect(ids).toContain("claude-code-fable");
     expect(ids).toContain("claude-code-sonnet");
     expect(ids).toContain("claude-code-haiku");
+  });
+
+  it("pins the CLI-2.1.220 presets to their exact acpx model ids", () => {
+    // These IDs are forwarded verbatim to the bundled Claude Code CLI —
+    // an unknown ID must fail visibly there, never be silently remapped.
+    expect(resolveAcpModelPreset("claude-code-opus-4-8")?.acpxModel).toBe("claude-opus-4-8");
+    expect(resolveAcpModelPreset("claude-code-opus-5")?.acpxModel).toBe("claude-opus-5");
+    expect(resolveAcpModelPreset("claude-code-fable")?.acpxModel).toBe("claude-fable-5");
+    // All three support extended thinking (mirrors claude-code-opus-4-6).
+    for (const id of ["claude-code-opus-4-8", "claude-code-opus-5", "claude-code-fable"]) {
+      expect(resolveAcpModelPreset(id)?.maxThinkingTokens).toBe(16000);
+    }
   });
 
   it("every preset resolves to claude-code agent (current roster)", () => {
@@ -55,7 +70,8 @@ describe("resolvePerTurnAcpModel", () => {
       modelOverride: "claude-code-opus",
       sessionAgent: "claude-code",
     });
-    expect(result.model).toBe("claude-opus-4-6");
+    // claude-code-opus pins claude-opus-4-7 (see presets.ts note).
+    expect(result.model).toBe("claude-opus-4-7");
     expect(result.preset?.id).toBe("claude-code-opus");
     expect(result.agentMismatch).toBeUndefined();
   });
