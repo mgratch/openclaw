@@ -130,6 +130,12 @@ import {
   PluginApprovalRequestParamsSchema,
   type PluginApprovalResolveParams,
   PluginApprovalResolveParamsSchema,
+  type ModelApprovalRequestParams,
+  ModelApprovalRequestParamsSchema,
+  type ModelApprovalResolveParams,
+  ModelApprovalResolveParamsSchema,
+  type ModelApprovalWaitParams,
+  ModelApprovalWaitParamsSchema,
   ErrorCodes,
   type ErrorShape,
   ErrorShapeSchema,
@@ -448,6 +454,15 @@ export const validatePluginApprovalRequestParams = ajv.compile<PluginApprovalReq
 );
 export const validatePluginApprovalResolveParams = ajv.compile<PluginApprovalResolveParams>(
   PluginApprovalResolveParamsSchema,
+);
+export const validateModelApprovalRequestParams = ajv.compile<ModelApprovalRequestParams>(
+  ModelApprovalRequestParamsSchema,
+);
+export const validateModelApprovalResolveParams = ajv.compile<ModelApprovalResolveParams>(
+  ModelApprovalResolveParamsSchema,
+);
+export const validateModelApprovalWaitParams = ajv.compile<ModelApprovalWaitParams>(
+  ModelApprovalWaitParamsSchema,
 );
 export const validateExecApprovalsNodeGetParams = ajv.compile<ExecApprovalsNodeGetParams>(
   ExecApprovalsNodeGetParamsSchema,

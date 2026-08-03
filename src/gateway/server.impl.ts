@@ -92,6 +92,7 @@ import {
   type GatewayUpdateAvailableEventPayload,
 } from "./events.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
+import { ModelApprovalManager } from "./model-approval-manager.js";
 import { startGatewayModelPricingRefresh } from "./model-pricing-cache.js";
 import { NodeRegistry } from "./node-registry.js";
 import { createChannelManager } from "./server-channels.js";
@@ -109,6 +110,7 @@ import { GATEWAY_EVENTS, listGatewayMethods } from "./server-methods-list.js";
 import { coreGatewayHandlers } from "./server-methods.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
+import { createModelApprovalHandlers } from "./server-methods/model-approval.js";
 import { createPluginApprovalHandlers } from "./server-methods/plugin-approval.js";
 import { createSecretsHandlers } from "./server-methods/secrets.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
@@ -1193,6 +1195,8 @@ export async function startGatewayServer(
     const pluginApprovalHandlers = createPluginApprovalHandlers(pluginApprovalManager, {
       forwarder: execApprovalForwarder,
     });
+    const modelApprovalManager = new ModelApprovalManager();
+    const modelApprovalHandlers = createModelApprovalHandlers(modelApprovalManager);
     const secretsHandlers = createSecretsHandlers({
       reloadSecrets: async () => {
         const active = getActiveSecretsRuntimeSnapshot();
@@ -1226,6 +1230,7 @@ export async function startGatewayServer(
       cronStorePath,
       execApprovalManager,
       pluginApprovalManager,
+      modelApprovalManager,
       loadGatewayModelCatalog,
       getHealthCache,
       refreshHealthSnapshot: refreshGatewayHealthSnapshot,
@@ -1326,6 +1331,7 @@ export async function startGatewayServer(
         ...pluginRegistry.gatewayHandlers,
         ...execApprovalHandlers,
         ...pluginApprovalHandlers,
+        ...modelApprovalHandlers,
         ...secretsHandlers,
       },
       broadcast,

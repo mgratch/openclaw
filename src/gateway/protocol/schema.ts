@@ -15,5 +15,6 @@ export * from "./schema/secrets.js";
 export * from "./schema/sessions.js";
 export * from "./schema/snapshot.js";
 export * from "./schema/types.js";
+export * from "./schema/model-approvals.js";
 export * from "./schema/plugin-approvals.js";
 export * from "./schema/wizard.js";

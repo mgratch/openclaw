@@ -32,6 +32,9 @@ const BASE_METHODS = [
   "plugin.approval.request",
   "plugin.approval.waitDecision",
   "plugin.approval.resolve",
+  "model.approval.request",
+  "model.approval.waitDecision",
+  "model.approval.resolve",
   "wizard.start",
   "wizard.next",
   "wizard.cancel",
@@ -146,5 +149,7 @@ export const GATEWAY_EVENTS = [
   "exec.approval.resolved",
   "plugin.approval.requested",
   "plugin.approval.resolved",
+  "model.approval.requested",
+  "model.approval.resolved",
   GATEWAY_EVENT_UPDATE_AVAILABLE,
 ];

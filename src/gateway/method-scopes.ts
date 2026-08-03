@@ -39,6 +39,9 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "plugin.approval.request",
     "plugin.approval.waitDecision",
     "plugin.approval.resolve",
+    "model.approval.request",
+    "model.approval.waitDecision",
+    "model.approval.resolve",
   ],
   [PAIRING_SCOPE]: [
     "node.pair.request",

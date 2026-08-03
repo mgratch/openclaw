@@ -139,6 +139,11 @@ import {
   NodeRenameParamsSchema,
 } from "./nodes.js";
 import {
+  ModelApprovalRequestParamsSchema,
+  ModelApprovalResolveParamsSchema,
+  ModelApprovalWaitParamsSchema,
+} from "./model-approvals.js";
+import {
   PluginApprovalRequestParamsSchema,
   PluginApprovalResolveParamsSchema,
 } from "./plugin-approvals.js";
@@ -310,6 +315,9 @@ export const ProtocolSchemas = {
   ExecApprovalResolveParams: ExecApprovalResolveParamsSchema,
   PluginApprovalRequestParams: PluginApprovalRequestParamsSchema,
   PluginApprovalResolveParams: PluginApprovalResolveParamsSchema,
+  ModelApprovalRequestParams: ModelApprovalRequestParamsSchema,
+  ModelApprovalResolveParams: ModelApprovalResolveParamsSchema,
+  ModelApprovalWaitParams: ModelApprovalWaitParamsSchema,
   DevicePairListParams: DevicePairListParamsSchema,
   DevicePairApproveParams: DevicePairApproveParamsSchema,
   DevicePairRejectParams: DevicePairRejectParamsSchema,
