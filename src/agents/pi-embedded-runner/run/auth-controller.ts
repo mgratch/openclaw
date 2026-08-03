@@ -1,5 +1,6 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ThinkLevel } from "../../../auto-reply/thinking.js";
+import { getAgentRunContext } from "../../../infra/agent-events.js";
 import { prepareProviderRuntimeAuth } from "../../../plugins/provider-runtime.js";
 import {
   type AuthProfileStore,
@@ -8,7 +9,10 @@ import {
 } from "../../auth-profiles.js";
 import { FailoverError, resolveFailoverStatus } from "../../failover-error.js";
 import { shouldAllowCooldownProbeForReason } from "../../failover-policy.js";
+import { requestModelApprovalDecision } from "../../model-approval-request.js";
 import { getApiKeyForModel, type ResolvedProviderAuth } from "../../model-auth.js";
+import { isNonSecretApiKeyMarker } from "../../model-auth-markers.js";
+import { resolveMeteredAutoApprove } from "../../model-metering.js";
 import {
   classifyFailoverReason,
   isFailoverErrorMessage,
@@ -48,6 +52,8 @@ export function createEmbeddedRunAuthController(params: {
   attemptedThinking: Set<ThinkLevel>;
   fallbackConfigured: boolean;
   allowTransientCooldownProbe: boolean;
+  /** Embedded run id: keys the AgentRunContext lookup for the dial-time metered gate. */
+  runId?: string;
   getProvider(): string;
   getModelId(): string;
   getRuntimeModel(): Model<Api>;
@@ -282,8 +288,109 @@ export function createEmbeddedRunAuthController(params: {
     });
   };
 
+  // Run-scoped metered gate state. `approved` short-circuits later credential
+  // applications in this run; `denied` fails subsequent api-key credentials
+  // fast instead of re-prompting when several are rotated back-to-back.
+  let meteredCredentialApproved = false;
+  let meteredCredentialDenied = false;
+
+  const throwMeteredCredentialBlocked = (
+    reason: Extract<FailoverReason, "metered_denied" | "metered_unapproved_headless">,
+    profileId?: string,
+  ): never => {
+    const provider = params.getProvider();
+    const modelId = params.getModelId();
+    const detail =
+      reason === "metered_denied"
+        ? "was not approved"
+        : "was skipped (headless, not approved)";
+    // Always a FailoverError (independent of fallbackConfigured) so the outer
+    // model-fallback loop classifies the attempt as metered_* and advances;
+    // resolveAuthProfileFailureReason in run.ts filters these reasons out of
+    // auth-profile failure accounting.
+    throw new FailoverError(`Metered credential for ${provider}/${modelId} ${detail}.`, {
+      reason,
+      provider,
+      model: modelId,
+      profileId,
+      status: resolveFailoverStatus(reason),
+    });
+  };
+
+  /**
+   * Dial-time metered approval gate — defense in depth behind the chain-level
+   * gate in model-fallback.ts. The chain gate classifies billing from the
+   * auth-profile STORE, so a mid-run rotation onto an env API key (e.g. a
+   * subscription token that 401s and falls through to ANTHROPIC_API_KEY) can
+   * dial a metered credential the chain gate never saw. This gate runs at the
+   * moment a resolved credential is about to be applied, where
+   * `apiKeyInfo.mode` is the source of truth: only "api-key" gates;
+   * oauth/token/aws-sdk credentials are plan-backed/ambient and NEVER gated.
+   */
+  const gateMeteredCredential = async (apiKeyInfo: ApiKeyInfo): Promise<void> => {
+    if (apiKeyInfo.mode !== "api-key" || !apiKeyInfo.apiKey) {
+      return;
+    }
+    // Synthetic marker "keys" (custom-local, ollama-local, oauth:*, ...) are
+    // placeholders for local/no-auth or plan-backed flows, not billable API
+    // keys — never gate them.
+    if (isNonSecretApiKeyMarker(apiKeyInfo.apiKey)) {
+      return;
+    }
+    if (meteredCredentialApproved) {
+      return;
+    }
+    const runCtx = params.runId ? getAgentRunContext(params.runId) : undefined;
+    if (!runCtx) {
+      // No registered run context (direct CLI invocations, tests): fail open,
+      // mirroring the chain-level gate.
+      return;
+    }
+    if (runCtx.meteredApprovalGranted === true || resolveMeteredAutoApprove(runCtx)) {
+      // Approved earlier this run (by either gate) or session-level
+      // "don't ask again": no prompt needed.
+      meteredCredentialApproved = true;
+      return;
+    }
+    if (meteredCredentialDenied) {
+      throwMeteredCredentialBlocked("metered_denied", apiKeyInfo.profileId);
+    }
+    if (!runCtx.isControlUiVisible) {
+      throwMeteredCredentialBlocked("metered_unapproved_headless", apiKeyInfo.profileId);
+    }
+    const decision = await requestModelApprovalDecision({
+      provider: params.getProvider(),
+      model: params.getModelId(),
+      // The controller cannot cheaply tell primary vs fallback candidates
+      // apart mid-run; "primary" only affects the approval card wording.
+      reasonKind: "primary",
+      agentId: runCtx.agentId,
+      sessionKey: runCtx.sessionKey,
+      runId: params.runId,
+    });
+    if (decision?.kind === "approve" && !decision.switchTo) {
+      if (decision.dontAskAgain) {
+        // The gateway resolve handler persists the session flag out-of-band;
+        // cache it here so later reads in this run skip the store re-read.
+        runCtx.meteredAutoApprove = true;
+      }
+      meteredCredentialApproved = true;
+      runCtx.meteredApprovalGranted = true;
+      return;
+    }
+    // approve+switchTo: the user picked a DIFFERENT model. Mid-attempt the
+    // auth controller cannot swap models, so treat it as a deny for this
+    // credential path — the resulting failover advances the model-fallback
+    // loop, and its chain-level gate owns switchTo handling.
+    meteredCredentialDenied = true;
+    throwMeteredCredentialBlocked("metered_denied", apiKeyInfo.profileId);
+  };
+
   const applyApiKeyInfo = async (candidate?: string): Promise<void> => {
     const apiKeyInfo = await resolveApiKeyForCandidate(candidate);
+    // Gate BEFORE the credential is stored or applied anywhere: a blocked
+    // metered credential must never reach setApiKeyInfo/setRuntimeApiKey.
+    await gateMeteredCredential(apiKeyInfo);
     params.setApiKeyInfo(apiKeyInfo);
     const resolvedProfileId = apiKeyInfo.profileId ?? candidate;
     if (!apiKeyInfo.apiKey) {

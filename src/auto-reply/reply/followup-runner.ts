@@ -148,6 +148,10 @@ export function createFollowupRunner(params: {
           sessionKey: queued.run.sessionKey,
           verboseLevel: queued.run.verboseLevel,
           isControlUiVisible: shouldSurfaceToControlUi,
+          agentId: queued.run.agentId,
+          meteredAutoApprove: ((sessionKey ? sessionStore?.[sessionKey] : undefined) ?? sessionEntry)
+            ?.meteredAutoApprove,
+          storePath,
         });
       }
       let autoCompactionCount = 0;

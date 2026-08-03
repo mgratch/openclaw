@@ -255,6 +255,7 @@ export async function runEmbeddedPiAgent(
         attemptedThinking,
         fallbackConfigured,
         allowTransientCooldownProbe: params.allowTransientCooldownProbe === true,
+        runId: params.runId,
         getProvider: () => provider,
         getModelId: () => modelId,
         getRuntimeModel: () => runtimeModel,
@@ -361,8 +362,14 @@ export async function runEmbeddedPiAgent(
         failoverReason: FailoverReason | null,
       ): AuthProfileFailureReason | null => {
         // Timeouts are transport/model-path failures, not auth health signals,
-        // so they should not persist auth-profile failure state.
-        if (!failoverReason || failoverReason === "timeout") {
+        // so they should not persist auth-profile failure state. Metered-gate
+        // outcomes are policy decisions, not credential failures.
+        if (
+          !failoverReason ||
+          failoverReason === "timeout" ||
+          failoverReason === "metered_denied" ||
+          failoverReason === "metered_unapproved_headless"
+        ) {
           return null;
         }
         return failoverReason;

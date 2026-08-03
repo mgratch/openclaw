@@ -19,6 +19,18 @@ export type AgentRunContext = {
   isHeartbeat?: boolean;
   /** Whether control UI clients should receive chat/agent updates for this run. */
   isControlUiVisible?: boolean;
+  /** Agent id owning this run (used by the metered-model approval gate). */
+  agentId?: string;
+  /** Session-level "don't ask again" flag for metered-model approvals. */
+  meteredAutoApprove?: boolean;
+  /**
+   * Run-scoped metered approval: set once the user approves a metered
+   * candidate for this run so later gates (chain-level in model-fallback.ts
+   * or dial-time in the embedded-run auth controller) skip re-asking.
+   */
+  meteredApprovalGranted?: boolean;
+  /** Session store path, so the gate can lazily re-read the session entry. */
+  storePath?: string;
 };
 
 type AgentEventState = {
@@ -58,6 +70,18 @@ export function registerAgentRunContext(runId: string, context: AgentRunContext)
   }
   if (context.isHeartbeat !== undefined && existing.isHeartbeat !== context.isHeartbeat) {
     existing.isHeartbeat = context.isHeartbeat;
+  }
+  if (context.agentId && existing.agentId !== context.agentId) {
+    existing.agentId = context.agentId;
+  }
+  if (context.meteredAutoApprove !== undefined) {
+    existing.meteredAutoApprove = context.meteredAutoApprove;
+  }
+  if (context.meteredApprovalGranted !== undefined) {
+    existing.meteredApprovalGranted = context.meteredApprovalGranted;
+  }
+  if (context.storePath && existing.storePath !== context.storePath) {
+    existing.storePath = context.storePath;
   }
 }
 

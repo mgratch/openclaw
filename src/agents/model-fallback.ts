@@ -1,8 +1,10 @@
+import { resolveAcpModelPreset } from "../acp/presets.js";
 import type { OpenClawConfig } from "../config/config.js";
 import {
   resolveAgentModelFallbackValues,
   resolveAgentModelPrimaryValue,
 } from "../config/model-input.js";
+import { getAgentRunContext } from "../infra/agent-events.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { sanitizeForLog } from "../terminal/ansi.js";
 import {
@@ -27,7 +29,9 @@ import {
   shouldUseTransientCooldownProbeSlot,
 } from "./failover-policy.js";
 import { LiveSessionModelSwitchError } from "./live-model-switch.js";
+import { requestModelApprovalDecision } from "./model-approval-request.js";
 import { logModelFallbackDecision } from "./model-fallback-observation.js";
+import { classifyProviderBilling, resolveMeteredAutoApprove } from "./model-metering.js";
 import type { FallbackAttempt, ModelCandidate } from "./model-fallback.types.js";
 import {
   buildConfiguredAllowlistKeys,
@@ -385,8 +389,24 @@ function resolveFallbackCandidates(params: {
   })();
 
   for (const raw of modelFallbacks) {
+    const rawText = String(raw ?? "").trim();
+    // ACP presets (e.g. "claude-code-opus") are UI dispatch directives, not
+    // provider/model pairs. Resolve them to their underlying Anthropic model —
+    // mirroring the primary path in model-selection.ts (resolveConfiguredModelRef)
+    // — so fallback rungs dial a real model instead of defaultProvider/<preset>.
+    if (rawText && !rawText.includes("/")) {
+      const acpPreset = resolveAcpModelPreset(rawText);
+      if (acpPreset) {
+        if (acpPreset.acpxModel) {
+          addExplicitCandidate({ provider: "anthropic", model: acpPreset.acpxModel });
+        }
+        // Bare presets without a pinned model (e.g. "claude-code") have no
+        // concrete model to dial here; drop the rung.
+        continue;
+      }
+    }
     const resolved = resolveModelRefFromString({
-      raw: String(raw ?? ""),
+      raw: rawText,
       defaultProvider,
       aliasIndex,
     });
@@ -586,6 +606,81 @@ function resolveCooldownDecision(params: {
   };
 }
 
+type MeteredGateResult =
+  | { kind: "proceed"; candidate: ModelCandidate }
+  | { kind: "skip"; reason: FailoverReason; error: string };
+
+/**
+ * Metered-model approval gate. Models whose auth resolves to an API key cost
+ * money per token; before dialing one (primary or fallback) the user must
+ * approve it from the web UI. Headless runs skip unapproved metered
+ * candidates so the fallback cascade can continue to a plan-backed model.
+ * Only a confident "metered" classification gates; "plan"/"unknown" fail open.
+ */
+async function applyMeteredApprovalGate(params: {
+  cfg: OpenClawConfig | undefined;
+  candidate: ModelCandidate;
+  isPrimary: boolean;
+  runId?: string;
+  authStore: ReturnType<typeof ensureAuthProfileStore>;
+}): Promise<MeteredGateResult> {
+  const runCtx = params.runId ? getAgentRunContext(params.runId) : undefined;
+  if (!runCtx) {
+    // No registered run context (direct CLI invocations, tests): fail open —
+    // there is no UI route to ask and no channel policy to apply.
+    return { kind: "proceed", candidate: params.candidate };
+  }
+  const billing = classifyProviderBilling({
+    cfg: params.cfg,
+    provider: params.candidate.provider,
+    store: params.authStore,
+  });
+  if (billing !== "metered") {
+    return { kind: "proceed", candidate: params.candidate };
+  }
+  if (runCtx.meteredApprovalGranted === true || resolveMeteredAutoApprove(runCtx)) {
+    // Run-scoped approval (set by either gate) or the session-level
+    // "don't ask again" flag: no need to re-ask this run.
+    return { kind: "proceed", candidate: params.candidate };
+  }
+  if (!runCtx.isControlUiVisible) {
+    // Headless channels (telegram, slack, cron, heartbeat): skip silently and
+    // let the cascade continue.
+    return {
+      kind: "skip",
+      reason: "metered_unapproved_headless",
+      error: `Metered model ${params.candidate.provider}/${params.candidate.model} skipped (headless, not approved)`,
+    };
+  }
+  const decision = await requestModelApprovalDecision({
+    provider: params.candidate.provider,
+    model: params.candidate.model,
+    reasonKind: params.isPrimary ? "primary" : "fallback",
+    agentId: runCtx.agentId,
+    sessionKey: runCtx.sessionKey,
+    runId: params.runId,
+  });
+  if (decision?.kind === "approve") {
+    if (decision.dontAskAgain) {
+      // Cache on the run context so later candidates in this run skip the
+      // gate; the gateway resolve handler persists the session flag itself.
+      runCtx.meteredAutoApprove = true;
+    }
+    // Mark the run as approved so the dial-time gate (embedded-run auth
+    // controller) does not re-prompt for the same run.
+    runCtx.meteredApprovalGranted = true;
+    // switchTo: dial the user's replacement INSTEAD of the candidate and do
+    // NOT re-gate it — the UI already confirmed that exact model.
+    return { kind: "proceed", candidate: decision.switchTo ?? params.candidate };
+  }
+  // Deny, timeout, or no approval route: treat all as "not approved".
+  return {
+    kind: "skip",
+    reason: "metered_denied",
+    error: `Metered model ${params.candidate.provider}/${params.candidate.model} was not approved`,
+  };
+}
+
 export async function runWithModelFallback<T>(params: {
   cfg: OpenClawConfig | undefined;
   provider: string;
@@ -730,9 +825,47 @@ export async function runWithModelFallback<T>(params: {
       }
     }
 
+    // Metered-model approval gate: metered candidates need user approval
+    // before we dial them; approved switchTo replacements are dialed instead.
+    let dialCandidate = candidate;
+    if (authStore) {
+      const gate = await applyMeteredApprovalGate({
+        cfg: params.cfg,
+        candidate,
+        isPrimary,
+        runId: params.runId,
+        authStore,
+      });
+      if (gate.kind === "skip") {
+        attempts.push({
+          provider: candidate.provider,
+          model: candidate.model,
+          error: gate.error,
+          reason: gate.reason,
+        });
+        logModelFallbackDecision({
+          decision: "skip_candidate",
+          runId: params.runId,
+          requestedProvider: params.provider,
+          requestedModel: params.model,
+          candidate,
+          attempt: i + 1,
+          total: candidates.length,
+          reason: gate.reason,
+          error: gate.error,
+          nextCandidate: candidates[i + 1],
+          isPrimary,
+          requestedModelMatched: requestedModel,
+          fallbackConfigured: hasFallbackCandidates,
+        });
+        continue;
+      }
+      dialCandidate = gate.candidate;
+    }
+
     const attemptRun = await runFallbackAttempt({
       run: params.run,
-      ...candidate,
+      ...dialCandidate,
       attempts,
       options: runOptions,
     });
@@ -743,7 +876,7 @@ export async function runWithModelFallback<T>(params: {
           runId: params.runId,
           requestedProvider: params.provider,
           requestedModel: params.model,
-          candidate,
+          candidate: dialCandidate,
           attempt: i + 1,
           total: candidates.length,
           previousAttempts: attempts,
@@ -756,7 +889,7 @@ export async function runWithModelFallback<T>(params: {
         i > 0 ? attempts.find((a) => a.reason === "model_not_found") : undefined;
       if (notFoundAttempt) {
         log.warn(
-          `Model "${sanitizeForLog(notFoundAttempt.provider)}/${sanitizeForLog(notFoundAttempt.model)}" not found. Fell back to "${sanitizeForLog(candidate.provider)}/${sanitizeForLog(candidate.model)}".`,
+          `Model "${sanitizeForLog(notFoundAttempt.provider)}/${sanitizeForLog(notFoundAttempt.model)}" not found. Fell back to "${sanitizeForLog(dialCandidate.provider)}/${sanitizeForLog(dialCandidate.model)}".`,
         );
       }
       return attemptRun.success;
@@ -779,8 +912,8 @@ export async function runWithModelFallback<T>(params: {
       }
       const normalized =
         coerceToFailoverError(err, {
-          provider: candidate.provider,
-          model: candidate.model,
+          provider: dialCandidate.provider,
+          model: dialCandidate.model,
         }) ?? err;
 
       // LiveSessionModelSwitchError during fallback means the session's
@@ -792,14 +925,14 @@ export async function runWithModelFallback<T>(params: {
         const switchMsg = err.message;
         const switchNormalized = new FailoverError(switchMsg, {
           reason: "overloaded",
-          provider: candidate.provider,
-          model: candidate.model,
+          provider: dialCandidate.provider,
+          model: dialCandidate.model,
         });
         lastError = switchNormalized;
         const described = describeFailoverError(switchNormalized);
         attempts.push({
-          provider: candidate.provider,
-          model: candidate.model,
+          provider: dialCandidate.provider,
+          model: dialCandidate.model,
           error: described.message,
           reason: described.reason ?? "unknown",
           status: described.status,
@@ -810,7 +943,7 @@ export async function runWithModelFallback<T>(params: {
           runId: params.runId,
           requestedProvider: params.provider,
           requestedModel: params.model,
-          candidate,
+          candidate: dialCandidate,
           attempt: i + 1,
           total: candidates.length,
           reason: described.reason,
@@ -836,8 +969,8 @@ export async function runWithModelFallback<T>(params: {
       lastError = isKnownFailover ? normalized : err;
       const described = describeFailoverError(normalized);
       attempts.push({
-        provider: candidate.provider,
-        model: candidate.model,
+        provider: dialCandidate.provider,
+        model: dialCandidate.model,
         error: described.message,
         reason: described.reason ?? "unknown",
         status: described.status,
@@ -848,7 +981,7 @@ export async function runWithModelFallback<T>(params: {
         runId: params.runId,
         requestedProvider: params.provider,
         requestedModel: params.model,
-        candidate,
+        candidate: dialCandidate,
         attempt: i + 1,
         total: candidates.length,
         reason: described.reason,
@@ -861,8 +994,8 @@ export async function runWithModelFallback<T>(params: {
         fallbackConfigured: hasFallbackCandidates,
       });
       await params.onError?.({
-        provider: candidate.provider,
-        model: candidate.model,
+        provider: dialCandidate.provider,
+        model: dialCandidate.model,
         error: isKnownFailover ? normalized : err,
         attempt: i + 1,
         total: candidates.length,

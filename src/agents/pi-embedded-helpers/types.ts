@@ -10,4 +10,8 @@ export type FailoverReason =
   | "timeout"
   | "model_not_found"
   | "session_expired"
+  // Metered-model approval gate outcomes (model-fallback.ts): the user denied
+  // the metered candidate, or a headless run skipped it without asking.
+  | "metered_denied"
+  | "metered_unapproved_headless"
   | "unknown";

@@ -195,6 +195,9 @@ export async function runAgentTurnWithFallback(params: {
       verboseLevel: params.resolvedVerboseLevel,
       isHeartbeat: params.isHeartbeat,
       isControlUiVisible: shouldSurfaceToControlUi,
+      agentId: params.followupRun.run.agentId,
+      meteredAutoApprove: params.getActiveSessionEntry()?.meteredAutoApprove,
+      storePath: params.storePath,
     });
   }
   let runResult: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;

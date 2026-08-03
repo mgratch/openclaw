@@ -156,6 +156,8 @@ export type SessionEntry = {
   responseUsage?: "on" | "off" | "tokens" | "full";
   providerOverride?: string;
   modelOverride?: string;
+  /** User chose "don't ask again for this conversation" for metered-model approvals. */
+  meteredAutoApprove?: boolean;
   authProfileOverride?: string;
   authProfileOverrideSource?: "auto" | "user";
   authProfileOverrideCompactionCount?: number;
