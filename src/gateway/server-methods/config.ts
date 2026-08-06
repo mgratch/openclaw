@@ -27,7 +27,11 @@ import {
 } from "../../infra/restart-sentinel.js";
 import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
 import { prepareSecretsRuntimeSnapshot } from "../../secrets/runtime.js";
-import { diffConfigPaths } from "../config-reload.js";
+import {
+  buildGatewayReloadPlan,
+  diffConfigPaths,
+  resolveGatewayReloadSettings,
+} from "../config-reload.js";
 import {
   formatControlPlaneActor,
   resolveControlPlaneActor,
@@ -305,6 +309,60 @@ function buildConfigRestartSentinelPayload(params: {
   };
 }
 
+type ConfigWriteRestartDecision = {
+  restartNeeded: boolean;
+  reason: string;
+};
+
+/**
+ * Decide whether a config write must schedule a gateway SIGUSR1 restart.
+ *
+ * Historically config.patch/config.apply scheduled a restart for ANY changed
+ * path, even ones the config reloader hot-applies (for example agents.list).
+ * That force-killed in-flight agent runs after the restart deferral timeout
+ * (incident 2026-08-04: a control-UI project save aborted a live run mid
+ * tool→LLM handoff). The reloader already classifies changed paths via
+ * buildGatewayReloadPlan, so consult it and honor gateway.reload.mode:
+ *
+ * - off:     the reloader is disabled; restart is the only way the write takes
+ *            effect (preserves old behavior).
+ * - restart: operator wants a restart on every change.
+ * - hybrid:  restart only when the plan says the changed paths require it;
+ *            everything else is hot-applied by the reloader.
+ * - hot:     operator opted out of automatic restarts entirely. Never
+ *            schedule one; restart-required paths stay pending until a manual
+ *            restart (the reloader logs a warning for those).
+ */
+export function resolveConfigWriteRestartDecision(
+  nextConfig: OpenClawConfig,
+  changedPaths: string[],
+): ConfigWriteRestartDecision {
+  const settings = resolveGatewayReloadSettings(nextConfig);
+  if (settings.mode === "off") {
+    return { restartNeeded: true, reason: "gateway.reload.mode=off" };
+  }
+  if (settings.mode === "restart") {
+    return { restartNeeded: true, reason: "gateway.reload.mode=restart" };
+  }
+  const plan = buildGatewayReloadPlan(changedPaths);
+  if (!plan.restartGateway) {
+    return {
+      restartNeeded: false,
+      reason: `hot-applied by config reloader (mode=${settings.mode})`,
+    };
+  }
+  if (settings.mode === "hot") {
+    return {
+      restartNeeded: false,
+      reason: `restart-required paths pending manual restart (gateway.reload.mode=hot): ${plan.restartReasons.join(",")}`,
+    };
+  }
+  return {
+    restartNeeded: true,
+    reason: `restart-required paths: ${plan.restartReasons.join(",")}`,
+  };
+}
+
 async function tryWriteRestartSentinelPayload(
   payload: RestartSentinelPayload,
 ): Promise<string | null> {
@@ -498,10 +556,29 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
 
+    const restartDecision = resolveConfigWriteRestartDecision(validated.config, changedPaths);
     context?.logGateway?.info(
-      `config.patch write ${formatControlPlaneActor(actor)} changedPaths=${summarizeChangedPaths(changedPaths)} restartReason=config.patch`,
+      `config.patch write ${formatControlPlaneActor(actor)} changedPaths=${summarizeChangedPaths(changedPaths)} restart=${restartDecision.restartNeeded ? "scheduled" : "skipped"} (${restartDecision.reason})`,
     );
     await writeConfigFile(validated.config, writeOptions);
+
+    if (!restartDecision.restartNeeded) {
+      // The config reloader picks up the write and hot-applies it (or, in
+      // "hot" mode with restart-required paths, logs that a manual restart is
+      // pending). Skipping SIGUSR1 keeps in-flight agent runs alive.
+      respond(
+        true,
+        {
+          ok: true,
+          path: createConfigIO().configPath,
+          config: redactConfigObject(validated.config, schemaPatch.uiHints),
+          restart: { ok: true, skipped: true, reason: restartDecision.reason },
+          sentinel: null,
+        },
+        undefined,
+      );
+      return;
+    }
 
     const { sessionKey, note, restartDelayMs, deliveryContext, threadId } =
       resolveConfigRestartRequest(params);
@@ -561,10 +638,28 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     const changedPaths = diffConfigPaths(snapshot.config, parsed.config);
     const actor = resolveControlPlaneActor(client);
+    const restartDecision = resolveConfigWriteRestartDecision(parsed.config, changedPaths);
     context?.logGateway?.info(
-      `config.apply write ${formatControlPlaneActor(actor)} changedPaths=${summarizeChangedPaths(changedPaths)} restartReason=config.apply`,
+      `config.apply write ${formatControlPlaneActor(actor)} changedPaths=${summarizeChangedPaths(changedPaths)} restart=${restartDecision.restartNeeded ? "scheduled" : "skipped"} (${restartDecision.reason})`,
     );
     await writeConfigFile(parsed.config, writeOptions);
+
+    if (!restartDecision.restartNeeded) {
+      // See config.patch: honor the reload plan and gateway.reload.mode
+      // instead of force-restarting (and killing live runs) on every write.
+      respond(
+        true,
+        {
+          ok: true,
+          path: createConfigIO().configPath,
+          config: redactConfigObject(parsed.config, parsed.schema.uiHints),
+          restart: { ok: true, skipped: true, reason: restartDecision.reason },
+          sentinel: null,
+        },
+        undefined,
+      );
+      return;
+    }
 
     const { sessionKey, note, restartDelayMs, deliveryContext, threadId } =
       resolveConfigRestartRequest(params);
