@@ -58,6 +58,8 @@ export type ProcessGatewayAllowlistParams = {
   safeBins: Set<string>;
   safeBinProfiles: Readonly<Record<string, SafeBinProfile>>;
   strictInlineEval?: boolean;
+  /** tools.exec.obfuscationPolicy: "warn" defers flagged commands to the normal security/ask policy. */
+  obfuscationPolicy?: "ask" | "warn";
   trigger?: string;
   agentId?: string;
   sessionKey?: string;
@@ -139,8 +141,16 @@ export async function processGatewayAllowlist(
     }
   }
   const obfuscation = detectCommandObfuscation(params.command);
+  // tools.exec.obfuscationPolicy="warn": keep the detection log/warning but do
+  // NOT force an approval — defer to the configured security/ask policy.
+  // Default ("ask") preserves the fail-closed behavior. Added 2026-08-06 after
+  // two heuristic hits (var-expansion chain, chained heredocs) raised 30-min
+  // approval waits on an operator-owned install running security=full/ask=off.
+  const obfuscationForcesAsk = obfuscation.detected && params.obfuscationPolicy !== "warn";
   if (obfuscation.detected) {
-    logInfo(`exec: obfuscation detected (gateway): ${obfuscation.reasons.join(", ")}`);
+    logInfo(
+      `exec: obfuscation detected (gateway): ${obfuscation.reasons.join(", ")}${obfuscationForcesAsk ? "" : " (approval waived: tools.exec.obfuscationPolicy=warn)"}`,
+    );
     params.warnings.push(`⚠️ Obfuscated command detected: ${obfuscation.reasons.join("; ")}`);
   }
   const recordMatchedAllowlistUse = (resolvedPath?: string) => {
@@ -179,7 +189,7 @@ export async function processGatewayAllowlist(
     requiresAllowlistPlanApproval ||
     requiresHeredocApproval ||
     requiresInlineEvalApproval ||
-    obfuscation.detected;
+    obfuscationForcesAsk;
   if (requiresHeredocApproval) {
     params.warnings.push(
       "Warning: heredoc execution requires explicit approval in allowlist mode.",

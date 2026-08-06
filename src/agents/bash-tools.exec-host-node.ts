@@ -49,6 +49,8 @@ export type ExecuteNodeHostCommandParams = {
   security: ExecSecurity;
   ask: ExecAsk;
   strictInlineEval?: boolean;
+  /** tools.exec.obfuscationPolicy: "warn" defers flagged commands to the normal security/ask policy. */
+  obfuscationPolicy?: "ask" | "warn";
   timeoutSec?: number;
   defaultTimeoutSec: number;
   approvalRunningNoticeMs: number;
@@ -193,9 +195,13 @@ export async function executeNodeHostCommand(
     }
   }
   const obfuscation = detectCommandObfuscation(params.command);
+  // tools.exec.obfuscationPolicy="warn": keep the detection log/warning but do
+  // NOT force an approval — defer to the configured security/ask policy (see
+  // bash-tools.exec-host-gateway.ts for rationale).
+  const obfuscationForcesAsk = obfuscation.detected && params.obfuscationPolicy !== "warn";
   if (obfuscation.detected) {
     logInfo(
-      `exec: obfuscation detected (node=${nodeQuery ?? "default"}): ${obfuscation.reasons.join(", ")}`,
+      `exec: obfuscation detected (node=${nodeQuery ?? "default"}): ${obfuscation.reasons.join(", ")}${obfuscationForcesAsk ? "" : " (approval waived: tools.exec.obfuscationPolicy=warn)"}`,
     );
     params.warnings.push(`⚠️ Obfuscated command detected: ${obfuscation.reasons.join("; ")}`);
   }
@@ -208,7 +214,7 @@ export async function executeNodeHostCommand(
       durableApprovalSatisfied,
     }) ||
     inlineEvalHit !== null ||
-    obfuscation.detected;
+    obfuscationForcesAsk;
   const invokeTimeoutMs = Math.max(
     10_000,
     (typeof params.timeoutSec === "number" ? params.timeoutSec : params.defaultTimeoutSec) * 1000 +

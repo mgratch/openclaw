@@ -233,6 +233,14 @@ export type ExecToolConfig = {
   security?: "deny" | "allowlist" | "full";
   /** Exec ask mode (default: on-miss). */
   ask?: "off" | "on-miss" | "always";
+  /**
+   * How to handle commands the obfuscation heuristic flags (variable-expansion
+   * chains, encoded payloads, chained heredocs). "ask" (default) forces an
+   * explicit approval even when security=full/ask=off; "warn" logs and
+   * annotates the command but defers to the configured security/ask policy.
+   * Only relax this on operator-owned single-user installs.
+   */
+  obfuscationPolicy?: "ask" | "warn";
   /** Default node binding for exec.host=node (node id/name). */
   node?: string;
   /** Directories to prepend to PATH when running exec (gateway/sandbox). */

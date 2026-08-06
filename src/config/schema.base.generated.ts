@@ -4729,6 +4729,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
                           type: "string",
                           enum: ["off", "on-miss", "always"],
                         },
+                        obfuscationPolicy: {
+                          type: "string",
+                          enum: ["ask", "warn"],
+                        },
                         node: {
                           type: "string",
                         },
@@ -6875,6 +6879,10 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
               ask: {
                 type: "string",
                 enum: ["off", "on-miss", "always"],
+              },
+              obfuscationPolicy: {
+                type: "string",
+                enum: ["ask", "warn"],
               },
               node: {
                 type: "string",

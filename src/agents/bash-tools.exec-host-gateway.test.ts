@@ -121,4 +121,56 @@ describe("processGatewayAllowlist", () => {
     expect(createAndRegisterDefaultExecApprovalRequestMock).toHaveBeenCalledTimes(1);
     expect(result.pendingResult?.details.status).toBe("approval-pending");
   });
+
+  async function runObfuscatedFullSecurityCommand(params: { obfuscationPolicy?: "ask" | "warn" }) {
+    // security=full so no allowlist gates apply; only the obfuscation
+    // heuristic can force an approval here.
+    const shared = await import("./bash-tools.exec-host-shared.js");
+    vi.mocked(shared.resolveExecHostApprovalContext).mockReturnValue({
+      approvals: { allowlist: [], file: { version: 1, agents: {} } },
+      hostSecurity: "full",
+      hostAsk: "off",
+      askFallback: "deny",
+    } as unknown as ReturnType<typeof shared.resolveExecHostApprovalContext>);
+    const detect = await import("../infra/exec-obfuscation-detect.js");
+    vi.mocked(detect.detectCommandObfuscation).mockReturnValue({
+      detected: true,
+      reasons: ["Variable assignment chain with expansion (potential obfuscation)"],
+      matchedPatterns: ["var-expansion-obfuscation"],
+    } as ReturnType<typeof detect.detectCommandObfuscation>);
+    const warnings: string[] = [];
+    const result = await processGatewayAllowlist({
+      command: 'A=$(basename x); "$A" --version',
+      workdir: process.cwd(),
+      env: process.env as Record<string, string>,
+      pty: false,
+      defaultTimeoutSec: 30,
+      security: "full",
+      ask: "off",
+      obfuscationPolicy: params.obfuscationPolicy,
+      safeBins: new Set(),
+      safeBinProfiles: {},
+      warnings,
+      approvalRunningNoticeMs: 0,
+      maxOutput: 1000,
+      pendingMaxOutput: 1000,
+    });
+    return { result, warnings };
+  }
+
+  it("forces approval for obfuscation-flagged commands by default (policy=ask)", async () => {
+    const { result, warnings } = await runObfuscatedFullSecurityCommand({});
+    expect(createAndRegisterDefaultExecApprovalRequestMock).toHaveBeenCalledTimes(1);
+    expect(result.pendingResult?.details.status).toBe("approval-pending");
+    expect(warnings.some((w) => w.includes("Obfuscated command detected"))).toBe(true);
+  });
+
+  it("obfuscationPolicy=warn keeps the warning but defers to security/ask (no approval)", async () => {
+    const { result, warnings } = await runObfuscatedFullSecurityCommand({
+      obfuscationPolicy: "warn",
+    });
+    expect(createAndRegisterDefaultExecApprovalRequestMock).not.toHaveBeenCalled();
+    expect(result.pendingResult).toBeUndefined();
+    expect(warnings.some((w) => w.includes("Obfuscated command detected"))).toBe(true);
+  });
 });
