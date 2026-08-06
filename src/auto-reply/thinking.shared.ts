@@ -24,6 +24,9 @@ const OPENAI_XHIGH_MODEL_IDS = [
   "gpt-5.2",
 ] as const;
 const OPENAI_CODEX_XHIGH_MODEL_IDS = [
+  // Local patch (2026-08-03): config-defined SOL model; the UI's SOL 5.6
+  // presets offer xhigh and the stock list predates gpt-5.6. Keep on rebuilds.
+  "gpt-5.6-sol",
   "gpt-5.4",
   "gpt-5.3-codex-spark",
   "gpt-5.2-codex",

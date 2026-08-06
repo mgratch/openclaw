@@ -47,6 +47,9 @@ const OPENAI_CODEX_GPT_53_SPARK_CONTEXT_TOKENS = 128_000;
 const OPENAI_CODEX_GPT_53_SPARK_MAX_TOKENS = 128_000;
 const OPENAI_CODEX_TEMPLATE_MODEL_IDS = ["gpt-5.2-codex"] as const;
 const OPENAI_CODEX_XHIGH_MODEL_IDS = [
+  // Local patch (2026-08-03): config-defined SOL model (see openclaw.json
+  // models.providers.openai-codex); stock list predates gpt-5.6. Keep on rebuilds.
+  "gpt-5.6-sol",
   OPENAI_CODEX_GPT_54_MODEL_ID,
   OPENAI_CODEX_GPT_53_MODEL_ID,
   OPENAI_CODEX_GPT_53_SPARK_MODEL_ID,

@@ -42,27 +42,29 @@ docker create --name "$EXTRACT_CONTAINER" "$IMAGE_TAG" >/dev/null
 
 GATEWAY_BUNDLE=$(docker cp "$EXTRACT_CONTAINER:/app/dist/" - | tar -t 2>/dev/null | grep -oE 'dist/gateway-cli-[A-Za-z0-9_-]+\.js$' | head -1 | xargs basename)
 INPUT_FILES_BUNDLE=$(docker cp "$EXTRACT_CONTAINER:/app/dist/" - | tar -t 2>/dev/null | grep -oE 'dist/input-files-[A-Za-z0-9_-]+\.js$' | head -1 | xargs basename)
+THINKING_BUNDLE=$(docker cp "$EXTRACT_CONTAINER:/app/dist/" - | tar -t 2>/dev/null | grep -oE 'dist/thinking\.shared-[A-Za-z0-9_-]+\.js$' | head -1 | xargs basename)
 
-for var in GATEWAY_BUNDLE INPUT_FILES_BUNDLE; do
+for var in GATEWAY_BUNDLE INPUT_FILES_BUNDLE THINKING_BUNDLE; do
   if [[ -z "${!var}" ]]; then
     echo "ERROR: Could not discover $var in $IMAGE_TAG:/app/dist/"
     exit 1
   fi
 done
 
-echo "    gateway-cli:   $GATEWAY_BUNDLE"
-echo "    input-files:   $INPUT_FILES_BUNDLE"
+echo "    gateway-cli:      $GATEWAY_BUNDLE"
+echo "    input-files:      $INPUT_FILES_BUNDLE"
+echo "    thinking.shared:  $THINKING_BUNDLE"
 echo "    auth-profiles: (removed — now Layer A in src/agents/auth-profiles/oauth.ts)"
 
 # ─── Step 2: Remove any stale patched bundles from previous rebuilds ──────
 echo ""
 echo "==> Cleaning stale patched bundles..."
 shopt -s nullglob
-for pattern in 'gateway-cli-*.js' 'input-files-*.js' 'auth-profiles-*.js'; do
+for pattern in 'gateway-cli-*.js' 'input-files-*.js' 'auth-profiles-*.js' 'thinking.shared-*.js'; do
   for old in $pattern; do
     # Keep the one we're about to regenerate
     case "$old" in
-      "$GATEWAY_BUNDLE"|"$INPUT_FILES_BUNDLE") continue ;;
+      "$GATEWAY_BUNDLE"|"$INPUT_FILES_BUNDLE"|"$THINKING_BUNDLE") continue ;;
     esac
     # Also keep .bak and .unpatched variants in case user wants them for debugging
     case "$old" in
@@ -84,7 +86,7 @@ shopt -u nullglob
 # ─── Step 3: Extract fresh unpatched bundles ──────────────────────────────
 echo ""
 echo "==> Extracting fresh unpatched bundles..."
-for bundle in "$GATEWAY_BUNDLE" "$INPUT_FILES_BUNDLE"; do
+for bundle in "$GATEWAY_BUNDLE" "$INPUT_FILES_BUNDLE" "$THINKING_BUNDLE"; do
   docker cp "$EXTRACT_CONTAINER:/app/dist/$bundle" "./$bundle"
   cp "./$bundle" "./$bundle.unpatched"
   echo "    extracted: $bundle ($(wc -c < "$bundle") bytes)"
@@ -161,6 +163,30 @@ fs.writeFileSync(file, src);
 console.log("    OK: binaryPassthroughMimes block inserted");
 PATCH_INPUT_FILES
 
+# ─── Step 5b: Patch thinking.shared (xhigh for config-defined SOL model) ──
+echo ""
+echo "==> Patching $THINKING_BUNDLE..."
+node - "$THINKING_BUNDLE" <<'PATCH_THINKING'
+const fs = require("node:fs");
+const file = process.argv[2];
+let src = fs.readFileSync(file, "utf8");
+
+if (src.includes('"gpt-5.6-sol"')) {
+  console.log("    already patched (gpt-5.6-sol present), skipping");
+  process.exit(0);
+}
+// NOTE: if a future rebuild's Layer A source (src/auto-reply/thinking.shared.ts)
+// already contains gpt-5.6-sol, the check above makes this a no-op.
+const anchor = "OPENAI_CODEX_XHIGH_MODEL_IDS = [";
+if (!src.includes(anchor)) {
+  console.error("    FAIL: could not locate OPENAI_CODEX_XHIGH_MODEL_IDS anchor");
+  process.exit(2);
+}
+src = src.replace(anchor, anchor + '\n  "gpt-5.6-sol",');
+fs.writeFileSync(file, src);
+console.log('    OK: "gpt-5.6-sol" added to OPENAI_CODEX_XHIGH_MODEL_IDS');
+PATCH_THINKING
+
 # ─── Step 6: Update docker-compose.override.yml mount paths ──────────────
 echo ""
 echo "==> Syncing $COMPOSE_OVERRIDE mount paths..."
@@ -173,6 +199,7 @@ else
   # pi-ai paths use stable names and don't need rewriting unless the pi-ai version bumps.
   sed -i '' -E "s#(openclaw/|/app/dist/)gateway-cli-[A-Za-z0-9_-]+\.js#\1${GATEWAY_BUNDLE}#g" "$COMPOSE_OVERRIDE"
   sed -i '' -E "s#(openclaw/|/app/dist/)input-files-[A-Za-z0-9_-]+\.js#\1${INPUT_FILES_BUNDLE}#g" "$COMPOSE_OVERRIDE"
+  sed -i '' -E "s#(openclaw/|/app/dist/)thinking\.shared-[A-Za-z0-9_-]+\.js#\1${THINKING_BUNDLE}#g" "$COMPOSE_OVERRIDE"
 
   echo "    OK: mount paths updated (backup at ${COMPOSE_OVERRIDE}.bak-*)"
 fi
@@ -182,6 +209,7 @@ echo ""
 echo "==> Done. Patched bundles ready:"
 echo "    ${GATEWAY_BUNDLE}     (gateway-cli: payload + chat history limits)"
 echo "    ${INPUT_FILES_BUNDLE} (input-files: binary passthrough)"
+echo "    ${THINKING_BUNDLE} (thinking.shared: gpt-5.6-sol xhigh allowlist)"
 echo "    (auth-profiles OAuth dedup is now Layer A — baked into the image)"
 echo ""
 echo "Next:"
