@@ -6,6 +6,7 @@ import {
   sanitizeForConsole,
 } from "./pi-embedded-error-observation.js";
 import { classifyFailoverReason, formatAssistantErrorText } from "./pi-embedded-helpers.js";
+import { isBenignAbortReasonText } from "./pi-embedded-runner/abort-reasons.js";
 import {
   consumePendingToolMediaReply,
   hasAssistantVisibleReply,
@@ -85,7 +86,38 @@ export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
       },
     });
   } else {
-    ctx.log.debug(`embedded run agent end: runId=${ctx.params.runId} isError=${isError}`);
+    // Aborted runs (stopReason === "aborted") also land here: pi-ai providers
+    // never throw — an aborted stream resolves normally with stopReason set.
+    // Keep phase:"end" so downstream consumers (subagent announce, channel
+    // delivery) see a normal end, but attach additive `aborted`/`error`
+    // fields so the gateway can broadcast a chat error when the abort was NOT
+    // user-initiated (server-chat.ts checks chatAbortedRuns). Incident
+    // 2026-08-04: a gateway restart drain-killed a live run and the webchat
+    // saw nothing but silence.
+    //
+    // Expected control-flow aborts must NOT be flagged: sessions_yield turns
+    // (detected via the tool having run this turn — yield aborts often carry
+    // no errorMessage) and benign reason texts (queue interrupt, model
+    // switch, session reset; see abort-reasons.ts). Incident 2026-08-06:
+    // without this, every yield painted a spurious "Run aborted" error card.
+    const rawAbortReason = isAssistantMessage(lastAssistant)
+      ? lastAssistant.errorMessage?.trim()
+      : undefined;
+    const yieldedThisTurn = (ctx.state.toolMetas ?? []).some(
+      (t) => t.toolName === "sessions_yield",
+    );
+    const wasAborted =
+      isAssistantMessage(lastAssistant) &&
+      lastAssistant.stopReason === "aborted" &&
+      !yieldedThisTurn &&
+      !isBenignAbortReasonText(rawAbortReason);
+    const abortErrorText = wasAborted
+      ? (buildTextObservationFields(rawAbortReason || "Run aborted before completion.")
+          .textPreview ?? "Run aborted before completion.")
+      : undefined;
+    ctx.log.debug(
+      `embedded run agent end: runId=${ctx.params.runId} isError=${isError} aborted=${wasAborted}`,
+    );
     // Forward resolved model/provider attribution so downstream consumers
     // (chat.message WS events, Responses API SSE) can label the assistant
     // reply on fresh sends without waiting for a UI refresh to hydrate from
@@ -104,6 +136,7 @@ export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
         endedAt: Date.now(),
         ...(assistantModel ? { model: assistantModel } : {}),
         ...(assistantProvider ? { provider: assistantProvider } : {}),
+        ...(wasAborted ? { aborted: true, error: abortErrorText } : {}),
       },
     });
     void ctx.params.onAgentEvent?.({
@@ -112,6 +145,7 @@ export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
         phase: "end",
         ...(assistantModel ? { model: assistantModel } : {}),
         ...(assistantProvider ? { provider: assistantProvider } : {}),
+        ...(wasAborted ? { aborted: true, error: abortErrorText } : {}),
       },
     });
   }

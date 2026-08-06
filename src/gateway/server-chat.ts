@@ -758,6 +758,46 @@ export function createAgentEventHandler({
     }
   };
 
+  // ── Subagent envelope cache ──────────────────────────────
+  // Spawn-style subagent sessions (agent:<id>:subagent:<uuid>) carry their
+  // parent linkage in the session store (spawnedBy, label). Attach that
+  // envelope to broadcast agent events so UI clients can correlate child
+  // activity to the requesting session ("offloaded, still working") instead
+  // of dropping the events as foreign-session noise. The fields are immutable
+  // after spawn, so cache per sessionKey (negative results included) to keep
+  // the hot path to one store read per subagent session.
+  const SUBAGENT_ENVELOPE_CACHE_MAX = 500;
+  const subagentEnvelopeCache = new Map<string, { spawnedBy?: string; label?: string } | null>();
+  const resolveSubagentEnvelope = (
+    sessionKey: string,
+  ): { spawnedBy?: string; label?: string } | null => {
+    if (!sessionKey.includes(":subagent:")) {
+      return null;
+    }
+    const cached = subagentEnvelopeCache.get(sessionKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+    let envelope: { spawnedBy?: string; label?: string } | null = null;
+    try {
+      const { entry } = loadSessionEntry(sessionKey);
+      const spawnedBy =
+        typeof entry?.spawnedBy === "string" && entry.spawnedBy.trim()
+          ? entry.spawnedBy
+          : undefined;
+      const label =
+        typeof entry?.label === "string" && entry.label.trim() ? entry.label : undefined;
+      envelope = spawnedBy || label ? { spawnedBy, label } : null;
+    } catch {
+      envelope = null;
+    }
+    if (subagentEnvelopeCache.size >= SUBAGENT_ENVELOPE_CACHE_MAX) {
+      subagentEnvelopeCache.clear();
+    }
+    subagentEnvelopeCache.set(sessionKey, envelope);
+    return envelope;
+  };
+
   return (evt: AgentEventPayload) => {
     const chatLink = chatRunState.registry.peek(evt.runId);
     const eventSessionKey =
@@ -771,7 +811,13 @@ export function createAgentEventHandler({
     const isAborted =
       chatRunState.abortedRuns.has(clientRunId) || chatRunState.abortedRuns.has(evt.runId);
     // Include sessionKey so Control UI can filter tool streams per session.
-    const agentPayload = sessionKey ? { ...eventForClients, sessionKey } : eventForClients;
+    // For spawn-style subagent sessions, also attach the parent linkage
+    // envelope (spawnedBy + label) so clients can render live child activity
+    // under the requesting session.
+    const subagentEnvelope = sessionKey ? resolveSubagentEnvelope(sessionKey) : null;
+    const agentPayload = sessionKey
+      ? { ...eventForClients, sessionKey, ...(subagentEnvelope ?? {}) }
+      : eventForClients;
     const last = agentRunSeq.get(evt.runId) ?? 0;
     const isToolEvent = evt.stream === "tool";
     const toolVerbose = isToolEvent ? resolveToolVerboseLevel(evt.runId, sessionKey) : "off";
@@ -899,6 +945,15 @@ export function createAgentEventHandler({
       } else if (!isAborted && (lifecyclePhase === "end" || lifecyclePhase === "error")) {
         const evtStopReason =
           typeof evt.data?.stopReason === "string" ? evt.data.stopReason : undefined;
+        // Internally-aborted run (gateway restart drain, session reset, model
+        // switch, queue interrupt — NOT a user chat.abort, which lands in the
+        // isAborted branch below). handleAgentEnd keeps phase:"end" for these
+        // but attaches `aborted: true` + an error message. Surface them as a
+        // chat error so clients don't sit in silence until a stall timeout.
+        const endedByInternalAbort = lifecyclePhase === "end" && evt.data?.aborted === true;
+        const jobState = lifecyclePhase === "error" || endedByInternalAbort ? "error" : "done";
+        const jobError =
+          evt.data?.error ?? (endedByInternalAbort ? "Run aborted before completion." : undefined);
         // Forward resolved model/provider (attached by handleAgentEnd) so the
         // final chat event carries attribution to the WS client without a
         // refresh/rehydrate roundtrip.
@@ -917,8 +972,8 @@ export function createAgentEventHandler({
             finished.clientRunId,
             evt.runId,
             evt.seq,
-            lifecyclePhase === "error" ? "error" : "done",
-            evt.data?.error,
+            jobState,
+            jobError,
             evtStopReason,
             attribution,
           );
@@ -928,8 +983,8 @@ export function createAgentEventHandler({
             eventRunId,
             evt.runId,
             evt.seq,
-            lifecyclePhase === "error" ? "error" : "done",
-            evt.data?.error,
+            jobState,
+            jobError,
             evtStopReason,
             attribution,
           );

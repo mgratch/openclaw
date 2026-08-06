@@ -357,7 +357,7 @@ async function interruptSessionRunIfActive(params: {
   }
 
   if (hasEmbeddedRun && params.sessionId) {
-    abortEmbeddedPiRun(params.sessionId);
+    abortEmbeddedPiRun(params.sessionId, { reason: "session reset requested" });
   }
 
   clearSessionQueues([params.requestedKey, params.canonicalKey, params.sessionId]);

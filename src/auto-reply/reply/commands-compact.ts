@@ -97,7 +97,7 @@ export const handleCompactCommand: CommandHandler = async (params) => {
   }
   const sessionId = params.sessionEntry.sessionId;
   if (isEmbeddedPiRunActive(sessionId)) {
-    abortEmbeddedPiRun(sessionId);
+    abortEmbeddedPiRun(sessionId, { reason: "manual compaction requested (/compact)" });
     await waitForEmbeddedPiRunEnd(sessionId, 15_000);
   }
   const customInstructions = extractCompactInstructions({

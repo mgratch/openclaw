@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../config/config.js";
 import { registerAgentRunContext, resetAgentRunContextForTest } from "../infra/agent-events.js";
 import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
-import { loadGatewaySessionRow } from "./session-utils.js";
+import { loadGatewaySessionRow, loadSessionEntry } from "./session-utils.js";
 
 const persistGatewaySessionLifecycleEventMock = vi.fn();
 
@@ -39,6 +39,7 @@ vi.mock("./session-utils.js", async (importOriginal) => {
   return {
     ...actual,
     loadGatewaySessionRow: vi.fn(),
+    loadSessionEntry: vi.fn(() => ({ cfg: {}, entry: undefined })),
   };
 });
 
@@ -51,6 +52,9 @@ describe("agent event handler", () => {
       useIndicator: true,
     });
     vi.mocked(loadGatewaySessionRow).mockReset().mockReturnValue(null);
+    vi.mocked(loadSessionEntry)
+      .mockReset()
+      .mockReturnValue({ cfg: {}, entry: undefined } as ReturnType<typeof loadSessionEntry>);
     persistGatewaySessionLifecycleEventMock.mockReset().mockResolvedValue(undefined);
     resetAgentRunContextForTest();
   });
@@ -1214,5 +1218,92 @@ describe("agent event handler", () => {
     expect(payload.message?.content?.[0]?.text).toBe(
       "Disk usage crossed 95 percent on /data and needs cleanup now.",
     );
+  });
+
+  it("broadcasts chat error when a run ends internally aborted (not user chat.abort)", () => {
+    // Incident 2026-08-04: a gateway restart drain-killed a live run; the
+    // provider resolved with stopReason "aborted", handleAgentEnd emitted a
+    // plain phase:"end", and the webchat saw nothing until a stall timeout.
+    // lifecycle end events now carry additive aborted/error fields.
+    const { broadcast, chatRunState, handler } = createHarness({ now: 4_000 });
+    chatRunState.registry.add("run-int-abort", {
+      sessionKey: "session-int-abort",
+      clientRunId: "client-int-abort",
+    });
+    handler({
+      runId: "run-int-abort",
+      seq: 2,
+      stream: "lifecycle",
+      ts: Date.now(),
+      data: {
+        phase: "end",
+        aborted: true,
+        error: "gateway restarting: run did not finish within the 90s drain window",
+      },
+    });
+    const chatCalls = chatBroadcastCalls(broadcast);
+    expect(chatCalls).toHaveLength(1);
+    const payload = chatCalls[0]?.[1] as { state?: string; errorMessage?: string };
+    expect(payload.state).toBe("error");
+    expect(payload.errorMessage).toContain("gateway restarting");
+  });
+
+  it("attaches spawnedBy/label envelope to subagent session agent events", () => {
+    vi.mocked(loadSessionEntry).mockReturnValue({
+      cfg: {},
+      entry: { spawnedBy: "agent:openclaw:web-parent", label: "contract-adapters" },
+    } as unknown as ReturnType<typeof loadSessionEntry>);
+    const { broadcast, handler } = createHarness({ now: 6_000 });
+    handler({
+      runId: "run-child",
+      seq: 1,
+      stream: "lifecycle",
+      ts: Date.now(),
+      sessionKey: "agent:openclaw:subagent:11111111-2222-3333-4444-555555555555",
+      data: { phase: "start", startedAt: Date.now() },
+    });
+    const agentCalls = broadcast.mock.calls.filter(([event]) => event === "agent");
+    expect(agentCalls).toHaveLength(1);
+    const payload = agentCalls[0]?.[1] as { spawnedBy?: string; label?: string };
+    expect(payload.spawnedBy).toBe("agent:openclaw:web-parent");
+    expect(payload.label).toBe("contract-adapters");
+  });
+
+  it("does not attach envelope fields to non-subagent sessions", () => {
+    const { broadcast, handler } = createHarness({ now: 7_000 });
+    handler({
+      runId: "run-plain",
+      seq: 1,
+      stream: "lifecycle",
+      ts: Date.now(),
+      sessionKey: "agent:openclaw:web-plain",
+      data: { phase: "start", startedAt: Date.now() },
+    });
+    const agentCalls = broadcast.mock.calls.filter(([event]) => event === "agent");
+    expect(agentCalls).toHaveLength(1);
+    const payload = agentCalls[0]?.[1] as { spawnedBy?: string; label?: string };
+    expect(payload.spawnedBy).toBeUndefined();
+    expect(payload.label).toBeUndefined();
+    // and the store must not have been consulted for non-subagent keys
+    expect(vi.mocked(loadSessionEntry)).not.toHaveBeenCalled();
+  });
+
+  it("still swallows lifecycle end for user-aborted runs (chat.abort path)", () => {
+    const { broadcast, chatRunState, handler } = createHarness({ now: 5_000 });
+    chatRunState.registry.add("run-user-abort", {
+      sessionKey: "session-user-abort",
+      clientRunId: "client-user-abort",
+    });
+    chatRunState.abortedRuns.set("client-user-abort", Date.now());
+    handler({
+      runId: "run-user-abort",
+      seq: 2,
+      stream: "lifecycle",
+      ts: Date.now(),
+      data: { phase: "end", aborted: true, error: "aborted by user (chat.abort)" },
+    });
+    // chat-abort.ts already broadcast state:"aborted" when the user aborted;
+    // the trailing lifecycle end must not produce a second chat event.
+    expect(chatBroadcastCalls(broadcast)).toHaveLength(0);
   });
 });

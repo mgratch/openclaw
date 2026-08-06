@@ -156,13 +156,100 @@ describe("handleAgentEnd", () => {
     });
   });
 
+  it("marks aborted runs on the lifecycle end event with the abort reason", () => {
+    const onAgentEvent = vi.fn();
+    const ctx = createContext(
+      {
+        role: "assistant",
+        stopReason: "aborted",
+        provider: "openai-codex",
+        model: "gpt-test",
+        errorMessage: "gateway restarting: run did not finish within the 90s drain window",
+        content: [],
+      },
+      { onAgentEvent },
+    );
+
+    handleAgentEnd(ctx);
+
+    // Still a phase:"end" (not "error") so subagent announce/channel delivery
+    // semantics are unchanged — but with additive aborted/error fields for
+    // the gateway to broadcast a chat error on non-user aborts.
+    expect(ctx.log.warn).not.toHaveBeenCalled();
+    expect(onAgentEvent).toHaveBeenCalledWith({
+      stream: "lifecycle",
+      data: {
+        phase: "end",
+        model: "gpt-test",
+        provider: "openai-codex",
+        aborted: true,
+        error: "gateway restarting: run did not finish within the 90s drain window",
+      },
+    });
+  });
+
+  it("does not flag sessions_yield turns as aborted (no error card on yield)", () => {
+    const onAgentEvent = vi.fn();
+    const ctx = createContext(
+      {
+        role: "assistant",
+        stopReason: "aborted",
+        provider: "openai-codex",
+        model: "gpt-test",
+        content: [],
+      },
+      { onAgentEvent },
+    );
+    (ctx.state as { toolMetas?: Array<{ toolName?: string }> }).toolMetas = [
+      { toolName: "sessions_yield" },
+    ];
+
+    handleAgentEnd(ctx);
+
+    expect(onAgentEvent).toHaveBeenCalledWith({
+      stream: "lifecycle",
+      data: {
+        phase: "end",
+        model: "gpt-test",
+        provider: "openai-codex",
+      },
+    });
+  });
+
+  it("does not flag benign abort reasons (queue interrupt, model switch) as aborted", () => {
+    for (const reason of [
+      "interrupted by a new inbound message (queue mode: interrupt)",
+      "switching model to anthropic/sonnet-4.6",
+      "session reset requested",
+    ]) {
+      const onAgentEvent = vi.fn();
+      const ctx = createContext(
+        {
+          role: "assistant",
+          stopReason: "aborted",
+          errorMessage: reason,
+          content: [],
+        },
+        { onAgentEvent },
+      );
+
+      handleAgentEnd(ctx);
+
+      const data = onAgentEvent.mock.calls[0]?.[0]?.data as Record<string, unknown>;
+      expect(data.phase).toBe("end");
+      expect(data.aborted).toBeUndefined();
+    }
+  });
+
   it("keeps non-error run-end logging on debug only", () => {
     const ctx = createContext(undefined);
 
     handleAgentEnd(ctx);
 
     expect(ctx.log.warn).not.toHaveBeenCalled();
-    expect(ctx.log.debug).toHaveBeenCalledWith("embedded run agent end: runId=run-1 isError=false");
+    expect(ctx.log.debug).toHaveBeenCalledWith(
+      "embedded run agent end: runId=run-1 isError=false aborted=false",
+    );
   });
 
   it("flushes orphaned tool media as a media-only block reply", () => {

@@ -496,7 +496,9 @@ export async function runPreparedReply(
   const laneSize = getQueueSize(sessionLaneKey);
   if (resolvedQueue.mode === "interrupt" && laneSize > 0) {
     const cleared = clearCommandLane(sessionLaneKey);
-    const aborted = abortEmbeddedPiRun(sessionIdFinal);
+    const aborted = abortEmbeddedPiRun(sessionIdFinal, {
+      reason: "interrupted by a new inbound message (queue mode: interrupt)",
+    });
     logVerbose(`Interrupting ${sessionLaneKey} (cleared ${cleared}, aborted=${aborted})`);
   }
   const queueKey = sessionKey ?? sessionIdFinal;

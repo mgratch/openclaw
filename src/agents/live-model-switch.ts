@@ -69,7 +69,9 @@ export function requestLiveSessionModelSwitch(params: {
   if (!sessionId) {
     return false;
   }
-  const aborted = abortEmbeddedPiRun(sessionId);
+  const aborted = abortEmbeddedPiRun(sessionId, {
+    reason: `switching model to ${params.selection.provider}/${params.selection.model}`,
+  });
   if (!aborted) {
     return false;
   }

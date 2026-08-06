@@ -71,7 +71,7 @@ async function applyAbortTarget(params: {
 }) {
   const { abortTarget } = params;
   if (abortTarget.sessionId) {
-    abortEmbeddedPiRun(abortTarget.sessionId);
+    abortEmbeddedPiRun(abortTarget.sessionId, { reason: "aborted by user" });
   }
 
   const persisted = await persistAbortTargetEntry({

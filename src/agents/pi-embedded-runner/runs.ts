@@ -9,7 +9,13 @@ type EmbeddedPiQueueHandle = {
   queueMessage: (text: string) => Promise<void>;
   isStreaming: () => boolean;
   isCompacting: () => boolean;
-  abort: () => void;
+  /**
+   * Abort the run. Pass a descriptive Error so the abort reason survives into
+   * the provider stream's errorMessage and the session's prompt-error entry
+   * (otherwise everything surfaces as an undiagnosable
+   * "This operation was aborted").
+   */
+  abort: (reason?: Error) => void;
 };
 
 export type ActiveEmbeddedRunSnapshot = {
@@ -71,25 +77,29 @@ export function queueEmbeddedPiMessage(sessionId: string, text: string): boolean
  *
  * - With a sessionId, aborts that single run.
  * - With no sessionId, supports targeted abort modes (for example, compacting runs only).
+ * - `opts.reason` becomes the abort Error message so logs, the session
+ *   prompt-error entry, and error broadcasts say WHY the run was aborted.
  */
-export function abortEmbeddedPiRun(sessionId: string): boolean;
+export function abortEmbeddedPiRun(sessionId: string, opts?: { reason?: string }): boolean;
 export function abortEmbeddedPiRun(
   sessionId: undefined,
-  opts: { mode: "all" | "compacting" },
+  opts: { mode: "all" | "compacting"; reason?: string },
 ): boolean;
 export function abortEmbeddedPiRun(
   sessionId?: string,
-  opts?: { mode?: "all" | "compacting" },
+  opts?: { mode?: "all" | "compacting"; reason?: string },
 ): boolean {
+  const reasonText = opts?.reason?.trim();
+  const makeReason = () => (reasonText ? new Error(reasonText) : undefined);
   if (typeof sessionId === "string" && sessionId.length > 0) {
     const handle = ACTIVE_EMBEDDED_RUNS.get(sessionId);
     if (!handle) {
       diag.debug(`abort failed: sessionId=${sessionId} reason=no_active_run`);
       return false;
     }
-    diag.debug(`aborting run: sessionId=${sessionId}`);
+    diag.debug(`aborting run: sessionId=${sessionId} abortReason=${reasonText ?? "unspecified"}`);
     try {
-      handle.abort();
+      handle.abort(makeReason());
     } catch (err) {
       diag.warn(`abort failed: sessionId=${sessionId} err=${String(err)}`);
       return false;
@@ -104,9 +114,11 @@ export function abortEmbeddedPiRun(
       if (!handle.isCompacting()) {
         continue;
       }
-      diag.debug(`aborting compacting run: sessionId=${id}`);
+      diag.debug(
+        `aborting compacting run: sessionId=${id} abortReason=${reasonText ?? "unspecified"}`,
+      );
       try {
-        handle.abort();
+        handle.abort(makeReason());
         aborted = true;
       } catch (err) {
         diag.warn(`abort failed: sessionId=${id} err=${String(err)}`);
@@ -118,9 +130,9 @@ export function abortEmbeddedPiRun(
   if (mode === "all") {
     let aborted = false;
     for (const [id, handle] of ACTIVE_EMBEDDED_RUNS) {
-      diag.debug(`aborting run: sessionId=${id}`);
+      diag.debug(`aborting run: sessionId=${id} abortReason=${reasonText ?? "unspecified"}`);
       try {
-        handle.abort();
+        handle.abort(makeReason());
         aborted = true;
       } catch (err) {
         diag.warn(`abort failed: sessionId=${id} err=${String(err)}`);

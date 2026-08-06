@@ -416,7 +416,9 @@ async function killSubagentRun(params: {
     cache: params.cache,
   });
   const sessionId = resolved.entry?.sessionId;
-  const aborted = sessionId ? abortEmbeddedPiRun(sessionId) : false;
+  const aborted = sessionId
+    ? abortEmbeddedPiRun(sessionId, { reason: "subagent killed via subagents control" })
+    : false;
   const cleared = clearSessionQueues([childSessionKey, sessionId]);
   if (cleared.followupCleared > 0 || cleared.laneCleared > 0) {
     logVerbose(
@@ -778,7 +780,7 @@ export async function steerControlledSubagentRun(params: {
       : undefined;
 
   if (sessionId) {
-    abortEmbeddedPiRun(sessionId);
+    abortEmbeddedPiRun(sessionId, { reason: "subagent steered: restarting run with new prompt" });
   }
   const cleared = clearSessionQueues([params.entry.childSessionKey, sessionId]);
   if (cleared.followupCleared > 0 || cleared.laneCleared > 0) {

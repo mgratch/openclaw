@@ -93,7 +93,15 @@ export function abortChatRunById(
   const bufferedText = ops.chatRunBuffers.get(runId);
   const partialText = bufferedText && bufferedText.trim() ? bufferedText : undefined;
   ops.chatAbortedRuns.set(runId, Date.now());
-  active.controller.abort();
+  // Pass a descriptive reason so provider streams don't die with the generic
+  // "This operation was aborted" (stopReason "timeout" = expiry sweep).
+  active.controller.abort(
+    new Error(
+      stopReason === "timeout"
+        ? "run expired (gateway run timeout sweep)"
+        : "aborted by user (chat.abort)",
+    ),
+  );
   ops.chatAbortControllers.delete(runId);
   ops.chatRunBuffers.delete(runId);
   ops.chatDeltaSentAt.delete(runId);

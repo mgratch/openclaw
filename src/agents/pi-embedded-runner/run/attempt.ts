@@ -136,10 +136,7 @@ import {
   finalizeAttemptContextEngineTurn,
   runAttemptContextEngineBootstrap,
 } from "./attempt.context-engine-helpers.js";
-import {
-  shouldAttemptEmptyFinalTurnRetry,
-  WRAP_UP_PROMPT,
-} from "./attempt.empty-final-turn.js";
+import { shouldAttemptEmptyFinalTurnRetry, WRAP_UP_PROMPT } from "./attempt.empty-final-turn.js";
 import {
   buildAfterTurnRuntimeContext,
   prependSystemPromptAddition,
@@ -1334,7 +1331,9 @@ export async function runEmbeddedAttempt(
         },
         isStreaming: () => activeSession.isStreaming,
         isCompacting: () => subscription.isCompacting(),
-        abort: abortRun,
+        // NOTE: do not pass abortRun directly — its first parameter is
+        // isTimeout, so a truthy reason would masquerade as a timeout.
+        abort: (reason?: Error) => abortRun(false, reason),
       };
       setActiveEmbeddedRun(params.sessionId, queueHandle, params.sessionKey);
 

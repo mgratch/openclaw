@@ -133,7 +133,10 @@ export async function runGatewayLoop(params: {
           // Best-effort abort for compacting runs so long compaction operations
           // don't hold session write locks across restart boundaries.
           if (activeRuns > 0) {
-            abortEmbeddedPiRun(undefined, { mode: "compacting" });
+            abortEmbeddedPiRun(undefined, {
+              mode: "compacting",
+              reason: "gateway restarting: compaction aborted to release session locks",
+            });
           }
 
           if (activeTasks > 0 || activeRuns > 0) {
@@ -154,7 +157,10 @@ export async function runGatewayLoop(params: {
               gatewayLog.warn("drain timeout reached; proceeding with restart");
               // Final best-effort abort to avoid carrying active runs into the
               // next lifecycle when drain time budget is exhausted.
-              abortEmbeddedPiRun(undefined, { mode: "all" });
+              abortEmbeddedPiRun(undefined, {
+                mode: "all",
+                reason: `gateway restarting: run did not finish within the ${Math.round(DRAIN_TIMEOUT_MS / 1000)}s drain window`,
+              });
             }
           }
         }

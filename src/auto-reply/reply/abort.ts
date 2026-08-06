@@ -188,7 +188,9 @@ export function stopSubagentsForRequester(params: {
       }
       const entry = store[childKey];
       const sessionId = entry?.sessionId;
-      const aborted = sessionId ? abortDeps.abortEmbeddedPiRun(sessionId) : false;
+      const aborted = sessionId
+        ? abortDeps.abortEmbeddedPiRun(sessionId, { reason: "subagent killed by user abort" })
+        : false;
       const markedTerminated =
         abortDeps.markSubagentRunTerminated({
           runId: run.runId,
@@ -271,7 +273,9 @@ export async function tryFastAbortFromMessage(params: {
       }
     }
     const sessionId = entry?.sessionId;
-    const aborted = sessionId ? abortDeps.abortEmbeddedPiRun(sessionId) : false;
+    const aborted = sessionId
+      ? abortDeps.abortEmbeddedPiRun(sessionId, { reason: "aborted by user" })
+      : false;
     const cleared = clearSessionQueues([resolvedTargetKey, sessionId]);
     if (cleared.followupCleared > 0 || cleared.laneCleared > 0) {
       logVerbose(
