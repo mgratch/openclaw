@@ -1269,6 +1269,35 @@ describe("agent event handler", () => {
     expect(payload.label).toBe("contract-adapters");
   });
 
+  it("keeps the envelope on stripped tool event payloads", () => {
+    vi.mocked(loadSessionEntry).mockReturnValue({
+      cfg: {},
+      entry: { spawnedBy: "agent:openclaw:web-parent", label: "contract-adapters" },
+    } as unknown as ReturnType<typeof loadSessionEntry>);
+    const { broadcastToConnIds, toolEventRecipients, handler } = createHarness({ now: 6_500 });
+    // Tool events only go to registered recipients (and session subscribers).
+    toolEventRecipients.add("run-child-tool", "conn-1");
+    handler({
+      runId: "run-child-tool",
+      seq: 1,
+      stream: "tool",
+      ts: Date.now(),
+      sessionKey: "agent:openclaw:subagent:11111111-2222-3333-4444-555555555555",
+      data: { phase: "start", name: "exec", result: "stripme" },
+    });
+    const agentCalls = broadcastToConnIds.mock.calls.filter(([event]) => event === "agent");
+    expect(agentCalls).toHaveLength(1);
+    const payload = agentCalls[0]?.[1] as {
+      spawnedBy?: string;
+      label?: string;
+      data?: Record<string, unknown>;
+    };
+    expect(payload.spawnedBy).toBe("agent:openclaw:web-parent");
+    expect(payload.label).toBe("contract-adapters");
+    // verbose=off strips results but the envelope must survive
+    expect(payload.data?.result).toBeUndefined();
+  });
+
   it("does not attach envelope fields to non-subagent sessions", () => {
     const { broadcast, handler } = createHarness({ now: 7_000 });
     handler({

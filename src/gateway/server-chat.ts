@@ -506,13 +506,16 @@ export function createAgentEventHandler({
       space: row?.space,
       chatType: row?.chatType,
       origin: row?.origin,
-      spawnedBy: row?.spawnedBy,
+      // Conditional: snapshots are spread OVER payloads that may already carry
+      // the subagent envelope (spawnedBy/label). An explicit `undefined` here
+      // clobbers those fields when the row lookup misses.
+      ...(row?.spawnedBy ? { spawnedBy: row.spawnedBy } : {}),
       spawnedWorkspaceDir: row?.spawnedWorkspaceDir,
       forkedFromParent: row?.forkedFromParent,
       spawnDepth: row?.spawnDepth,
       subagentRole: row?.subagentRole,
       subagentControlScope: row?.subagentControlScope,
-      label: row?.label,
+      ...(row?.label ? { label: row.label } : {}),
       displayName: row?.displayName,
       deliveryContext: row?.deliveryContext,
       parentSessionKey: row?.parentSessionKey,
@@ -849,8 +852,12 @@ export function createAgentEventHandler({
             } else {
               delete data.partialResult;
             }
+            // Keep the subagent envelope on stripped tool payloads too —
+            // without it, clients can't correlate child tool activity, so
+            // subagent cards showed "(0 steps)" and stale liveness while the
+            // child was actively running tools (2026-08-06).
             return sessionKey
-              ? { ...eventForClients, sessionKey, data }
+              ? { ...eventForClients, sessionKey, ...(subagentEnvelope ?? {}), data }
               : { ...eventForClients, data };
           })()
         : agentPayload;
