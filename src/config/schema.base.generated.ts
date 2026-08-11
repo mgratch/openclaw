@@ -12391,6 +12391,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
       help: "Require explicit approval for interpreter inline-eval forms such as `python -c`, `node -e`, `ruby -e`, or `osascript -e`. Prevents silent allowlist reuse and downgrades allow-always to ask-each-time for those forms.",
       tags: ["tools"],
     },
+    "tools.exec.obfuscationPolicy": {
+      label: "Obfuscated-Command Policy",
+      help: 'How to handle commands flagged by the obfuscation heuristic (variable-expansion chains, encoded payloads, chained heredocs). "ask" (default) forces explicit approval even when security=full/ask=off; "warn" logs and annotates but defers to the configured security/ask policy. Only relax on operator-owned single-user installs.',
+      tags: ["access", "tools"],
+    },
     "tools.exec.safeBinTrustedDirs": {
       label: "Exec Safe Bin Trusted Dirs",
       help: "Additional explicit directories trusted for safe-bin path checks (PATH entries are never auto-trusted).",

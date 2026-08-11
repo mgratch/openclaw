@@ -6961,6 +6961,20 @@
       "hasChildren": false
     },
     {
+      "path": "agents.list.*.tools.exec.obfuscationPolicy",
+      "kind": "core",
+      "type": "string",
+      "required": false,
+      "enumValues": [
+        "ask",
+        "warn"
+      ],
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
+      "hasChildren": false
+    },
+    {
       "path": "agents.list.*.tools.exec.pathPrepend",
       "kind": "core",
       "type": "array",
@@ -63349,6 +63363,20 @@
       ],
       "label": "Exec Notify On Empty Success",
       "help": "When true, successful backgrounded exec exits with empty output still enqueue a completion system event (default: false).",
+      "hasChildren": false
+    },
+    {
+      "path": "tools.exec.obfuscationPolicy",
+      "kind": "core",
+      "type": "string",
+      "required": false,
+      "enumValues": [
+        "ask",
+        "warn"
+      ],
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [],
       "hasChildren": false
     },
     {
