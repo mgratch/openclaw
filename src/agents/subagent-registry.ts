@@ -271,7 +271,14 @@ const {
   startSubagentAnnounceCleanupFlow,
 } = subagentLifecycleController;
 
-function resumeSubagentRun(runId: string) {
+function resumeSubagentRun(
+  runId: string,
+  // Shared per-pass session-store snapshot. The boot restore loop resumes
+  // every persisted run; without this each resolveSubagentRunOrphanReason call
+  // re-loads the store, and even the cache-hit path structuredClones the whole
+  // multi-MB store — profiled at ~37% of startup CPU on large installs.
+  storeCache?: Map<string, Record<string, import("../config/sessions.js").SessionEntry>>,
+) {
   if (!runId || resumedRuns.has(runId)) {
     return;
   }
@@ -279,7 +286,7 @@ function resumeSubagentRun(runId: string) {
   if (!entry) {
     return;
   }
-  const orphanReason = resolveSubagentRunOrphanReason({ entry });
+  const orphanReason = resolveSubagentRunOrphanReason({ entry, storeCache });
   if (orphanReason) {
     if (
       reconcileOrphanedRun({
@@ -385,8 +392,12 @@ function restoreSubagentRunsOnce() {
     if ([...subagentRuns.values()].some((entry) => entry.archiveAtMs)) {
       startSweeper();
     }
+    const resumeStoreCache = new Map<
+      string,
+      Record<string, import("../config/sessions.js").SessionEntry>
+    >();
     for (const runId of subagentRuns.keys()) {
-      resumeSubagentRun(runId);
+      resumeSubagentRun(runId, resumeStoreCache);
     }
 
     // Schedule orphan recovery for subagent sessions that were aborted

@@ -50,7 +50,16 @@ export function readSessionStoreJson5(storePath: string): {
 } {
   try {
     const raw = fs.readFileSync(storePath, "utf-8");
-    const parsed = JSON5.parse(raw);
+    // Stores are written as strict JSON; JSON5 is only a fallback for
+    // hand-edited files. The JSON5 parser is a JS-land lexer, ~2 orders of
+    // magnitude slower than native JSON.parse — on multi-MB stores it burned
+    // minutes of startup CPU (profiled at ~25% of the boot grind).
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = JSON5.parse(raw);
+    }
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { store: parsed as Record<string, SessionEntryLike>, ok: true };
     }
