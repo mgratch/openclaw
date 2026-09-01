@@ -26,6 +26,78 @@ type SessionTitleFieldsCacheEntry = SessionTitleFields & {
 const sessionTitleFieldsCache = new Map<string, SessionTitleFieldsCacheEntry>();
 const MAX_SESSION_TITLE_FIELDS_CACHE_ENTRIES = 5000;
 
+type SessionUsageCacheEntry = {
+  mtimeMs: number;
+  size: number;
+  /** Wall-clock time this entry was computed; used for the coalescing window. */
+  computedAtMs: number;
+  value: SessionTranscriptUsageSnapshot | null;
+};
+
+// Usage extraction reads and JSON.parses the WHOLE transcript (see
+// extractLatestUsageFromTranscriptChunk: input/output/cache/cost are accumulated
+// across every line, so it cannot be tail-scanned without undercounting).
+// sessions.list runs it once per session and sessions.changed once per emit, so
+// without this cache a large store re-reads hundreds of MB per call on the event
+// loop. Keyed on mtime+size like sessionTitleFieldsCache; read-only, never
+// written back to the session store.
+const sessionUsageCache = new Map<string, SessionUsageCacheEntry>();
+const MAX_SESSION_USAGE_CACHE_ENTRIES = 5000;
+
+function getCachedSessionUsage(
+  filePath: string,
+  stat: fs.Stats,
+  maxStalenessMs: number | undefined,
+  nowMs: number,
+): { hit: true; value: SessionTranscriptUsageSnapshot | null } | { hit: false } {
+  const cached = sessionUsageCache.get(filePath);
+  if (!cached) {
+    return { hit: false };
+  }
+  const unchanged = cached.mtimeMs === stat.mtimeMs && cached.size === stat.size;
+  // A live transcript changes on every append, so mtime+size always differs for
+  // the session currently streaming. Callers that only need a display counter
+  // may accept a bounded staleness window to avoid re-reading it per broadcast.
+  const withinStalenessWindow =
+    typeof maxStalenessMs === "number" &&
+    maxStalenessMs > 0 &&
+    nowMs - cached.computedAtMs < maxStalenessMs;
+  if (!unchanged && !withinStalenessWindow) {
+    sessionUsageCache.delete(filePath);
+    return { hit: false };
+  }
+  // LRU bump
+  sessionUsageCache.delete(filePath);
+  sessionUsageCache.set(filePath, cached);
+  return { hit: true, value: cached.value ? { ...cached.value } : null };
+}
+
+function setCachedSessionUsage(
+  filePath: string,
+  stat: fs.Stats,
+  nowMs: number,
+  value: SessionTranscriptUsageSnapshot | null,
+) {
+  sessionUsageCache.set(filePath, {
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+    computedAtMs: nowMs,
+    value: value ? { ...value } : null,
+  });
+  while (sessionUsageCache.size > MAX_SESSION_USAGE_CACHE_ENTRIES) {
+    const oldestKey = sessionUsageCache.keys().next().value;
+    if (typeof oldestKey !== "string" || !oldestKey) {
+      break;
+    }
+    sessionUsageCache.delete(oldestKey);
+  }
+}
+
+/** Test seam: drop all memoized transcript usage snapshots. */
+export function clearSessionUsageCacheForTests() {
+  sessionUsageCache.clear();
+}
+
 function readSessionTitleFieldsCacheKey(
   filePath: string,
   opts?: { includeInterSession?: boolean },
@@ -568,20 +640,37 @@ export function readLatestSessionUsageFromTranscript(
   storePath: string | undefined,
   sessionFile?: string,
   agentId?: string,
+  opts?: { maxStalenessMs?: number },
 ): SessionTranscriptUsageSnapshot | null {
   const filePath = findExistingTranscriptPath(sessionId, storePath, sessionFile, agentId);
   if (!filePath) {
     return null;
   }
 
-  return withOpenTranscriptFd(filePath, (fd) => {
-    const stat = fs.fstatSync(fd);
-    if (stat.size === 0) {
-      return null;
-    }
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(filePath);
+  } catch {
+    return null;
+  }
+
+  const nowMs = Date.now();
+  const cached = getCachedSessionUsage(filePath, stat, opts?.maxStalenessMs, nowMs);
+  if (cached.hit) {
+    return cached.value;
+  }
+
+  if (stat.size === 0) {
+    setCachedSessionUsage(filePath, stat, nowMs, null);
+    return null;
+  }
+
+  const computed = withOpenTranscriptFd(filePath, (fd) => {
     const chunk = fs.readFileSync(fd, "utf-8");
     return extractLatestUsageFromTranscriptChunk(chunk);
   });
+  setCachedSessionUsage(filePath, stat, nowMs, computed);
+  return computed ? { ...computed } : null;
 }
 
 const PREVIEW_READ_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024];

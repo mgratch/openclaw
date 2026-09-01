@@ -59,6 +59,7 @@ import {
   listSessionsFromStore,
   loadCombinedSessionStoreForGateway,
   loadGatewaySessionRow,
+  SESSION_EVENT_USAGE_MAX_STALENESS_MS,
   loadSessionEntry,
   migrateAndPruneGatewaySessionStoreKey,
   readSessionPreviewItemsFromTranscript,
@@ -138,7 +139,11 @@ function emitSessionsChanged(
   if (connIds.size === 0) {
     return;
   }
-  const sessionRow = payload.sessionKey ? loadGatewaySessionRow(payload.sessionKey) : null;
+  const sessionRow = payload.sessionKey
+    ? loadGatewaySessionRow(payload.sessionKey, {
+        usageMaxStalenessMs: SESSION_EVENT_USAGE_MAX_STALENESS_MS,
+      })
+    : null;
   context.broadcastToConnIds(
     "sessions.changed",
     {

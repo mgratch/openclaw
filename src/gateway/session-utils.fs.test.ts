@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vite
 import { createToolSummaryPreviewTranscriptLines } from "./session-preview.test-helpers.js";
 import {
   archiveSessionTranscripts,
+  clearSessionUsageCacheForTests,
   readFirstUserMessageFromTranscript,
   readLastMessagePreviewFromTranscript,
   readLatestSessionUsageFromTranscript,
@@ -983,5 +984,106 @@ describe("archiveSessionTranscripts", () => {
     expect(archived).toHaveLength(1);
     expect(archived[0]).toContain(".deleted.");
     expect(fs.existsSync(transcriptPath)).toBe(false);
+  });
+});
+
+describe("readLatestSessionUsageFromTranscript caching", () => {
+  let tmpDir: string;
+  let storePath: string;
+
+  registerTempSessionStore("openclaw-session-usage-cache-test-", (nextTmpDir, nextStorePath) => {
+    tmpDir = nextTmpDir;
+    storePath = nextStorePath;
+  });
+
+  afterEach(() => {
+    clearSessionUsageCacheForTests();
+    vi.restoreAllMocks();
+  });
+
+  function usageLine(input: number, output: number) {
+    return {
+      message: {
+        role: "assistant",
+        provider: "openai",
+        model: "gpt-5.4",
+        usage: { input, output },
+      },
+    };
+  }
+
+  test("reuses the memoized snapshot while mtime and size are unchanged", () => {
+    const sessionId = "usage-cache-hit";
+    writeTranscript(tmpDir, sessionId, [
+      { type: "session", version: 1, id: sessionId },
+      usageLine(1000, 200),
+    ]);
+
+    // totalTokens is the last line's prompt-token figure, not a sum of turns.
+    const first = readLatestSessionUsageFromTranscript(sessionId, storePath);
+    expect(first?.totalTokens).toBe(1000);
+
+    const readSpy = vi.spyOn(fs, "readFileSync");
+    const second = readLatestSessionUsageFromTranscript(sessionId, storePath);
+
+    expect(second).toEqual(first);
+    expect(readSpy).not.toHaveBeenCalled();
+  });
+
+  test("recomputes once the transcript changes", () => {
+    const sessionId = "usage-cache-invalidate";
+    const transcriptPath = writeTranscript(tmpDir, sessionId, [
+      { type: "session", version: 1, id: sessionId },
+      usageLine(1000, 200),
+    ]);
+
+    expect(readLatestSessionUsageFromTranscript(sessionId, storePath)?.totalTokens).toBe(1000);
+
+    fs.appendFileSync(transcriptPath, `\n${JSON.stringify(usageLine(500, 100))}`, "utf-8");
+
+    // input/output accumulate across the whole transcript, so the appended turn
+    // must be reflected rather than served from the previous snapshot.
+    const updated = readLatestSessionUsageFromTranscript(sessionId, storePath);
+    expect(updated?.inputTokens).toBe(1500);
+    expect(updated?.outputTokens).toBe(300);
+  });
+
+  test("serves a changed transcript from cache inside the staleness window", () => {
+    const sessionId = "usage-cache-staleness";
+    const transcriptPath = writeTranscript(tmpDir, sessionId, [
+      { type: "session", version: 1, id: sessionId },
+      usageLine(1000, 200),
+    ]);
+
+    const first = readLatestSessionUsageFromTranscript(sessionId, storePath);
+    expect(first?.inputTokens).toBe(1000);
+
+    fs.appendFileSync(transcriptPath, `\n${JSON.stringify(usageLine(500, 100))}`, "utf-8");
+
+    const readSpy = vi.spyOn(fs, "readFileSync");
+    const stale = readLatestSessionUsageFromTranscript(sessionId, storePath, undefined, undefined, {
+      maxStalenessMs: 60_000,
+    });
+
+    expect(stale?.inputTokens).toBe(1000);
+    expect(readSpy).not.toHaveBeenCalled();
+
+    // Without a staleness budget the same call must see the appended turn.
+    const fresh = readLatestSessionUsageFromTranscript(sessionId, storePath);
+    expect(fresh?.inputTokens).toBe(1500);
+  });
+
+  test("does not hand callers a reference into the cache", () => {
+    const sessionId = "usage-cache-isolation";
+    writeTranscript(tmpDir, sessionId, [
+      { type: "session", version: 1, id: sessionId },
+      usageLine(1000, 200),
+    ]);
+
+    const first = readLatestSessionUsageFromTranscript(sessionId, storePath);
+    expect(first).not.toBeNull();
+    first!.totalTokens = 999_999;
+
+    expect(readLatestSessionUsageFromTranscript(sessionId, storePath)?.totalTokens).toBe(1000);
   });
 });

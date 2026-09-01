@@ -308,6 +308,7 @@ function resolveTranscriptUsageFallback(params: {
   storePath: string;
   fallbackProvider?: string;
   fallbackModel?: string;
+  usageMaxStalenessMs?: number;
 }): {
   estimatedCostUsd?: number;
   totalTokens?: number;
@@ -329,6 +330,7 @@ function resolveTranscriptUsageFallback(params: {
     params.storePath,
     entry.sessionFile,
     agentId,
+    { maxStalenessMs: params.usageMaxStalenessMs },
   );
   if (!snapshot) {
     return null;
@@ -1154,6 +1156,12 @@ export function buildGatewaySessionRow(params: {
   now?: number;
   includeDerivedTitles?: boolean;
   includeLastMessage?: boolean;
+  /**
+   * Accept a memoized transcript-usage snapshot up to this old even when the
+   * transcript has since been appended to. Only for high-frequency display
+   * paths (sessions.changed fan-out); leave unset for sessions.list.
+   */
+  usageMaxStalenessMs?: number;
 }): GatewaySessionRow {
   const { cfg, storePath, store, key, entry } = params;
   const now = params.now ?? Date.now();
@@ -1217,6 +1225,7 @@ export function buildGatewaySessionRow(params: {
           storePath,
           fallbackProvider: resolvedModel.provider,
           fallbackModel: resolvedModel.model ?? DEFAULT_MODEL,
+          usageMaxStalenessMs: params.usageMaxStalenessMs,
         })
       : null;
   const preferLiveSubagentModelIdentity =
@@ -1333,9 +1342,23 @@ export function buildGatewaySessionRow(params: {
   };
 }
 
+/**
+ * Staleness budget for transcript-usage numbers on the sessions.changed
+ * broadcast path. A streaming session rewrites its transcript on every append,
+ * so an mtime-keyed cache always misses there; without a window, a run that
+ * fans out to subagents re-reads and re-parses whole transcripts per emit.
+ * Bounds the live token/cost counters in the UI to one refresh per second.
+ */
+export const SESSION_EVENT_USAGE_MAX_STALENESS_MS = 1000;
+
 export function loadGatewaySessionRow(
   sessionKey: string,
-  options?: { includeDerivedTitles?: boolean; includeLastMessage?: boolean; now?: number },
+  options?: {
+    includeDerivedTitles?: boolean;
+    includeLastMessage?: boolean;
+    now?: number;
+    usageMaxStalenessMs?: number;
+  },
 ): GatewaySessionRow | null {
   const { cfg, storePath, store, entry, canonicalKey } = loadSessionEntry(sessionKey);
   if (!entry) {
@@ -1350,6 +1373,7 @@ export function loadGatewaySessionRow(
     now: options?.now,
     includeDerivedTitles: options?.includeDerivedTitles,
     includeLastMessage: options?.includeLastMessage,
+    usageMaxStalenessMs: options?.usageMaxStalenessMs,
   });
 }
 
