@@ -12,6 +12,7 @@ import type { SessionEntry } from "../config/sessions.js";
 import { withStateDirEnv } from "../test-helpers/state-dir-env.js";
 import { withEnv } from "../test-utils/env.js";
 import {
+  buildChildSessionIndex,
   capArrayByJsonBytes,
   classifySessionKey,
   deriveSessionTitle,
@@ -1923,6 +1924,47 @@ describe("listSessionsFromStore subagent metadata", () => {
 
     expect(oldParent?.childSessions).toBeUndefined();
     expect(newParent?.childSessions).toEqual(["agent:main:subagent:shared-child-store"]);
+  });
+
+  test("buildChildSessionIndex mirrors the direct scan semantics", () => {
+    const store: Record<string, SessionEntry> = {
+      "agent:main:main": { sessionId: "s-main" } as SessionEntry,
+      // Plain spawnedBy child.
+      "agent:main:subagent:a": {
+        sessionId: "s-a",
+        spawnedBy: "agent:main:main",
+      } as SessionEntry,
+      // parentSessionKey-only child.
+      "agent:main:subagent:b": {
+        sessionId: "s-b",
+        parentSessionKey: "agent:main:main",
+      } as SessionEntry,
+      // Dual pointers at two different controllers: indexed under both.
+      "agent:main:subagent:c": {
+        sessionId: "s-c",
+        spawnedBy: "agent:main:main",
+        parentSessionKey: "agent:main:subagent:a",
+      } as SessionEntry,
+      // Self-reference must never index a session under itself.
+      "agent:main:subagent:selfref": {
+        sessionId: "s-self",
+        spawnedBy: "agent:main:subagent:selfref",
+      } as SessionEntry,
+      // Whitespace-only pointers are ignored like the direct scan ignores them.
+      "agent:main:subagent:blank": {
+        sessionId: "s-blank",
+        spawnedBy: "   ",
+      } as SessionEntry,
+    };
+
+    const index = buildChildSessionIndex(store);
+    expect(new Set(index.get("agent:main:main"))).toEqual(
+      new Set(["agent:main:subagent:a", "agent:main:subagent:b", "agent:main:subagent:c"]),
+    );
+    expect(index.get("agent:main:subagent:a")).toEqual(["agent:main:subagent:c"]);
+    expect(index.get("agent:main:subagent:selfref")).toBeUndefined();
+    expect(index.get("agent:main:subagent:blank")).toBeUndefined();
+    expect(index.get("   ")).toBeUndefined();
   });
 
   test("does not return moved child sessions from stale spawnedBy filters", () => {

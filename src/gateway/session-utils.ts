@@ -260,9 +260,60 @@ function resolveEstimatedSessionCostUsd(params: {
   return resolveNonNegativeNumber(estimated);
 }
 
+/**
+ * Store-derived controller → child-session-keys index.
+ *
+ * resolveChildSessionKeys scans every store entry; calling it per row made
+ * sessions.list O(N²) — at ~6k entries that is ~36M iterations and 130-190s
+ * per call, which is what actually made the sidebar take minutes to load.
+ * listSessionsFromStore builds this index once (one O(N) pass) and passes it
+ * down; single-row callers (loadGatewaySessionRow) keep the direct scan.
+ */
+export type ChildSessionIndex = ReadonlyMap<string, readonly string[]>;
+
+export function buildChildSessionIndex(store: Record<string, SessionEntry>): ChildSessionIndex {
+  const index = new Map<string, Set<string>>();
+  const add = (controllerSessionKey: string, childKey: string) => {
+    let set = index.get(controllerSessionKey);
+    if (!set) {
+      set = new Set<string>();
+      index.set(controllerSessionKey, set);
+    }
+    set.add(childKey);
+  };
+  for (const [key, entry] of Object.entries(store)) {
+    if (!entry) {
+      continue;
+    }
+    const spawnedBy = entry.spawnedBy?.trim();
+    const parentSessionKey = entry.parentSessionKey?.trim();
+    // A live subagent run pins the child to its current controller; a store
+    // entry pointing elsewhere must not surface it (same rule as the direct
+    // scan below).
+    const latest = getSessionDisplaySubagentRunByChildSessionKey(key);
+    const latestControllerSessionKey =
+      latest?.controllerSessionKey?.trim() || latest?.requesterSessionKey?.trim();
+    for (const controllerSessionKey of new Set(
+      [spawnedBy, parentSessionKey].filter((value): value is string => Boolean(value)),
+    )) {
+      if (controllerSessionKey === key) {
+        continue;
+      }
+      if (latest && latestControllerSessionKey !== controllerSessionKey) {
+        continue;
+      }
+      add(controllerSessionKey, key);
+    }
+  }
+  return new Map(
+    Array.from(index.entries(), ([controller, children]) => [controller, Array.from(children)]),
+  );
+}
+
 function resolveChildSessionKeys(
   controllerSessionKey: string,
   store: Record<string, SessionEntry>,
+  childIndex?: ChildSessionIndex,
 ): string[] | undefined {
   const childSessionKeys = new Set<string>();
   for (const entry of listSubagentRunsForController(controllerSessionKey)) {
@@ -278,24 +329,30 @@ function resolveChildSessionKeys(
     }
     childSessionKeys.add(childSessionKey);
   }
-  for (const [key, entry] of Object.entries(store)) {
-    if (!entry || key === controllerSessionKey) {
-      continue;
+  if (childIndex) {
+    for (const key of childIndex.get(controllerSessionKey) ?? []) {
+      childSessionKeys.add(key);
     }
-    const spawnedBy = entry.spawnedBy?.trim();
-    const parentSessionKey = entry.parentSessionKey?.trim();
-    if (spawnedBy !== controllerSessionKey && parentSessionKey !== controllerSessionKey) {
-      continue;
-    }
-    const latest = getSessionDisplaySubagentRunByChildSessionKey(key);
-    if (latest) {
-      const latestControllerSessionKey =
-        latest.controllerSessionKey?.trim() || latest.requesterSessionKey?.trim();
-      if (latestControllerSessionKey !== controllerSessionKey) {
+  } else {
+    for (const [key, entry] of Object.entries(store)) {
+      if (!entry || key === controllerSessionKey) {
         continue;
       }
+      const spawnedBy = entry.spawnedBy?.trim();
+      const parentSessionKey = entry.parentSessionKey?.trim();
+      if (spawnedBy !== controllerSessionKey && parentSessionKey !== controllerSessionKey) {
+        continue;
+      }
+      const latest = getSessionDisplaySubagentRunByChildSessionKey(key);
+      if (latest) {
+        const latestControllerSessionKey =
+          latest.controllerSessionKey?.trim() || latest.requesterSessionKey?.trim();
+        if (latestControllerSessionKey !== controllerSessionKey) {
+          continue;
+        }
+      }
+      childSessionKeys.add(key);
     }
-    childSessionKeys.add(key);
   }
   const childSessions = Array.from(childSessionKeys);
   return childSessions.length > 0 ? childSessions : undefined;
@@ -1162,6 +1219,12 @@ export function buildGatewaySessionRow(params: {
    * paths (sessions.changed fan-out); leave unset for sessions.list.
    */
   usageMaxStalenessMs?: number;
+  /**
+   * Precomputed controller → children index (buildChildSessionIndex). Pass it
+   * when building many rows from one store snapshot so childSessions is an
+   * O(1) lookup instead of a full store scan per row.
+   */
+  childSessionIndex?: ChildSessionIndex;
 }): GatewaySessionRow {
   const { cfg, storePath, store, key, entry } = params;
   const now = params.now ?? Date.now();
@@ -1252,7 +1315,7 @@ export function buildGatewaySessionRow(params: {
     typeof totalTokens === "number" && Number.isFinite(totalTokens) && totalTokens > 0
       ? true
       : transcriptUsage?.totalTokensFresh === true;
-  const childSessions = resolveChildSessionKeys(key, store);
+  const childSessions = resolveChildSessionKeys(key, store, params.childSessionIndex);
   const estimatedCostUsd =
     resolveEstimatedSessionCostUsd({
       cfg,
@@ -1399,6 +1462,9 @@ export function listSessionsFromStore(params: {
       ? Math.max(1, Math.floor(opts.activeMinutes))
       : undefined;
 
+  // One O(N) pass instead of a full store scan inside every row build.
+  const childSessionIndex = buildChildSessionIndex(store);
+
   let sessions = Object.entries(store)
     .filter(([key]) => {
       if (isCronRunSessionKey(key)) {
@@ -1453,6 +1519,7 @@ export function listSessionsFromStore(params: {
         now,
         includeDerivedTitles,
         includeLastMessage,
+        childSessionIndex,
       }),
     )
     .toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
