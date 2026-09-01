@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { resolveStateDir } from "../config/paths.js";
@@ -45,8 +46,53 @@ export function resolveSubagentRegistryPath(): string {
   return path.join(resolveSubagentStateDir(process.env), "subagents", "runs.json");
 }
 
+// mtime+size-keyed cache of the parsed registry. Display helpers call
+// loadSubagentRegistryFromDisk per lookup (cross-process freshness), and
+// sessions.list does several lookups per row — without this, one list call
+// over ~6k sessions re-read and re-parsed the multi-MB runs.json 10k+ times
+// (profiled at ~65% of the call: readFileSync + JSON.parse in a loop).
+// Writers go through saveSubagentRegistryToDisk, which bumps mtime and
+// invalidates naturally; other processes' writes do the same.
+type RegistryDiskCache = {
+  mtimeMs: number;
+  sizeBytes: number;
+  // Writes go through an atomic rename, so every rewrite lands on a new inode
+  // — including same-size rewrites within one mtime tick.
+  ino: number;
+  runs: Map<string, SubagentRunRecord>;
+};
+let registryDiskCache: RegistryDiskCache | null = null;
+
+/** Test seam: forget the memoized on-disk registry snapshot. */
+export function clearSubagentRegistryDiskCacheForTests() {
+  registryDiskCache = null;
+}
+
 export function loadSubagentRegistryFromDisk(): Map<string, SubagentRunRecord> {
   const pathname = resolveSubagentRegistryPath();
+  let stat: fs.Stats | null = null;
+  try {
+    stat = fs.statSync(pathname);
+  } catch {
+    registryDiskCache = null;
+  }
+  if (
+    stat &&
+    registryDiskCache &&
+    registryDiskCache.mtimeMs === stat.mtimeMs &&
+    registryDiskCache.sizeBytes === stat.size &&
+    registryDiskCache.ino === stat.ino
+  ) {
+    return registryDiskCache.runs;
+  }
+  const runs = loadSubagentRegistryFromDiskUncached(pathname);
+  registryDiskCache = stat
+    ? { mtimeMs: stat.mtimeMs, sizeBytes: stat.size, ino: stat.ino, runs }
+    : null;
+  return runs;
+}
+
+function loadSubagentRegistryFromDiskUncached(pathname: string): Map<string, SubagentRunRecord> {
   const raw = loadJsonFile(pathname);
   if (!raw || typeof raw !== "object") {
     return new Map();
