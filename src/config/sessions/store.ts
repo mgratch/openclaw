@@ -18,6 +18,11 @@ import { getFileStatSnapshot } from "../cache-utils.js";
 import { enforceSessionDiskBudget, type SessionDiskBudgetSweepResult } from "./disk-budget.js";
 import { deriveSessionMetaPatch } from "./metadata.js";
 import {
+  dehydrateSkillSnapshotsForWrite,
+  gcSkillSnapshotBlobs,
+  hydrateSkillSnapshots,
+} from "./skill-snapshot-store.js";
+import {
   clearSessionStoreCaches,
   dropSessionStoreObjectCache,
   getSerializedSessionStore,
@@ -214,7 +219,22 @@ type LoadSessionStoreOptions = {
   skipCache?: boolean;
 };
 
+/**
+ * Load the session registry, resolving content-addressed skill snapshots so
+ * every consumer keeps reading `entry.skillsSnapshot` as before. Hydration
+ * happens here — after the cache/disk branches and after the returned store
+ * is cloned — so that (a) both load paths get it, and (b) the shared
+ * snapshot objects are never deep-copied per entry. See
+ * skill-snapshot-store.ts.
+ */
 export function loadSessionStore(
+  storePath: string,
+  opts: LoadSessionStoreOptions = {},
+): Record<string, SessionEntry> {
+  return hydrateSkillSnapshots(loadSessionStoreRaw(storePath, opts), storePath);
+}
+
+function loadSessionStoreRaw(
   storePath: string,
   opts: LoadSessionStoreOptions = {},
 ): Record<string, SessionEntry> {
@@ -541,7 +561,19 @@ async function saveSessionStoreUnlocked(
   }
 
   await fs.promises.mkdir(path.dirname(storePath), { recursive: true });
-  const json = JSON.stringify(store, null, 2);
+  // Skill snapshots are written to content-addressed blobs and referenced by
+  // hash, so the registry stays O(sessions) instead of O(sessions × catalog).
+  // The live `store` keeps its hydrated snapshots — only this serialized view
+  // drops them. See skill-snapshot-store.ts.
+  const serializableStore = dehydrateSkillSnapshotsForWrite(store, storePath);
+  if (!opts?.skipMaintenance) {
+    try {
+      gcSkillSnapshotBlobs({ store: serializableStore, storePath });
+    } catch {
+      // GC is best-effort; never fail a session write over it.
+    }
+  }
+  const json = JSON.stringify(serializableStore, null, 2);
   if (getSerializedSessionStore(storePath) === json) {
     updateSessionStoreWriteCaches({ storePath, store, serialized: json });
     return;

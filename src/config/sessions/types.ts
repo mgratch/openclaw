@@ -217,7 +217,18 @@ export type SessionEntry = {
   lastTo?: string;
   lastAccountId?: string;
   lastThreadId?: string | number;
+  /**
+   * Hydrated at load from `skillsSnapshotRef`; never serialized inline by
+   * the current write path. Still read directly by every consumer, and
+   * still accepted from legacy registries that predate the ref.
+   */
   skillsSnapshot?: SessionSkillSnapshot;
+  /**
+   * SHA-256 of the canonical snapshot JSON, resolved against
+   * `<store-dir>/skill-snapshots/<hash>.json`. See skill-snapshot-store.ts
+   * for why snapshots are content-addressed instead of inlined.
+   */
+  skillsSnapshotRef?: string;
   systemPromptReport?: SessionSystemPromptReport;
   acp?: SessionAcpMeta;
 };
