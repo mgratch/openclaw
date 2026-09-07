@@ -32,6 +32,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { assertCanonicalizable, canonicalJson } from "./lib/canonical-json.mjs";
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes("--apply");
@@ -43,32 +44,55 @@ const HOME = os.homedir();
 const AGENTS_DIR = path.join(HOME, ".openclaw", "agents");
 const SNAPSHOT_DIR_NAME = "skill-snapshots";
 
-/** Mirror of canonicalJson() in src/config/sessions/skill-snapshot-store.ts. */
-function canonicalJson(value) {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(",")}]`;
-  }
-  const entries = Object.entries(value)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(",")}}`;
-}
+// Single source of truth for the script side, kept in parity with the
+// TypeScript canonicalizer by skill-snapshot-store.canonical-parity.test.ts.
+// Do not re-inline a copy here.
 
 const sha256 = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
 
-function gatewayIsRunning() {
+/**
+ * Returns a reason string when it is not provably safe to migrate, or null
+ * when it is. Fails CLOSED: "docker is unavailable" is not evidence that the
+ * gateway is stopped, and a container may be named `openclaw-gateway`,
+ * `openclaw-openclaw-gateway-1`, or any Compose-generated variant.
+ */
+function blockingGatewayReason() {
+  let out;
   try {
-    const out = execFileSync("docker", ["ps", "--format", "{{.Names}}"], {
+    out = execFileSync("docker", ["ps", "--format", "{{.Names}}\t{{.Image}}"], {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "ignore"],
     });
-    return out.split("\n").some((n) => n.trim() === "openclaw-gateway");
   } catch {
-    return false;
+    return "docker is not available, so this script cannot prove the gateway is stopped";
   }
+  const running = out
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => /openclaw/i.test(line) && /gateway/i.test(line))
+    .map((line) => line.split("\t")[0]);
+  if (running.length > 0) {
+    return `gateway container(s) running: ${running.join(", ")}`;
+  }
+  return null;
+}
+
+/**
+ * The installed code must already understand `skillsSnapshotRef`, otherwise
+ * it treats a migrated entry as having no snapshot, recaptures, and writes
+ * the inline blob straight back. Checking that some gateway is merely
+ * stopped does not prove the new code is what will start next.
+ */
+function codeUnderstandsRefReason() {
+  const source = path.resolve(
+    path.dirname(new URL(import.meta.url).pathname),
+    "../src/config/sessions/skill-snapshot-store.ts",
+  );
+  if (!fs.existsSync(source)) {
+    return `cannot find ${source} to confirm the deployed code supports skillsSnapshotRef`;
+  }
+  return null;
 }
 
 function findStores() {
@@ -95,6 +119,27 @@ function deepEqual(a, b) {
   return canonicalJson(a) === canonicalJson(b);
 }
 
+// ── Preflight: gate BEFORE reading or mutating anything ──────────────
+// This has to run first and abort nonzero. A warning printed after every
+// registry has already been rewritten is not a safety check.
+if (APPLY) {
+  const reasons = [blockingGatewayReason(), codeUnderstandsRefReason()].filter(Boolean);
+  if (reasons.length > 0 && !FORCE) {
+    console.error("Refusing to migrate:");
+    for (const r of reasons) {
+      console.error(`  - ${r}`);
+    }
+    console.error(
+      "\nDeploy the code that understands skillsSnapshotRef, stop the gateway, then re-run.\n" +
+        "Pass --force only if you have verified both conditions yourself.",
+    );
+    process.exit(2);
+  }
+  if (reasons.length > 0) {
+    console.error(`Proceeding with --force despite: ${reasons.join("; ")}`);
+  }
+}
+
 let totalBefore = 0;
 let totalAfter = 0;
 let totalMoved = 0;
@@ -103,8 +148,12 @@ let failures = 0;
 for (const storePath of findStores()) {
   const beforeBytes = fs.statSync(storePath).size;
   let store;
+  // Retain the exact bytes read, so the replace step can prove the live file
+  // is still the generation this migration was computed from.
+  let sourceRaw;
   try {
-    store = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+    sourceRaw = fs.readFileSync(storePath, "utf-8");
+    store = JSON.parse(sourceRaw);
   } catch (err) {
     console.error(`[skip] ${storePath}: unreadable (${err.message})`);
     failures += 1;
@@ -144,8 +193,18 @@ for (const storePath of findStores()) {
     continue;
   }
 
+  // Publish the backup durably before touching the live file: an fsync'd
+  // backup is the only thing that makes the replace recoverable.
   const backupPath = `${storePath}.pre-skill-snapshot-migration.${Date.now()}`;
-  fs.copyFileSync(storePath, backupPath);
+  {
+    const fd = fs.openSync(backupPath, "w", 0o600);
+    try {
+      fs.writeFileSync(fd, sourceRaw, "utf-8");
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
 
   const blobDir = path.join(path.dirname(storePath), SNAPSHOT_DIR_NAME);
   fs.mkdirSync(blobDir, { recursive: true });
@@ -200,8 +259,37 @@ for (const storePath of findStores()) {
     continue;
   }
 
+  // Compare-and-swap on the source bytes. Blob verification proves the
+  // transformed snapshots match the input; it does NOT prove the input is
+  // still current. If anything wrote to the registry since it was read,
+  // replacing it here would silently discard that write.
+  let liveNow;
+  try {
+    liveNow = fs.readFileSync(storePath, "utf-8");
+  } catch (err) {
+    console.error(`  ABORTED — cannot re-read live registry: ${err.message}`);
+    failures += 1;
+    continue;
+  }
+  if (liveNow !== sourceRaw) {
+    console.error(
+      `  ABORTED — registry changed while migrating (a gateway or CLI wrote to it).\n` +
+        `  Nothing was replaced; backup at ${backupPath}. Stop all writers and re-run.`,
+    );
+    failures += 1;
+    continue;
+  }
+
   const tmpStore = `${storePath}.${process.pid}.tmp`;
-  fs.writeFileSync(tmpStore, JSON.stringify(store, null, 2), { mode: 0o600 });
+  {
+    const fd = fs.openSync(tmpStore, "w", 0o600);
+    try {
+      fs.writeFileSync(fd, JSON.stringify(store, null, 2), "utf-8");
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
   fs.renameSync(tmpStore, storePath);
 
   const afterBytes = fs.statSync(storePath).size;
@@ -215,13 +303,6 @@ for (const storePath of findStores()) {
   totalBefore += beforeBytes;
   totalAfter += afterBytes;
   totalMoved += inline.length;
-}
-
-if (APPLY && gatewayIsRunning() && !FORCE) {
-  console.error(
-    "\nWARNING: openclaw-gateway is running. If it predates skillsSnapshotRef support " +
-      "it will recapture snapshots and re-inline them. Deploy the new code first.",
-  );
 }
 
 console.log(

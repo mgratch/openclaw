@@ -54,7 +54,62 @@ afterEach(() => {
   clearSkillSnapshotCache();
 });
 
+/**
+ * A payload that is NOT `skillsSnapshot`. The invariant must be about entry
+ * size in general, not about the one field we happened to fix — otherwise a
+ * future caller inlining, say, a rendered `systemPromptReport` (5.6 MB in
+ * the deployment that motivated this work) sails straight past these tests.
+ */
+function entryWithForeignPayload(i: number): SessionEntry {
+  return {
+    sessionId: `s-${i}`,
+    updatedAt: Date.now(),
+    systemPromptReport: {
+      source: "run",
+      generatedAt: Date.now(),
+      renderedPrompt: "z".repeat(30_000),
+    },
+  } as unknown as SessionEntry;
+}
+
+/** Entries whose serialized form exceeds the per-entry budget. */
+function findBloatedEntries(registryPath: string): Array<readonly [string, number]> {
+  const onDisk = JSON.parse(fs.readFileSync(registryPath, "utf-8")) as Record<string, unknown>;
+  return Object.entries(onDisk)
+    .map(([key, entry]) => [key, JSON.stringify(entry).length] as const)
+    .filter(([, bytes]) => bytes > MAX_ENTRY_BYTES);
+}
+
 describe("session registry bloat invariants", () => {
+  it("detects a large payload that is NOT a skill snapshot", async () => {
+    // Guards the guard: the budget must be about entry size in general, so
+    // that a future field inlined per session is caught the same way
+    // skillsSnapshot was. Asserted positively because `systemPromptReport`
+    // is genuinely still inlined today (see the skipped test below) — this
+    // proves the check has teeth for fields nothing dehydrates yet.
+    const store: Record<string, SessionEntry> = {};
+    for (let i = 0; i < 10; i++) {
+      store[`agent:openclaw:web-${i}`] = entryWithForeignPayload(i);
+    }
+    await saveSessionStore(storePath, store, { skipMaintenance: true });
+
+    expect(findBloatedEntries(storePath).length).toBe(10);
+  });
+
+  // Known outstanding case, not a regression from the snapshot work:
+  // `systemPromptReport` is stored inline and accounts for ~5.6 MB of the
+  // production registry. It should move to the same content-addressed store
+  // (or be dropped for inactive sessions); until it does, this stays
+  // pending rather than silently absent.
+  it.skip("stores systemPromptReport out of line as well", async () => {
+    const store: Record<string, SessionEntry> = {};
+    for (let i = 0; i < 10; i++) {
+      store[`agent:openclaw:web-${i}`] = entryWithForeignPayload(i);
+    }
+    await saveSessionStore(storePath, store, { skipMaintenance: true });
+    expect(findBloatedEntries(storePath)).toEqual([]);
+  });
+
   it("keeps every serialized entry small even when sessions carry skill snapshots", async () => {
     const store: Record<string, SessionEntry> = {};
     for (let i = 0; i < 25; i++) {
@@ -96,10 +151,12 @@ describe("session registry bloat invariants", () => {
     const counts = new Map<string, number>();
     for (const entry of Object.values(onDisk)) {
       for (const [field, value] of Object.entries(entry)) {
-        if (value === null || typeof value !== "object") {
+        if (value === null || value === undefined) {
           continue;
         }
-        const serialized = JSON.stringify(value);
+        // Strings count too: a large repeated string payload (a prompt, a
+        // rendered report) bloats the registry exactly like an object does.
+        const serialized = typeof value === "string" ? value : JSON.stringify(value);
         if (serialized.length < 512) {
           continue;
         }
