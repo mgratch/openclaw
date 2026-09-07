@@ -158,6 +158,19 @@ export function readSkillSnapshotBlob(
   }
   try {
     const raw = fs.readFileSync(skillSnapshotPath(storePath, hash), "utf-8");
+    // Verify the content against the hash we were asked for. Content
+    // addressing is only an integrity guarantee if the read path enforces
+    // it; without this, a truncated, hand-edited, or partially-written blob
+    // would be served as though it were the captured snapshot. The result is
+    // cached, so this costs one hash per distinct catalog per process, not
+    // one per session.
+    if (crypto.createHash("sha256").update(raw, "utf8").digest("hex") !== hash) {
+      log.warn("skill snapshot blob failed hash verification; ignoring", {
+        hash,
+        dir: skillSnapshotDir(storePath),
+      });
+      return undefined;
+    }
     const parsed = JSON.parse(raw) as SessionSkillSnapshot;
     if (!parsed || typeof parsed !== "object" || typeof parsed.prompt !== "string") {
       return undefined;

@@ -566,16 +566,27 @@ async function saveSessionStoreUnlocked(
   // The live `store` keeps its hydrated snapshots — only this serialized view
   // drops them. See skill-snapshot-store.ts.
   const serializableStore = dehydrateSkillSnapshotsForWrite(store, storePath);
-  if (!opts?.skipMaintenance) {
+  // GC only ever runs AFTER the registry that drops those references is
+  // durably on disk. Collecting first would leave a window where the
+  // still-current on-disk registry references a blob we already deleted, so
+  // a crash before the write landed would degrade those sessions into a
+  // recapture. Best-effort in every case: never fail a session write over it.
+  const collectUnreferencedBlobs = () => {
+    if (opts?.skipMaintenance) {
+      return;
+    }
     try {
       gcSkillSnapshotBlobs({ store: serializableStore, storePath });
     } catch {
-      // GC is best-effort; never fail a session write over it.
+      // best-effort
     }
-  }
+  };
   const json = JSON.stringify(serializableStore, null, 2);
   if (getSerializedSessionStore(storePath) === json) {
+    // No write needed: what is on disk already equals `serializableStore`,
+    // so its references are exactly the ones GC will preserve.
     updateSessionStoreWriteCaches({ storePath, store, serialized: json });
+    collectUnreferencedBlobs();
     return;
   }
 
@@ -584,6 +595,7 @@ async function saveSessionStoreUnlocked(
     for (let i = 0; i < 5; i++) {
       try {
         await writeSessionStoreAtomic({ storePath, store, serialized: json });
+        collectUnreferencedBlobs();
         return;
       } catch (err) {
         const code = getErrorCode(err);
@@ -604,6 +616,7 @@ async function saveSessionStoreUnlocked(
 
   try {
     await writeSessionStoreAtomic({ storePath, store, serialized: json });
+    collectUnreferencedBlobs();
   } catch (err) {
     const code = getErrorCode(err);
 

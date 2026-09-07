@@ -85,6 +85,23 @@ describe("content addressing", () => {
     expect(fs.readdirSync(skillSnapshotDir(storePath))).toHaveLength(1);
   });
 
+  it("refuses to serve a blob whose bytes do not match the requested hash", () => {
+    // Content addressing is only an integrity guarantee if reads enforce it.
+    const hash = writeSkillSnapshotBlob(storePath, snapshot());
+    clearSkillSnapshotCache();
+    fs.writeFileSync(
+      path.join(skillSnapshotDir(storePath), `${hash}.json`),
+      JSON.stringify({ prompt: "tampered", skills: [] }),
+    );
+    expect(readSkillSnapshotBlob(storePath, hash)).toBeUndefined();
+
+    // ...and a session referencing it degrades to a recapture rather than
+    // silently receiving the wrong catalog.
+    const store: Record<string, SessionEntry> = { a: entry({ skillsSnapshotRef: hash }) };
+    hydrateSkillSnapshots(store, storePath);
+    expect(store.a.skillsSnapshot).toBeUndefined();
+  });
+
   it("reports corruption when a blob's bytes no longer match its name", () => {
     const hash = writeSkillSnapshotBlob(storePath, snapshot());
     fs.writeFileSync(path.join(skillSnapshotDir(storePath), `${hash}.json`), '{"prompt":"x"}');
