@@ -81,33 +81,20 @@ function cacheKey(storePath: string, hash: string): string {
 }
 
 /**
- * Object identity -> { blob dir -> hash }.
+ * Per-pass memo: object identity -> hash, scoped to ONE dehydration call.
  *
- * Hydration hands the *same* object to every entry sharing a catalog, so a
- * naive dehydration pass canonicalizes and hashes the same ~59 KB snapshot
- * once per session — 731 times on this deployment, synchronously, on the
- * save path. Storage would be deduplicated while the write path stayed
- * O(sessions × catalog), which is the very cost this change exists to
- * remove; the write-side integrity check made it worse by re-reading the
- * blob per entry. Keying by object identity collapses that to once per
- * distinct snapshot object. A WeakMap keeps no strong references, and the
- * inner key is the blob directory because the same object may legitimately
- * be persisted under more than one store.
+ * Hydration hands the same object to every entry sharing a catalog, so
+ * without a memo a pass canonicalizes and hashes the same ~59 KB snapshot
+ * once per session (731 times here) on the synchronous save path, leaving
+ * the write path O(sessions × catalog) — the very cost this change removes.
+ *
+ * The lifetime is deliberately one pass, not the process. A process-wide
+ * memo would keep returning a remembered hash for an object whose contents
+ * were since mutated (silently persisting the stale ref) and would skip
+ * re-creating a blob that was deleted or corrupted after it was recorded.
+ * Per-pass keeps the O(distinct) win while re-verifying on every save.
  */
-const hashByIdentity = new WeakMap<SessionSkillSnapshot, Map<string, string>>();
-
-function recallIdentityHash(dir: string, snapshot: SessionSkillSnapshot): string | undefined {
-  return hashByIdentity.get(snapshot)?.get(dir);
-}
-
-function rememberIdentityHash(dir: string, snapshot: SessionSkillSnapshot, hash: string): void {
-  let byDir = hashByIdentity.get(snapshot);
-  if (!byDir) {
-    byDir = new Map<string, string>();
-    hashByIdentity.set(snapshot, byDir);
-  }
-  byDir.set(dir, hash);
-}
+type DehydrationMemo = Map<SessionSkillSnapshot, string>;
 
 /**
  * Freeze a snapshot and everything reachable from it. Cheap: this runs once
@@ -173,12 +160,15 @@ export function computeSkillSnapshotHash(snapshot: SessionSkillSnapshot): string
  * reads reject the bad blob, the session recaptures, the write short-
  * circuits on the existing name, and the blob is never repaired.
  */
-export function writeSkillSnapshotBlob(storePath: string, snapshot: SessionSkillSnapshot): string {
-  const dir = path.resolve(skillSnapshotDir(storePath));
-  // Fast path for the shared-object case: this exact object was already
-  // canonicalized, hashed, and verified against this directory, so skip all
-  // of it rather than repeating ~59 KB of work per referencing session.
-  const known = recallIdentityHash(dir, snapshot);
+export function writeSkillSnapshotBlob(
+  storePath: string,
+  snapshot: SessionSkillSnapshot,
+  memo?: DehydrationMemo,
+): string {
+  // Fast path for the shared-object case within a single pass: this exact
+  // object was already canonicalized, hashed and verified a moment ago, so
+  // skip repeating ~59 KB of work per referencing session.
+  const known = memo?.get(snapshot);
   if (known) {
     return known;
   }
@@ -197,7 +187,7 @@ export function writeSkillSnapshotBlob(storePath: string, snapshot: SessionSkill
     // world-readable default; accepting it must also repair it, or weak
     // permissions become permanent.
     hardenBlobPermissions(path.dirname(target), target);
-    rememberIdentityHash(dir, snapshot, hash);
+    memo?.set(snapshot, hash);
     return hash;
   }
   // Mode 0700/0600 to match the registry: snapshots carry skill prompts and
@@ -220,7 +210,7 @@ export function writeSkillSnapshotBlob(storePath: string, snapshot: SessionSkill
     fs.renameSync(tmp, target);
     hardenBlobPermissions(path.dirname(target), target);
     syncDirectory(path.dirname(target));
-    rememberIdentityHash(dir, snapshot, hash);
+    memo?.set(snapshot, hash);
   } catch (err) {
     try {
       fs.rmSync(tmp, { force: true });
@@ -334,7 +324,22 @@ export function hydrateSkillSnapshots(
 ): Record<string, SessionEntry> {
   let missing = 0;
   for (const entry of Object.values(store)) {
-    if (!entry || entry.skillsSnapshot || !entry.skillsSnapshotRef) {
+    if (!entry) {
+      continue;
+    }
+    // An inline snapshot can arrive already attached: legacy registries, and
+    // — critically — the write-through cache, which stores a
+    // `structuredClone()` of the live hydrated store. structuredClone drops
+    // frozen state while preserving sharing inside the graph, so a cache-hit
+    // load would otherwise hand back MUTABLE objects shared across entries:
+    // frozen via the disk path, unfrozen via the cache path. Freeze here so
+    // the invariant holds on every load path. Idempotent and cheap —
+    // deepFreeze short-circuits on already-frozen objects.
+    if (entry.skillsSnapshot) {
+      deepFreeze(entry.skillsSnapshot);
+      continue;
+    }
+    if (!entry.skillsSnapshotRef) {
       continue;
     }
     const snapshot = readSkillSnapshotBlob(storePath, entry.skillsSnapshotRef);
@@ -367,13 +372,15 @@ export function dehydrateSkillSnapshotsForWrite(
   storePath: string,
 ): Record<string, SessionEntry> {
   let out: Record<string, SessionEntry> | undefined;
+  // Fresh per call: see DehydrationMemo.
+  const memo: DehydrationMemo = new Map();
   for (const [key, entry] of Object.entries(store)) {
     if (!entry?.skillsSnapshot) {
       continue;
     }
     let ref: string;
     try {
-      ref = writeSkillSnapshotBlob(storePath, entry.skillsSnapshot);
+      ref = writeSkillSnapshotBlob(storePath, entry.skillsSnapshot, memo);
     } catch (err) {
       // Never fail a session write because the blob could not be written;
       // fall back to the legacy inline shape for this entry.

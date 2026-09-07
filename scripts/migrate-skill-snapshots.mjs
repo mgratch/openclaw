@@ -34,12 +34,48 @@ import os from "node:os";
 import path from "node:path";
 import { assertCanonicalizable, canonicalJson } from "./lib/canonical-json.mjs";
 
+// Strict parsing. `--store` with a missing value used to leave
+// EXPLICIT_STORE undefined, which silently fell back to migrating EVERY
+// agent registry — the widest possible blast radius from a typo.
 const argv = process.argv.slice(2);
-const APPLY = argv.includes("--apply");
-const FORCE = argv.includes("--force");
-const CONFIRM_DEPLOYED = argv.includes("--confirm-code-deployed");
-const storeArgIdx = argv.indexOf("--store");
-const EXPLICIT_STORE = storeArgIdx >= 0 ? argv[storeArgIdx + 1] : undefined;
+const KNOWN_FLAGS = new Set(["--apply", "--force", "--confirm-code-deployed"]);
+let APPLY = false;
+let FORCE = false;
+let CONFIRM_DEPLOYED = false;
+let EXPLICIT_STORE;
+
+function usageError(msg) {
+  console.error(`${msg}\n`);
+  console.error("usage: node scripts/migrate-skill-snapshots.mjs [--apply]");
+  console.error("         [--store <path/to/sessions.json>] [--confirm-code-deployed] [--force]");
+  process.exit(2);
+}
+
+for (let i = 0; i < argv.length; i += 1) {
+  const arg = argv[i];
+  if (arg === "--store") {
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("-")) {
+      usageError("--store requires a path to a sessions.json");
+    }
+    if (EXPLICIT_STORE !== undefined) {
+      usageError("--store given more than once");
+    }
+    EXPLICIT_STORE = value;
+    i += 1;
+    continue;
+  }
+  if (!KNOWN_FLAGS.has(arg)) {
+    usageError(`unknown argument: ${arg}`);
+  }
+  if (arg === "--apply") {
+    APPLY = true;
+  } else if (arg === "--force") {
+    FORCE = true;
+  } else {
+    CONFIRM_DEPLOYED = true;
+  }
+}
 
 const HOME = os.homedir();
 const AGENTS_DIR = path.join(HOME, ".openclaw", "agents");
@@ -123,15 +159,33 @@ function syncDirectory(dir) {
  * Comparing bytes before a rename is a fence, not mutual exclusion — without
  * the lock another writer can land between the compare and the rename.
  */
-function acquireStoreLock(storePath, { timeoutMs = 30_000, staleMs = 120_000 } = {}) {
+function acquireStoreLock(storePath, { timeoutMs = 30_000 } = {}) {
   const lockPath = `${storePath}.lock`;
   const deadline = Date.now() + timeoutMs;
+  // A token unique to THIS acquisition. Release compares it before
+  // unlinking, so a process whose lock was reclaimed can never delete the
+  // lock a later owner is holding.
+  const token = crypto.randomUUID();
   for (;;) {
     try {
       const fd = fs.openSync(lockPath, "wx", 0o600);
-      fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, createdAt: Date.now() }, null, 2));
+      fs.writeFileSync(
+        fd,
+        // createdAt as an ISO string to match src/agents/session-write-lock.ts.
+        JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString(), token }, null, 2),
+      );
+      fs.fsyncSync(fd);
       fs.closeSync(fd);
       return () => {
+        // Ownership-fenced release: only remove the lock if it is still ours.
+        try {
+          const held = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+          if (held?.token !== token) {
+            return;
+          }
+        } catch {
+          return;
+        }
         try {
           fs.rmSync(lockPath, { force: true });
         } catch {
@@ -142,19 +196,20 @@ function acquireStoreLock(storePath, { timeoutMs = 30_000, staleMs = 120_000 } =
       if (openErr.code !== "EEXIST") {
         throw openErr;
       }
-      // Reclaim a lock whose owner died or that is older than staleMs.
+      // Reclaim ONLY a dead owner. Age is not evidence: a migration over
+      // 123 MB can legitimately run for minutes, and evicting a live owner
+      // on a timer is how two migrations end up writing the same registry.
       try {
-        const st = fs.statSync(lockPath);
         const payload = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-        const ownerAlive = (() => {
+        let ownerAlive = true;
+        if (typeof payload?.pid === "number") {
           try {
             process.kill(payload.pid, 0);
-            return true;
-          } catch {
-            return false;
+          } catch (killErr) {
+            ownerAlive = killErr.code === "EPERM";
           }
-        })();
-        if (!ownerAlive || Date.now() - st.mtimeMs > staleMs) {
+        }
+        if (!ownerAlive) {
           fs.rmSync(lockPath, { force: true });
           continue;
         }
@@ -162,7 +217,10 @@ function acquireStoreLock(storePath, { timeoutMs = 30_000, staleMs = 120_000 } =
         // Unreadable lock: treat as held and keep waiting.
       }
       if (Date.now() > deadline) {
-        throw new Error(`timed out waiting for ${lockPath}`, { cause: openErr });
+        throw new Error(
+          `timed out waiting for ${lockPath} (held by a live process; stop all writers)`,
+          { cause: openErr },
+        );
       }
       // Coarse spin; this script is not latency sensitive.
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
@@ -176,6 +234,25 @@ function acquireStoreLock(storePath, { timeoutMs = 30_000, staleMs = 120_000 } =
  * 0600 file, fsync(file) -> rename -> fsync(dir). This is the path that
  * creates every production blob, so it cannot be the weak one.
  */
+/**
+ * Bring an already-present blob up to 0700/0600. Unlike the runtime helper
+ * this throws: the migration is a one-time destructive rewrite, so a store
+ * whose blobs cannot be protected must fail loudly rather than be reported
+ * as migrated.
+ */
+function hardenExistingBlob(blobDir, target) {
+  if ((fs.statSync(blobDir).mode & 0o077) !== 0) {
+    fs.chmodSync(blobDir, 0o700);
+  }
+  const st = fs.statSync(target);
+  if (!st.isFile()) {
+    throw new Error(`${target} exists but is not a regular file`);
+  }
+  if ((st.mode & 0o077) !== 0) {
+    fs.chmodSync(target, 0o600);
+  }
+}
+
 function publishBlob(blobDir, target, serialized) {
   fs.mkdirSync(blobDir, { recursive: true, mode: 0o700 });
   try {
@@ -297,9 +374,12 @@ for (const storePath of findStores()) {
 
   // Publish the backup durably before touching the live file: an fsync'd
   // backup is the only thing that makes the replace recoverable.
-  // Held until this store is fully replaced. The byte comparison below is a
-  // fence *inside* the lock, not a substitute for it: without the lock another
-  // writer can land between the compare and the rename.
+  // One acquisition, one release. Everything between them runs inside
+  // try/catch/finally: an exception from backup publication, mkdir, canonical
+  // validation, blob publication, the temp write, the rename or a stat used
+  // to leak `sessions.json.lock` and kill the entire run (reproduced by
+  // placing a regular file at `skill-snapshots/`). Now a store can fail on
+  // its own and the migration continues with the next one.
   let releaseLock;
   try {
     releaseLock = acquireStoreLock(storePath);
@@ -309,122 +389,151 @@ for (const storePath of findStores()) {
     continue;
   }
 
-  const backupPath = `${storePath}.pre-skill-snapshot-migration.${Date.now()}`;
-  {
-    const fd = fs.openSync(backupPath, "w", 0o600);
-    try {
-      fs.writeFileSync(fd, sourceRaw, "utf-8");
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
-    }
-    syncDirectory(path.dirname(backupPath));
-  }
-
-  const blobDir = path.join(path.dirname(storePath), SNAPSHOT_DIR_NAME);
-  fs.mkdirSync(blobDir, { recursive: true });
-
-  for (const [, entry] of inline) {
-    // Enforce the canonicalization contract here, where provenance is
-    // genuinely unknown (arbitrary on-disk registries), before the value
-    // becomes a content address.
-    assertCanonicalizable(entry.skillsSnapshot);
-    const serialized = canonicalJson(entry.skillsSnapshot);
-    const hash = sha256(serialized);
-    const target = path.join(blobDir, `${hash}.json`);
-    if (!fs.existsSync(target)) {
-      publishBlob(blobDir, target, serialized);
-    }
-    delete entry.skillsSnapshot;
-    entry.skillsSnapshotRef = hash;
-  }
-
-  // Verify BEFORE replacing the live file: every ref must resolve to bytes
-  // that deep-equal the snapshot that was there a moment ago.
-  let verified = 0;
-  const mismatches = [];
-  for (const [key, entry] of Object.entries(store)) {
-    if (!entry?.skillsSnapshotRef || !originals.has(key)) {
-      continue;
-    }
-    const blob = path.join(blobDir, `${entry.skillsSnapshotRef}.json`);
-    try {
-      const raw = fs.readFileSync(blob, "utf-8");
-      if (sha256(raw) !== entry.skillsSnapshotRef) {
-        mismatches.push(`${key}: blob content does not match its hash`);
-        continue;
-      }
-      if (!deepEqual(JSON.parse(raw), originals.get(key))) {
-        mismatches.push(`${key}: resolved snapshot differs from the original`);
-        continue;
-      }
-      verified += 1;
-    } catch (err) {
-      mismatches.push(`${key}: ${err.message}`);
-    }
-  }
-
-  if (mismatches.length > 0 || verified !== inline.length) {
-    console.error(
-      `  ABORTED — verified ${verified}/${inline.length}; ${mismatches.length} problem(s):`,
-    );
-    for (const m of mismatches.slice(0, 5)) {
-      console.error(`    ${m}`);
-    }
-    console.error(`  live file untouched; backup at ${backupPath}`);
-    releaseLock();
-    failures += 1;
-    continue;
-  }
-
-  // Compare-and-swap on the source bytes. Blob verification proves the
-  // transformed snapshots match the input; it does NOT prove the input is
-  // still current. If anything wrote to the registry since it was read,
-  // replacing it here would silently discard that write.
-  let liveNow;
+  let aborted = false;
   try {
-    liveNow = fs.readFileSync(storePath, "utf-8");
-  } catch (err) {
-    console.error(`  ABORTED — cannot re-read live registry: ${err.message}`);
-    releaseLock();
-    failures += 1;
-    continue;
-  }
-  if (liveNow !== sourceRaw) {
-    console.error(
-      `  ABORTED — registry changed while migrating (a gateway or CLI wrote to it).\n` +
-        `  Nothing was replaced; backup at ${backupPath}. Stop all writers and re-run.`,
-    );
-    releaseLock();
-    failures += 1;
-    continue;
-  }
+    // Labeled block, not do/while(false): lets a per-store abort jump to the
+    // finally that releases the lock without a constant loop condition.
+    migrateStore: {
+      // The byte comparison below is a fence *inside* the lock held above,
+      // not a substitute for it: without the lock another writer can land
+      // between the compare and the rename.
+      const backupPath = `${storePath}.pre-skill-snapshot-migration.${Date.now()}`;
+      {
+        const fd = fs.openSync(backupPath, "w", 0o600);
+        try {
+          fs.writeFileSync(fd, sourceRaw, "utf-8");
+          fs.fsyncSync(fd);
+        } finally {
+          fs.closeSync(fd);
+        }
+        syncDirectory(path.dirname(backupPath));
+      }
 
-  const tmpStore = `${storePath}.${process.pid}.tmp`;
-  {
-    const fd = fs.openSync(tmpStore, "w", 0o600);
-    try {
-      fs.writeFileSync(fd, JSON.stringify(store, null, 2), "utf-8");
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
+      const blobDir = path.join(path.dirname(storePath), SNAPSHOT_DIR_NAME);
+      fs.mkdirSync(blobDir, { recursive: true });
+
+      for (const [, entry] of inline) {
+        // Enforce the canonicalization contract here, where provenance is
+        // genuinely unknown (arbitrary on-disk registries), before the value
+        // becomes a content address.
+        assertCanonicalizable(entry.skillsSnapshot);
+        const serialized = canonicalJson(entry.skillsSnapshot);
+        const hash = sha256(serialized);
+        const target = path.join(blobDir, `${hash}.json`);
+        // An existing target is only reusable if its bytes really are this
+        // snapshot; otherwise republish. Skipping on mere existence leaves a
+        // corrupt blob in place and a loose 0644 one world-readable.
+        let reusable = false;
+        try {
+          reusable = sha256(fs.readFileSync(target, "utf-8")) === hash;
+        } catch {
+          reusable = false;
+        }
+        if (reusable) {
+          hardenExistingBlob(blobDir, target);
+        } else {
+          publishBlob(blobDir, target, serialized);
+        }
+        delete entry.skillsSnapshot;
+        entry.skillsSnapshotRef = hash;
+      }
+
+      // Verify BEFORE replacing the live file: every ref must resolve to bytes
+      // that deep-equal the snapshot that was there a moment ago.
+      let verified = 0;
+      const mismatches = [];
+      for (const [key, entry] of Object.entries(store)) {
+        if (!entry?.skillsSnapshotRef || !originals.has(key)) {
+          continue;
+        }
+        const blob = path.join(blobDir, `${entry.skillsSnapshotRef}.json`);
+        try {
+          const raw = fs.readFileSync(blob, "utf-8");
+          if (sha256(raw) !== entry.skillsSnapshotRef) {
+            mismatches.push(`${key}: blob content does not match its hash`);
+            continue;
+          }
+          if (!deepEqual(JSON.parse(raw), originals.get(key))) {
+            mismatches.push(`${key}: resolved snapshot differs from the original`);
+            continue;
+          }
+          verified += 1;
+        } catch (err) {
+          mismatches.push(`${key}: ${err.message}`);
+        }
+      }
+
+      if (mismatches.length > 0 || verified !== inline.length) {
+        console.error(
+          `  ABORTED — verified ${verified}/${inline.length}; ${mismatches.length} problem(s):`,
+        );
+        for (const m of mismatches.slice(0, 5)) {
+          console.error(`    ${m}`);
+        }
+        console.error(`  live file untouched; backup at ${backupPath}`);
+        failures += 1;
+        aborted = true;
+        break migrateStore;
+      }
+
+      // Compare-and-swap on the source bytes. Blob verification proves the
+      // transformed snapshots match the input; it does NOT prove the input is
+      // still current. If anything wrote to the registry since it was read,
+      // replacing it here would silently discard that write.
+      let liveNow;
+      try {
+        liveNow = fs.readFileSync(storePath, "utf-8");
+      } catch (err) {
+        console.error(`  ABORTED — cannot re-read live registry: ${err.message}`);
+        failures += 1;
+        aborted = true;
+        break migrateStore;
+      }
+      if (liveNow !== sourceRaw) {
+        console.error(
+          `  ABORTED — registry changed while migrating (a gateway or CLI wrote to it).\n` +
+            `  Nothing was replaced; backup at ${backupPath}. Stop all writers and re-run.`,
+        );
+        failures += 1;
+        aborted = true;
+        break migrateStore;
+      }
+
+      const tmpStore = `${storePath}.${process.pid}.tmp`;
+      {
+        const fd = fs.openSync(tmpStore, "w", 0o600);
+        try {
+          fs.writeFileSync(fd, JSON.stringify(store, null, 2), "utf-8");
+          fs.fsyncSync(fd);
+        } finally {
+          fs.closeSync(fd);
+        }
+      }
+      fs.renameSync(tmpStore, storePath);
+      syncDirectory(path.dirname(storePath));
+
+      const afterBytes = fs.statSync(storePath).size;
+      console.log(
+        `  migrated ${inline.length} snapshot(s) → ${distinct.size} blob(s); ` +
+          `verified ${verified}/${inline.length} byte-identical\n` +
+          `  ${(beforeBytes / 1e6).toFixed(1)} MB → ${(afterBytes / 1e6).toFixed(1)} MB ` +
+          `(-${(100 * (1 - afterBytes / beforeBytes)).toFixed(0)}%)\n` +
+          `  backup: ${backupPath}`,
+      );
+      totalBefore += beforeBytes;
+      totalAfter += afterBytes;
+      totalMoved += inline.length;
     }
+  } catch (err) {
+    console.error(`  ABORTED - ${storePath}: ${err.message}`);
+    failures += 1;
+    aborted = true;
+  } finally {
+    releaseLock();
   }
-  fs.renameSync(tmpStore, storePath);
-  syncDirectory(path.dirname(storePath));
-
-  const afterBytes = fs.statSync(storePath).size;
-  console.log(
-    `  migrated ${inline.length} snapshot(s) → ${distinct.size} blob(s); ` +
-      `verified ${verified}/${inline.length} byte-identical\n` +
-      `  ${(beforeBytes / 1e6).toFixed(1)} MB → ${(afterBytes / 1e6).toFixed(1)} MB ` +
-      `(-${(100 * (1 - afterBytes / beforeBytes)).toFixed(0)}%)\n` +
-      `  backup: ${backupPath}`,
-  );
-  releaseLock();
-  totalBefore += beforeBytes;
-  totalAfter += afterBytes;
-  totalMoved += inline.length;
+  if (aborted) {
+    continue;
+  }
 }
 
 console.log(
