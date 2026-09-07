@@ -167,15 +167,55 @@ function acquireStoreLock(storePath, { timeoutMs = 30_000 } = {}) {
   // lock a later owner is holding.
   const token = crypto.randomUUID();
   for (;;) {
+    let fd;
     try {
-      const fd = fs.openSync(lockPath, "wx", 0o600);
+      fd = fs.openSync(lockPath, "wx", 0o600);
+    } catch (openErr) {
+      handleContendedLock(lockPath, openErr, deadline);
+      continue;
+    }
+    // Publishing the payload is its own failure domain. If writing, fsyncing
+    // or closing fails here, the lock file already EXISTS but is empty: every
+    // later reader (this script and the gateway's own lock code) sees an
+    // unreadable lock and waits it out instead of reclaiming, so a transient
+    // ENOSPC would wedge session writes. Clean up the exact file we created —
+    // verified by inode, so a reclaim that happened in between cannot cause
+    // us to delete a successor's lock — and rethrow.
+    try {
       fs.writeFileSync(
         fd,
         // createdAt as an ISO string to match src/agents/session-write-lock.ts.
         JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString(), token }, null, 2),
       );
       fs.fsyncSync(fd);
+    } catch (initErr) {
+      let created;
+      try {
+        created = fs.fstatSync(fd);
+      } catch {
+        created = undefined;
+      }
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* already closed */
+      }
+      try {
+        const onDisk = fs.statSync(lockPath);
+        if (!created || (onDisk.ino === created.ino && onDisk.dev === created.dev)) {
+          fs.rmSync(lockPath, { force: true });
+        }
+      } catch {
+        /* nothing to clean up */
+      }
+      throw initErr;
+    }
+    try {
       fs.closeSync(fd);
+    } catch {
+      /* already closed */
+    }
+    {
       return () => {
         // Ownership-fenced release: only remove the lock if it is still ours.
         try {
@@ -192,40 +232,45 @@ function acquireStoreLock(storePath, { timeoutMs = 30_000 } = {}) {
           /* already gone */
         }
       };
-    } catch (openErr) {
-      if (openErr.code !== "EEXIST") {
-        throw openErr;
-      }
-      // Reclaim ONLY a dead owner. Age is not evidence: a migration over
-      // 123 MB can legitimately run for minutes, and evicting a live owner
-      // on a timer is how two migrations end up writing the same registry.
-      try {
-        const payload = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-        let ownerAlive = true;
-        if (typeof payload?.pid === "number") {
-          try {
-            process.kill(payload.pid, 0);
-          } catch (killErr) {
-            ownerAlive = killErr.code === "EPERM";
-          }
-        }
-        if (!ownerAlive) {
-          fs.rmSync(lockPath, { force: true });
-          continue;
-        }
-      } catch {
-        // Unreadable lock: treat as held and keep waiting.
-      }
-      if (Date.now() > deadline) {
-        throw new Error(
-          `timed out waiting for ${lockPath} (held by a live process; stop all writers)`,
-          { cause: openErr },
-        );
-      }
-      // Coarse spin; this script is not latency sensitive.
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
     }
   }
+}
+
+/**
+ * Decide what to do when the lock already exists: reclaim it if its recorded
+ * owner is provably dead, otherwise wait. Age is deliberately NOT evidence —
+ * a migration over 123 MB can legitimately run for minutes, and evicting a
+ * live owner on a timer is how two migrations end up writing one registry.
+ */
+function handleContendedLock(lockPath, openErr, deadline) {
+  if (openErr.code !== "EEXIST") {
+    throw openErr;
+  }
+  try {
+    const payload = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+    let ownerAlive = true;
+    if (typeof payload?.pid === "number") {
+      try {
+        process.kill(payload.pid, 0);
+      } catch (killErr) {
+        ownerAlive = killErr.code === "EPERM";
+      }
+    }
+    if (!ownerAlive) {
+      fs.rmSync(lockPath, { force: true });
+      return;
+    }
+  } catch {
+    // Unreadable lock: treat as held and keep waiting.
+  }
+  if (Date.now() > deadline) {
+    throw new Error(
+      `timed out waiting for ${lockPath} (held by a live process; stop all writers)`,
+      { cause: openErr },
+    );
+  }
+  // Coarse spin; this script is not latency sensitive.
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
 }
 
 /**

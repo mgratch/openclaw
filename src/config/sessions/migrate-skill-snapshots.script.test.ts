@@ -218,6 +218,38 @@ describe("migrate-skill-snapshots failure handling", () => {
     expect(`${digest}.json`).toBe(blob);
   });
 
+  it("does not leave an empty lock when payload publication fails", () => {
+    // Regression: `openSync(lockPath, "wx")` succeeding and the payload write
+    // then failing left a zero-byte lock behind. Every later reader — this
+    // script and the gateway's own lock code — treats an unreadable lock as
+    // held rather than reclaimable, so a transient ENOSPC would wedge session
+    // writes. Simulated with a hard file-size limit: the lock file can be
+    // created but not written.
+    if (process.platform === "win32") {
+      return;
+    }
+    seedRegistry(2);
+    const before = fs.readFileSync(storePath, "utf-8");
+    const res = (() => {
+      try {
+        const out = execFileSync(
+          "/bin/sh",
+          ["-c", `ulimit -f 0; exec node ${JSON.stringify(SCRIPT)} ${apply().join(" ")}`],
+          { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
+        );
+        return { code: 0, out };
+      } catch (err) {
+        const e = err as { status?: number; stdout?: string; stderr?: string };
+        return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+      }
+    })();
+
+    // However it failed, it must not have left a lock or damaged the registry.
+    expect(res.code).not.toBe(0);
+    expect(fs.existsSync(`${storePath}.lock`)).toBe(false);
+    expect(fs.readFileSync(storePath, "utf-8")).toBe(before);
+  });
+
   it("leaves a durable backup next to the registry", () => {
     seedRegistry(2);
     const before = fs.readFileSync(storePath, "utf-8");
