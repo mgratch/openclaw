@@ -81,12 +81,14 @@ function findBloatedEntries(registryPath: string): Array<readonly [string, numbe
 }
 
 describe("session registry bloat invariants", () => {
-  it("detects a large payload that is NOT a skill snapshot", async () => {
-    // Guards the guard: the budget must be about entry size in general, so
-    // that a future field inlined per session is caught the same way
-    // skillsSnapshot was. Asserted positively because `systemPromptReport`
-    // is genuinely still inlined today (see the skipped test below) — this
-    // proves the check has teeth for fields nothing dehydrates yet.
+  it("size check is field-agnostic (detects a non-snapshot payload)", async () => {
+    // Scope, stated plainly: this exercises the DETECTOR, it does not
+    // prevent future bloat. A new large field added by some other caller
+    // will not appear in these fixtures automatically, so it will not fail
+    // here. What this pins is that the budget is about entry size in
+    // general rather than about `skillsSnapshot` specifically — asserted
+    // positively because `systemPromptReport` genuinely is still inlined
+    // (see the skipped test below, which is the real gate once it moves).
     const store: Record<string, SessionEntry> = {};
     for (let i = 0; i < 10; i++) {
       store[`agent:openclaw:web-${i}`] = entryWithForeignPayload(i);

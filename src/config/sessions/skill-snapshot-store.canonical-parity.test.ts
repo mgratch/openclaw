@@ -1,7 +1,10 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- plain .mjs helper shared with scripts/, no type decls
-import { assertCanonicalizable, canonicalJson as scriptCanonicalJson } from "../../../scripts/lib/canonical-json.mjs";
+import {
+  assertCanonicalizable,
+  canonicalJson as scriptCanonicalJson,
+} from "../../../scripts/lib/canonical-json.mjs";
 import { canonicalJson as tsCanonicalJson } from "./skill-snapshot-store.js";
 
 /**
@@ -67,7 +70,8 @@ describe("assertCanonicalizable", () => {
   it("rejects sparse arrays, which would hash the same as a dense one", () => {
     // eslint-disable-next-line no-sparse-arrays
     expect(() => assertCanonicalizable([1, , 3])).toThrow(/sparse/);
-    expect(() => assertCanonicalizable(new Array(2))).toThrow(/sparse/);
+    // eslint-disable-next-line no-sparse-arrays -- the hole is the subject
+    expect(() => assertCanonicalizable([, ,])).toThrow(/sparse/);
   });
 
   it("rejects values outside the JSON contract", () => {

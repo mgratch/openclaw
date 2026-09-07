@@ -17,11 +17,7 @@ import {
 import { getFileStatSnapshot } from "../cache-utils.js";
 import { enforceSessionDiskBudget, type SessionDiskBudgetSweepResult } from "./disk-budget.js";
 import { deriveSessionMetaPatch } from "./metadata.js";
-import {
-  dehydrateSkillSnapshotsForWrite,
-  gcSkillSnapshotBlobs,
-  hydrateSkillSnapshots,
-} from "./skill-snapshot-store.js";
+import { dehydrateSkillSnapshotsForWrite, hydrateSkillSnapshots } from "./skill-snapshot-store.js";
 import {
   clearSessionStoreCaches,
   dropSessionStoreObjectCache,
@@ -566,27 +562,17 @@ async function saveSessionStoreUnlocked(
   // The live `store` keeps its hydrated snapshots — only this serialized view
   // drops them. See skill-snapshot-store.ts.
   const serializableStore = dehydrateSkillSnapshotsForWrite(store, storePath);
-  // GC only ever runs AFTER the registry that drops those references is
-  // durably on disk. Collecting first would leave a window where the
-  // still-current on-disk registry references a blob we already deleted, so
-  // a crash before the write landed would degrade those sessions into a
-  // recapture. Best-effort in every case: never fail a session write over it.
-  const collectUnreferencedBlobs = () => {
-    if (opts?.skipMaintenance) {
-      return;
-    }
-    try {
-      gcSkillSnapshotBlobs({ store: serializableStore, storePath });
-    } catch {
-      // best-effort
-    }
-  };
+  // Blob GC deliberately does NOT run here. To be correct it must consider
+  // refs held by retained `sessions.json.bak.*` registries (and the
+  // migration's own backup, which is the pre-migration ~64 MB file), so a
+  // save-path GC would synchronously reparse tens of megabytes of history —
+  // reintroducing exactly the event-loop stall this change removes. Blobs
+  // are small (0.37 MB total for 10 distinct catalogs here), so leaving a
+  // few unreferenced costs nothing. `gcSkillSnapshotBlobs()` is exported for
+  // an explicit, infrequent maintenance job instead.
   const json = JSON.stringify(serializableStore, null, 2);
   if (getSerializedSessionStore(storePath) === json) {
-    // No write needed: what is on disk already equals `serializableStore`,
-    // so its references are exactly the ones GC will preserve.
     updateSessionStoreWriteCaches({ storePath, store, serialized: json });
-    collectUnreferencedBlobs();
     return;
   }
 
@@ -595,7 +581,6 @@ async function saveSessionStoreUnlocked(
     for (let i = 0; i < 5; i++) {
       try {
         await writeSessionStoreAtomic({ storePath, store, serialized: json });
-        collectUnreferencedBlobs();
         return;
       } catch (err) {
         const code = getErrorCode(err);
@@ -616,7 +601,6 @@ async function saveSessionStoreUnlocked(
 
   try {
     await writeSessionStoreAtomic({ storePath, store, serialized: json });
-    collectUnreferencedBlobs();
   } catch (err) {
     const code = getErrorCode(err);
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalJson,
   clearSkillSnapshotCache,
@@ -100,6 +100,28 @@ describe("content addressing", () => {
     const store: Record<string, SessionEntry> = { a: entry({ skillsSnapshotRef: hash }) };
     hydrateSkillSnapshots(store, storePath);
     expect(store.a.skillsSnapshot).toBeUndefined();
+  });
+
+  it("protects blobs like the registry itself, and repairs loose permissions", () => {
+    // Snapshots carry skill prompts and resolved metadata; sessions.json is
+    // 0600, so a world-readable blob would leak exactly what the registry
+    // protects. Skipped on Windows, where POSIX mode bits are not meaningful.
+    if (process.platform === "win32") {
+      return;
+    }
+    const hash = writeSkillSnapshotBlob(storePath, snapshot());
+    const dir = skillSnapshotDir(storePath);
+    const blob = path.join(dir, `${hash}.json`);
+    expect(fs.statSync(dir).mode & 0o077).toBe(0);
+    expect(fs.statSync(blob).mode & 0o077).toBe(0);
+
+    // A blob left loose by an older build or the migration must be repaired
+    // when it is next accepted, not trusted forever.
+    fs.chmodSync(dir, 0o755);
+    fs.chmodSync(blob, 0o644);
+    writeSkillSnapshotBlob(storePath, snapshot());
+    expect(fs.statSync(dir).mode & 0o077).toBe(0);
+    expect(fs.statSync(blob).mode & 0o077).toBe(0);
   });
 
   it("reports corruption when a blob's bytes no longer match its name", () => {
@@ -214,6 +236,37 @@ describe("dehydrate/hydrate", () => {
     expect(JSON.stringify(dehydrateSkillSnapshotsForWrite(reloaded, storePath), null, 2)).toBe(
       onDisk,
     );
+  });
+
+  it("canonicalizes a shared snapshot once, not once per session", () => {
+    // Storage dedupe is not enough: hydration hands one object to every
+    // referencing entry, so a naive pass would canonicalize + hash + verify
+    // ~59 KB per session on the synchronous save path, leaving the write
+    // path O(sessions × catalog) — the very cost this change removes.
+    const shared = snapshot();
+    const store: Record<string, SessionEntry> = {};
+    for (let i = 0; i < 200; i++) {
+      store[`agent:a:web-${i}`] = entry({ skillsSnapshot: shared });
+    }
+
+    const readFileSync = fs.readFileSync;
+    let blobReads = 0;
+    const spy = vi.spyOn(fs, "readFileSync").mockImplementation(((p: never, ...rest: never[]) => {
+      if (typeof p === "string" && p.includes("skill-snapshots")) {
+        blobReads += 1;
+      }
+      return (readFileSync as never)(p, ...rest);
+    }) as never);
+    try {
+      dehydrateSkillSnapshotsForWrite(store, storePath);
+    } finally {
+      spy.mockRestore();
+    }
+
+    // One verification read for the first entry; the other 199 hit the
+    // identity memo.
+    expect(blobReads).toBeLessThanOrEqual(1);
+    expect(fs.readdirSync(skillSnapshotDir(storePath))).toHaveLength(1);
   });
 
   it("returns the original store object when there is nothing to dehydrate", () => {
