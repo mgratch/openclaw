@@ -116,6 +116,35 @@ describe("dehydrate/hydrate", () => {
     expect(reloaded.a.skillsSnapshot).toEqual(snapshot());
   });
 
+  it("freezes hydrated snapshots so a stray edit cannot leak across loads", () => {
+    // Regression: hydration hands the same object to every referencing entry,
+    // so an in-place edit would otherwise bleed into other sessions and into
+    // later loads (isolation that structuredClone used to provide).
+    const serializable = dehydrateSkillSnapshotsForWrite(
+      { a: entry({ skillsSnapshot: snapshot() }) },
+      storePath,
+    );
+    const first = JSON.parse(JSON.stringify(serializable)) as Record<string, SessionEntry>;
+    clearSkillSnapshotCache();
+    hydrateSkillSnapshots(first, storePath);
+
+    expect(Object.isFrozen(first.a.skillsSnapshot)).toBe(true);
+    expect(() => {
+      (first.a.skillsSnapshot as SessionSkillSnapshot).prompt = "hijacked";
+    }).toThrow();
+
+    const second = JSON.parse(JSON.stringify(serializable)) as Record<string, SessionEntry>;
+    hydrateSkillSnapshots(second, storePath);
+    expect(second.a.skillsSnapshot?.prompt).toBe(snapshot().prompt);
+  });
+
+  it("does not freeze or cache the caller's snapshot when writing", () => {
+    // Saving must not mutate an object the caller still owns and may replace.
+    const live = snapshot();
+    writeSkillSnapshotBlob(storePath, live);
+    expect(Object.isFrozen(live)).toBe(false);
+  });
+
   it("shares one object across entries instead of copying per session", () => {
     const store: Record<string, SessionEntry> = {
       a: entry({ skillsSnapshot: snapshot() }),
@@ -152,6 +181,22 @@ describe("dehydrate/hydrate", () => {
     hydrateSkillSnapshots(once, storePath);
     hydrateSkillSnapshots(once, storePath);
     expect(once.a.skillsSnapshot).toEqual(snapshot());
+  });
+
+  it("re-serializes byte-identically so the no-op-write short-circuit still fires", () => {
+    // A store round-tripped through disk must dehydrate to exactly the same
+    // JSON, or store.ts writes the registry again on every save.
+    const first = dehydrateSkillSnapshotsForWrite(
+      { a: entry({ skillsSnapshot: snapshot() }), b: entry({ label: "x" }) },
+      storePath,
+    );
+    const onDisk = JSON.stringify(first, null, 2);
+    const reloaded = JSON.parse(onDisk) as Record<string, SessionEntry>;
+    hydrateSkillSnapshots(reloaded, storePath);
+
+    expect(JSON.stringify(dehydrateSkillSnapshotsForWrite(reloaded, storePath), null, 2)).toBe(
+      onDisk,
+    );
   });
 
   it("returns the original store object when there is nothing to dehydrate", () => {

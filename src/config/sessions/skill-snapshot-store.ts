@@ -45,9 +45,14 @@ const log = createSubsystemLogger("sessions");
  * -------
  * Hydration attaches the *same* cached object to every entry that
  * references it, so 803 entries cost 10 objects in memory rather than 803
- * copies. This is safe because snapshots are write-once: the capture path
- * always builds a fresh object and never edits an existing one. Do not
- * mutate a hydrated `entry.skillsSnapshot` in place — replace it.
+ * copies. Snapshots are write-once by construction — the capture path
+ * always builds a fresh object and never edits an existing one — but
+ * sharing would silently turn any stray in-place edit into cross-session
+ * and cross-load bleed, which is exactly the failure mode this codebase
+ * has been burned by before. So hydrated snapshots are deeply frozen: an
+ * attempted mutation throws at the offending line instead of quietly
+ * corrupting every other session that shares the catalog. Replace a
+ * snapshot, never edit one.
  */
 
 const SNAPSHOT_DIR_NAME = "skill-snapshots";
@@ -59,6 +64,21 @@ const DEFAULT_GC_MIN_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** hash -> snapshot. Bounded by the number of distinct catalogs (~10). */
 const snapshotCache = new Map<string, SessionSkillSnapshot>();
+
+/**
+ * Freeze a snapshot and everything reachable from it. Cheap: this runs once
+ * per distinct catalog, not once per session.
+ */
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+  Object.freeze(value);
+  for (const inner of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(inner);
+  }
+  return value;
+}
 
 export function skillSnapshotDir(storePath: string): string {
   return path.join(path.dirname(storePath), SNAPSHOT_DIR_NAME);
@@ -98,9 +118,13 @@ export function writeSkillSnapshotBlob(storePath: string, snapshot: SessionSkill
   const serialized = canonicalJson(snapshot);
   const hash = crypto.createHash("sha256").update(serialized, "utf8").digest("hex");
   const target = skillSnapshotPath(storePath, hash);
-  if (!snapshotCache.has(hash)) {
-    snapshotCache.set(hash, snapshot);
-  }
+  // Deliberately does NOT populate the cache. The argument belongs to the
+  // caller (it is the snapshot just captured for a live session); caching it
+  // would later hand that same unfrozen object to other sessions via
+  // hydration, and freezing it here would mutate someone else's object as a
+  // side effect of saving. The cache is populated only by reads, which own
+  // and freeze what they parse. Cost of that choice: one extra file read per
+  // distinct catalog after a write.
   if (fs.existsSync(target)) {
     return hash;
   }
@@ -138,6 +162,11 @@ export function readSkillSnapshotBlob(
     if (!parsed || typeof parsed !== "object" || typeof parsed.prompt !== "string") {
       return undefined;
     }
+    // Frozen because this object is shared by every entry that references the
+    // hash: an in-place edit would otherwise leak across sessions and across
+    // loads. Snapshots are immutable by definition, so this only makes an
+    // existing invariant enforceable.
+    deepFreeze(parsed);
     snapshotCache.set(hash, parsed);
     return parsed;
   } catch {
@@ -208,8 +237,16 @@ export function dehydrateSkillSnapshotsForWrite(
       continue;
     }
     out ??= { ...store };
-    const { skillsSnapshot: _inline, ...rest } = entry;
-    out[key] = { ...rest, skillsSnapshotRef: ref };
+    // Copy-then-mutate rather than `{ ...rest, skillsSnapshotRef: ref }`:
+    // assigning an existing key preserves its position, so an entry loaded
+    // from disk re-serializes with identical key order. Rebuilding the object
+    // would move the ref to the end, making every save differ from the
+    // on-disk bytes and defeating the `getSerializedSessionStore() === json`
+    // no-op-write short-circuit in store.ts.
+    const copy: SessionEntry = { ...entry };
+    delete copy.skillsSnapshot;
+    copy.skillsSnapshotRef = ref;
+    out[key] = copy;
   }
   return out ?? store;
 }
