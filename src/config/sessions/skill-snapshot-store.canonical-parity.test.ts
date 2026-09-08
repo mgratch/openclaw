@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- plain .mjs helper shared with scripts/, no type decls
 import {
   assertCanonicalizable,
   canonicalJson as scriptCanonicalJson,

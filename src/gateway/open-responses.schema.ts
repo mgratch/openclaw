@@ -348,6 +348,24 @@ export const OutputTextDoneEventSchema = z.object({
   text: z.string(),
 });
 
+/**
+ * Reasoning/thinking deltas, same shape as `response.output_text.delta`.
+ *
+ * `openresponses-http.ts` has emitted this since `b01b96e8cbd` — without it
+ * the thinking stream from Opus/Sonnet ACP turns is silently dropped on the
+ * SSE side even though the gateway logs show the deltas arriving — but the
+ * event was never added to `StreamingEvent`, so the emit site did not
+ * typecheck. Reasoning is already first-class elsewhere in this schema (the
+ * `reasoning` output item types); this is only the streaming counterpart.
+ */
+export const ReasoningTextDeltaEventSchema = z.object({
+  type: z.literal("response.reasoning_text.delta"),
+  item_id: z.string(),
+  output_index: z.number().int().nonnegative(),
+  content_index: z.number().int().nonnegative(),
+  delta: z.string(),
+});
+
 export type StreamingEvent =
   | z.infer<typeof ResponseCreatedEventSchema>
   | z.infer<typeof ResponseInProgressEventSchema>
@@ -358,4 +376,5 @@ export type StreamingEvent =
   | z.infer<typeof ContentPartAddedEventSchema>
   | z.infer<typeof ContentPartDoneEventSchema>
   | z.infer<typeof OutputTextDeltaEventSchema>
+  | z.infer<typeof ReasoningTextDeltaEventSchema>
   | z.infer<typeof OutputTextDoneEventSchema>;

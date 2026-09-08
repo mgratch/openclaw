@@ -66,4 +66,19 @@ export type EmbeddedRunAttemptResult = {
   clientToolCall?: { name: string; params: Record<string, unknown> };
   /** True when sessions_yield tool was called during this attempt. */
   yieldDetected?: boolean;
+  /**
+   * Empty-final-turn recovery state (additive, optional).
+   *
+   * Lets the outer run loop and the UI bridge tell apart "model spoke first
+   * try" (both false), "needed a wrap-up retry and recovered"
+   * (wrapUpAttempted=true, emptyFinalTurn=false), and "even the wrap-up retry
+   * came back empty" (both true) — the UI watchdog renders its recovery card
+   * only on the last case.
+   *
+   * `1f5e68cda9e fix(runner): recover empty final turns` exposed these on the
+   * agent_end payload (`src/plugins/types.ts`) and set them in `attempt.ts`,
+   * but never added them to this result type.
+   */
+  wrapUpAttempted?: boolean;
+  emptyFinalTurn?: boolean;
 };

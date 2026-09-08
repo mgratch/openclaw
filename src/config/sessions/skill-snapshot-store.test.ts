@@ -249,14 +249,18 @@ describe("dehydrate/hydrate", () => {
       store[`agent:a:web-${i}`] = entry({ skillsSnapshot: shared });
     }
 
-    const readFileSync = fs.readFileSync;
+    type ReadFileSync = typeof fs.readFileSync;
+    const readFileSync: ReadFileSync = fs.readFileSync;
     let blobReads = 0;
-    const spy = vi.spyOn(fs, "readFileSync").mockImplementation(((p: never, ...rest: never[]) => {
-      if (typeof p === "string" && p.includes("skill-snapshots")) {
+    const spy = vi.spyOn(fs, "readFileSync").mockImplementation(((
+      ...args: Parameters<ReadFileSync>
+    ) => {
+      const [target] = args;
+      if (typeof target === "string" && target.includes("skill-snapshots")) {
         blobReads += 1;
       }
-      return (readFileSync as never)(p, ...rest);
-    }) as never);
+      return readFileSync(...args);
+    }) as ReadFileSync);
     try {
       dehydrateSkillSnapshotsForWrite(store, storePath);
     } finally {
