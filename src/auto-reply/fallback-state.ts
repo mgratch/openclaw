@@ -58,6 +58,18 @@ export function buildFallbackAttemptSummaries(attempts: RuntimeFallbackAttempt[]
   );
 }
 
+/**
+ * True when the run silently dropped to a cheaper model because a paid model
+ * could not be approved (no operator watching, or the spend prompt was
+ * declined). This is the one fallback class that must be reported even at
+ * verbosity "off": every other fallback reason is a transient provider fault
+ * the user can do nothing about, whereas a spend downgrade means the answer
+ * came from a weaker model and is worth re-running deliberately.
+ */
+export function isMeteredDowngrade(attempts: RuntimeFallbackAttempt[]): boolean {
+  return attempts.some((attempt) => attempt.reason?.startsWith("metered_") === true);
+}
+
 export function buildFallbackNotice(params: {
   selectedProvider: string;
   selectedModel: string;
@@ -69,6 +81,12 @@ export function buildFallbackNotice(params: {
   const active = formatProviderModelRef(params.activeProvider, params.activeModel);
   if (selected === active) {
     return null;
+  }
+  if (isMeteredDowngrade(params.attempts)) {
+    // Deliberately says what happened and what to do about it. The raw reason
+    // ("metered unapproved headless") is accurate but tells the reader nothing
+    // actionable, and this notice is the only signal an unattended run leaves.
+    return `⚠️ Downgraded model: answered with ${active}. ${selected} was skipped because it bills per token and the spend was not approved. Re-run in the web UI to use ${selected}.`;
   }
   const reasonSummary = buildFallbackReasonSummary(params.attempts);
   return `↪️ Model Fallback: ${active} (selected ${selected}; ${reasonSummary})`;

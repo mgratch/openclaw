@@ -24,6 +24,7 @@ import { estimateUsageCost, resolveModelCostConfig } from "../../utils/usage-for
 import {
   buildFallbackClearedNotice,
   buildFallbackNotice,
+  isMeteredDowngrade,
   resolveFallbackTransition,
 } from "../fallback-state.js";
 import type { OriginatingChannelType, TemplateContext } from "../templating.js";
@@ -690,7 +691,10 @@ export async function runReplyAgent(params: {
           attempts: fallbackAttempts,
         },
       });
-      if (verboseEnabled) {
+      // A spend downgrade is reported regardless of verbosity. Verbosity
+      // defaults to "off", which is every unattended run — precisely the runs
+      // where the model silently changed and nobody saw it happen.
+      if (verboseEnabled || isMeteredDowngrade(fallbackAttempts)) {
         const fallbackNotice = buildFallbackNotice({
           selectedProvider,
           selectedModel,
