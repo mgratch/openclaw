@@ -572,8 +572,8 @@ describe("abort detection", () => {
       createdAt: Date.now(),
     };
     subagentRegistryMocks.listSubagentRunsForRequester.mockReturnValueOnce([childRun]);
-    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
-      (key) => (key === childKey ? childRun : null),
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation((key) =>
+      key === childKey ? childRun : null,
     );
 
     const result = await runStopCommand({
@@ -628,13 +628,15 @@ describe("abort detection", () => {
       .mockReturnValueOnce([depth1Run])
       .mockReturnValueOnce([depth2Run])
       .mockReturnValueOnce([]);
-    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
-      (key) => {
-        if (key === depth1Key) return depth1Run;
-        if (key === depth2Key) return depth2Run;
-        return null;
-      },
-    );
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation((key) => {
+      if (key === depth1Key) {
+        return depth1Run;
+      }
+      if (key === depth2Key) {
+        return depth2Run;
+      }
+      return null;
+    });
 
     const result = await runStopCommand({
       cfg,
@@ -693,13 +695,15 @@ describe("abort detection", () => {
       .mockReturnValueOnce([depth1Run])
       .mockReturnValueOnce([depth2Run])
       .mockReturnValueOnce([]);
-    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation(
-      (key) => {
-        if (key === depth1Key) return depth1Run;
-        if (key === depth2Key) return depth2Run;
-        return null;
-      },
-    );
+    subagentRegistryMocks.getLatestSubagentRunByChildSessionKey.mockImplementation((key) => {
+      if (key === depth1Key) {
+        return depth1Run;
+      }
+      if (key === depth2Key) {
+        return depth2Run;
+      }
+      return null;
+    });
 
     const result = await runStopCommand({
       cfg,

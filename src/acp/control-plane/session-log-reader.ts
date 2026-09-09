@@ -30,7 +30,6 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
 import type { AcpRuntimeEvent } from "../runtime/types.js";
 
 const ENV_FLAG = "OPENCLAW_ACP_LOG_READER";
@@ -53,7 +52,9 @@ const offsetsByPath = new Map<string, OffsetEntry>();
 
 function isReaderEnabled(): boolean {
   const v = process.env[ENV_FLAG]?.trim();
-  if (!v) return false;
+  if (!v) {
+    return false;
+  }
   return v !== "0" && v.toLowerCase() !== "false";
 }
 
@@ -64,7 +65,9 @@ function resolveSidecarPath(acpxSessionId: string): string {
 
 function parseLine(line: string): AcpRuntimeEvent | null {
   const trimmed = line.trim();
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
   try {
     const parsed = JSON.parse(trimmed);
     if (parsed && typeof parsed === "object" && typeof parsed.type === "string") {
@@ -110,9 +113,13 @@ export function fingerprintEvent(event: AcpRuntimeEvent): string {
 export async function backfillFromSessionLog(
   input: SessionLogReaderInput,
 ): Promise<{ emitted: number } | null> {
-  if (!isReaderEnabled()) return null;
+  if (!isReaderEnabled()) {
+    return null;
+  }
   const acpxSessionId = input.acpxSessionId?.trim();
-  if (!acpxSessionId) return null;
+  if (!acpxSessionId) {
+    return null;
+  }
 
   const filePath = resolveSidecarPath(acpxSessionId);
   const logWarn = input.logWarn ?? (() => {});
@@ -131,9 +138,7 @@ export async function backfillFromSessionLog(
   // If the file shrank (rotation) or mtime went backwards (clock skew,
   // recreated session), start from zero again.
   const startFrom =
-    prev && prev.byteOffset <= stat.size && prev.mtimeMs <= stat.mtimeMs
-      ? prev.byteOffset
-      : 0;
+    prev && prev.byteOffset <= stat.size && prev.mtimeMs <= stat.mtimeMs ? prev.byteOffset : 0;
 
   if (startFrom >= stat.size) {
     offsetsByPath.set(filePath, { byteOffset: stat.size, mtimeMs: stat.mtimeMs });
@@ -178,10 +183,16 @@ export async function backfillFromSessionLog(
     }
     consumedBytes += Buffer.byteLength(line, "utf8") + 1; // +1 for '\n'
     const event = parseLine(line);
-    if (!event) continue;
-    if (!BACKFILL_EVENT_TYPES.has(event.type)) continue;
+    if (!event) {
+      continue;
+    }
+    if (!BACKFILL_EVENT_TYPES.has(event.type)) {
+      continue;
+    }
     const fp = fingerprintEvent(event);
-    if (seen.has(fp)) continue;
+    if (seen.has(fp)) {
+      continue;
+    }
     try {
       await input.onEvent(event);
       emitted++;

@@ -56,12 +56,19 @@ function isBase64Charset(cleaned: string): boolean {
   for (let i = 0; i < cleaned.length; i += 1) {
     const ch = cleaned.charCodeAt(i);
     if (padCount > 0) {
-      if (ch !== 0x3d /* '=' */) return false;
+      if (ch !== 0x3d /* '=' */) {
+        return false;
+      }
       padCount += 1;
-      if (padCount > 2) return false;
+      if (padCount > 2) {
+        return false;
+      }
       continue;
     }
-    if (ch === 0x3d /* '=' */) { padCount = 1; continue; }
+    if (ch === 0x3d /* '=' */) {
+      padCount = 1;
+      continue;
+    }
     // A-Z, a-z, 0-9, '+', '/'
     if (
       (ch >= 0x41 && ch <= 0x5a) ||

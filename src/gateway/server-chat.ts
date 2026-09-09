@@ -819,7 +819,7 @@ export function createAgentEventHandler({
     // under the requesting session.
     const subagentEnvelope = sessionKey ? resolveSubagentEnvelope(sessionKey) : null;
     const agentPayload = sessionKey
-      ? { ...eventForClients, sessionKey, ...(subagentEnvelope ?? {}) }
+      ? { ...eventForClients, sessionKey, ...subagentEnvelope }
       : eventForClients;
     const last = agentRunSeq.get(evt.runId) ?? 0;
     const isToolEvent = evt.stream === "tool";
@@ -857,7 +857,7 @@ export function createAgentEventHandler({
             // subagent cards showed "(0 steps)" and stale liveness while the
             // child was actively running tools (2026-08-06).
             return sessionKey
-              ? { ...eventForClients, sessionKey, ...(subagentEnvelope ?? {}), data }
+              ? { ...eventForClients, sessionKey, ...subagentEnvelope, data }
               : { ...eventForClients, data };
           })()
         : agentPayload;

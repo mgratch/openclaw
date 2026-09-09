@@ -17,16 +17,16 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { loadEmbeddedPiMcpConfig } from "../agents/embedded-pi-mcp.js";
+import { resolveMcpTransport } from "../agents/mcp-transport.js";
+import { sanitizeServerName } from "../agents/pi-bundle-mcp-names.js";
+import { loadWorkspaceSkillEntries } from "../agents/skills/workspace.js";
 import type { AnyAgentTool } from "../agents/tools/common.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import { routeLogsToStderr } from "../logging/console.js";
 import { resolvePluginTools } from "../plugins/tools.js";
 import { VERSION } from "../version.js";
-import { loadEmbeddedPiMcpConfig } from "../agents/embedded-pi-mcp.js";
-import { resolveMcpTransport } from "../agents/mcp-transport.js";
-import { sanitizeServerName } from "../agents/pi-bundle-mcp-names.js";
-import { loadWorkspaceSkillEntries } from "../agents/skills/workspace.js";
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -105,9 +105,7 @@ async function connectMcpServer(
       source: { kind: "mcp" as const, serverName, originalToolName: t.name, client },
     }));
 
-    process.stderr.write(
-      `gateway-bridge: connected to "${serverName}" — ${tools.length} tools\n`,
-    );
+    process.stderr.write(`gateway-bridge: connected to "${serverName}" — ${tools.length} tools\n`);
     return { session: { serverName, client }, tools };
   } catch (err) {
     process.stderr.write(
@@ -200,7 +198,9 @@ function discoverSkillTools(config: OpenClawConfig): BridgedTool[] {
     for (const entry of entries) {
       const skill = entry.skill;
       // Skip skills that opt out of model invocation
-      if (skill.disableModelInvocation) continue;
+      if (skill.disableModelInvocation) {
+        continue;
+      }
 
       const safeName = `skill__${skill.name.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
       tools.push({
@@ -359,7 +359,9 @@ export async function serveGatewayBridgeMcp(): Promise<void> {
 
   let shuttingDown = false;
   const shutdown = () => {
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      return;
+    }
     shuttingDown = true;
     process.stdin.off("end", shutdown);
     process.stdin.off("close", shutdown);

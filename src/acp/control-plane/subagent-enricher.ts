@@ -28,68 +28,50 @@ export interface SyntheticSubagentHop {
   summary?: string;
 }
 
-const AGENT_TOOL_NAMES = new Set([
-  "agent",
-  "task",
-  "subagent",
-  "spawn_agent",
-]);
+const AGENT_TOOL_NAMES = new Set(["agent", "task", "subagent", "spawn_agent"]);
 
 function isAgentToolName(name: string | undefined): boolean {
-  if (!name) return false;
+  if (!name) {
+    return false;
+  }
   return AGENT_TOOL_NAMES.has(name.toLowerCase());
 }
 
-function pickString(
-  input: unknown,
-  keys: readonly string[],
-): string | undefined {
-  if (!input || typeof input !== "object") return undefined;
+function pickString(input: unknown, keys: readonly string[]): string | undefined {
+  if (!input || typeof input !== "object") {
+    return undefined;
+  }
   const obj = input as Record<string, unknown>;
   for (const k of keys) {
     const v = obj[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "string" && v.trim()) {
+      return v.trim();
+    }
   }
   return undefined;
 }
 
-function extractAgentId(
-  toolCallId: string,
-  input: unknown,
-): string {
-  const fromInput = pickString(input, [
-    "agent_id",
-    "agentId",
-    "id",
-    "child_id",
-  ]);
-  if (fromInput) return fromInput;
+function extractAgentId(toolCallId: string, input: unknown): string {
+  const fromInput = pickString(input, ["agent_id", "agentId", "id", "child_id"]);
+  if (fromInput) {
+    return fromInput;
+  }
   // Stable synthetic id keyed off the parent tool call so start/end
   // deduplicate correctly.
   return `synth:${toolCallId}`;
 }
 
 function extractSubagentType(input: unknown): string | undefined {
-  return pickString(input, [
-    "subagent_type",
-    "subagentType",
-    "agent_type",
-    "type",
-    "kind",
-  ]);
+  return pickString(input, ["subagent_type", "subagentType", "agent_type", "type", "kind"]);
 }
 
 function extractDescription(input: unknown): string | undefined {
-  return pickString(input, [
-    "description",
-    "prompt",
-    "task",
-    "goal",
-    "instructions",
-  ]);
+  return pickString(input, ["description", "prompt", "task", "goal", "instructions"]);
 }
 
-function extractSummaryFromOutput(event: Extract<AcpRuntimeEvent, { type: "tool_call" }>): string | undefined {
+function extractSummaryFromOutput(
+  event: Extract<AcpRuntimeEvent, { type: "tool_call" }>,
+): string | undefined {
   const blocks = Array.isArray(event.contentBlocks) ? event.contentBlocks : [];
   const firstText = blocks.find(
     (b) => b && typeof b === "object" && (b as { type?: string }).type === "text",
@@ -144,10 +126,13 @@ export function createSubagentEnricher(): SubagentEnricher {
 
   return {
     onEvent(event) {
-      if (event.type !== "tool_call") return [];
-      if (!isAgentToolName(event.toolName)) return [];
-      const parentToolCallId =
-        event.toolCallId ?? `${event.toolName ?? "agent"}:anon`;
+      if (event.type !== "tool_call") {
+        return [];
+      }
+      if (!isAgentToolName(event.toolName)) {
+        return [];
+      }
+      const parentToolCallId = event.toolCallId ?? `${event.toolName ?? "agent"}:anon`;
 
       let state = tracked.get(parentToolCallId);
       if (!state) {
@@ -169,7 +154,9 @@ export function createSubagentEnricher(): SubagentEnricher {
         tracked.set(parentToolCallId, state);
       }
 
-      if (state.nativeSeen) return [];
+      if (state.nativeSeen) {
+        return [];
+      }
 
       const hops: SyntheticSubagentHop[] = [];
 
@@ -199,7 +186,9 @@ export function createSubagentEnricher(): SubagentEnricher {
       return hops;
     },
     markNativeHop(parentToolCallId) {
-      if (!parentToolCallId) return;
+      if (!parentToolCallId) {
+        return;
+      }
       const existing = tracked.get(parentToolCallId);
       if (existing) {
         existing.nativeSeen = true;

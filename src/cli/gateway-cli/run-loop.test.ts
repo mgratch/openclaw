@@ -268,10 +268,21 @@ describe("runGatewayLoop", () => {
       expect(start).toHaveBeenCalledTimes(2);
       await new Promise<void>((resolve) => setImmediate(resolve));
 
-      expect(abortEmbeddedPiRun).toHaveBeenCalledWith(undefined, { mode: "compacting" });
+      // objectContaining, not an exact literal: the call also carries a human
+      // `reason` string, and asserting the whole object made this test fail the
+      // moment that message was added. The contract under test is the mode.
+      expect(abortEmbeddedPiRun).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ mode: "compacting" }),
+      );
       expect(waitForActiveTasks).toHaveBeenCalledWith(90_000);
       expect(waitForActiveEmbeddedRuns).toHaveBeenCalledWith(90_000);
-      expect(abortEmbeddedPiRun).toHaveBeenCalledWith(undefined, { mode: "all" });
+      // Same as the compacting assertion above: the call carries a `reason`
+      // string that an exact literal would reject.
+      expect(abortEmbeddedPiRun).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ mode: "all" }),
+      );
       expect(markGatewayDraining).toHaveBeenCalledTimes(1);
       expect(gatewayLog.warn).toHaveBeenCalledWith(DRAIN_TIMEOUT_LOG);
       expect(closeFirst).toHaveBeenCalledWith({

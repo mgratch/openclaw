@@ -66,8 +66,13 @@ export function buildFallbackAttemptSummaries(attempts: RuntimeFallbackAttempt[]
  * the user can do nothing about, whereas a spend downgrade means the answer
  * came from a weaker model and is worth re-running deliberately.
  */
-export function isMeteredDowngrade(attempts: RuntimeFallbackAttempt[]): boolean {
-  return attempts.some((attempt) => attempt.reason?.startsWith("metered_") === true);
+export function isMeteredDowngrade(attempts: RuntimeFallbackAttempt[] | undefined): boolean {
+  // Tolerates a missing array: several callers get `attempts` from a mocked or
+  // partially-populated fallback result, and a notice helper must never be the
+  // thing that throws inside a run.
+  return Array.isArray(attempts)
+    ? attempts.some((attempt) => attempt.reason?.startsWith("metered_") === true)
+    : false;
 }
 
 export function buildFallbackNotice(params: {

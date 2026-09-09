@@ -102,9 +102,18 @@ describe("Session Store Cache", () => {
 
     const loaded1 = loadSessionStore(storePath);
     loaded1["session:1"].cliSessionIds = { openai: "mutated" };
-    if (loaded1["session:1"].skillsSnapshot?.skills?.length) {
-      loaded1["session:1"].skillsSnapshot.skills[0].name = "mutated";
-    }
+
+    // skillsSnapshot is content-addressed and shared between entries, so
+    // hydration deep-freezes it. That is a STRONGER guarantee than "the leak
+    // does not reach the next load" — the write cannot happen at all. Assert
+    // the rejection instead of performing it; in strict mode (ESM) assigning to
+    // a frozen property throws.
+    const firstSkill = loaded1["session:1"].skillsSnapshot?.skills?.[0];
+    expect(firstSkill).toBeDefined();
+    expect(Object.isFrozen(firstSkill)).toBe(true);
+    expect(() => {
+      (firstSkill as { name: string }).name = "mutated";
+    }).toThrow(TypeError);
 
     const loaded2 = loadSessionStore(storePath);
     expect(loaded2["session:1"].cliSessionIds?.openai).toBe("sess-1");

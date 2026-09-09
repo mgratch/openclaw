@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { FinalizedMsgContext } from "../templating.js";
-import type { OpenClawConfig } from "../../config/config.js";
-import type { ReplyDispatcher } from "./reply-dispatcher.js";
+import { __testing as AcpManagerTesting } from "../../acp/control-plane/manager.js";
 import {
   detectRuntimeFlip,
   recordWarmSessionForPreset,
@@ -9,7 +7,8 @@ import {
   performRuntimeFlip,
 } from "../../acp/control-plane/runtime-flip.js";
 import type { RuntimeFlipContext } from "../../acp/control-plane/runtime-flip.js";
-import { __testing as AcpManagerTesting } from "../../acp/control-plane/manager.js";
+import type { OpenClawConfig } from "../../config/config.js";
+import type { FinalizedMsgContext } from "../templating.js";
 
 describe("dispatch-from-config: runtime-flip wire-up", () => {
   beforeEach(() => {
@@ -71,9 +70,7 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
         modelOverride: presetId,
         sourceSessionKey,
         isSourceAcpSession: false,
-        readSourceMessages: async () => [
-          { role: "user" as const, content: "First question" },
-        ],
+        readSourceMessages: async () => [{ role: "user" as const, content: "First question" }],
       });
 
       expect(flipContext?.warmSessionKey).toBeUndefined();
@@ -127,9 +124,7 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
         modelOverride: "claude-code-opus",
         sourceSessionKey: "session-123",
         isSourceAcpSession: false,
-        readSourceMessages: async () => [
-          { role: "user", content: "Test" },
-        ],
+        readSourceMessages: async () => [{ role: "user", content: "Test" }],
       });
 
       expect(flipContext).not.toBeNull();
@@ -168,7 +163,12 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
 
   describe("preset resolution in flip context", () => {
     it("all ACP presets resolve correctly", async () => {
-      const presetIds = ["claude-code", "claude-code-opus", "claude-code-sonnet", "claude-code-haiku"];
+      const presetIds = [
+        "claude-code",
+        "claude-code-opus",
+        "claude-code-sonnet",
+        "claude-code-haiku",
+      ];
 
       for (const id of presetIds) {
         const flipContext = await detectRuntimeFlip({
@@ -231,9 +231,7 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
         modelOverride: "claude-code-opus",
         sourceSessionKey: "openai-session-123",
         isSourceAcpSession: false,
-        readSourceMessages: async () => [
-          { role: "user" as const, content: "Test message" },
-        ],
+        readSourceMessages: async () => [{ role: "user" as const, content: "Test message" }],
       });
 
       if (!flipContext) {
@@ -244,7 +242,12 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
       const mockManager = {
         initializeSession: vi.fn().mockResolvedValue({
           handle: { id: "mock-handle", cwd: "/tmp", backend: "local", runtimeSessionName: "test" },
-          meta: { agent: "claude-code", backend: "local", state: "idle" as const, lastActivityAt: Date.now() },
+          meta: {
+            agent: "claude-code",
+            backend: "local",
+            state: "idle" as const,
+            lastActivityAt: Date.now(),
+          },
         }),
         runTurn: vi.fn().mockResolvedValue({ output: "mocked" }),
         resolveSession: vi.fn().mockReturnValue({

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { oauthRefreshCacheKey, pendingOAuthRefreshes } from "./oauth.js";
 
 describe("OAuth refresh dedup layer", () => {

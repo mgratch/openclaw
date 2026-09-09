@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { resolveAcpModelPreset } from "../presets.js";
 import {
   detectRuntimeFlip,
   RuntimeFlipManager,
@@ -50,7 +51,13 @@ describe("runtime-flip", () => {
       });
       expect(flip).not.toBeNull();
       expect(flip?.preset?.id).toBe("claude-code-opus");
-      expect(flip?.preset?.acpxModel).toBe("claude-opus-4-6");
+      // Compare against the catalog rather than a literal. This asserted
+      // "claude-opus-4-6" and started failing the moment the preset was
+      // repointed to 4-7; the behavior under test is that the flip carries the
+      // preset's pinned model, not which model that happens to be this month.
+      const expectedAcpxModel = resolveAcpModelPreset("claude-code-opus")?.acpxModel;
+      expect(expectedAcpxModel).toBeDefined();
+      expect(flip?.preset?.acpxModel).toBe(expectedAcpxModel);
       expect(flip?.sourceSessionKey).toBe("openai-session-123");
     });
 
@@ -158,9 +165,7 @@ describe("runtime-flip", () => {
         modelOverride: "claude-code-opus",
         sourceSessionKey: undefined,
         isSourceAcpSession: false,
-        readSourceMessages: async () => [
-          { role: "user" as const, content: "test" },
-        ],
+        readSourceMessages: async () => [{ role: "user" as const, content: "test" }],
       });
       expect(flip).not.toBeNull();
       expect(flip?.sourceSessionKey).toBeUndefined();
@@ -216,7 +221,12 @@ describe("runtime-flip", () => {
 
   describe("preset resolution", () => {
     it("resolves all known ACP presets", async () => {
-      const presetIds = ["claude-code", "claude-code-opus", "claude-code-sonnet", "claude-code-haiku"];
+      const presetIds = [
+        "claude-code",
+        "claude-code-opus",
+        "claude-code-sonnet",
+        "claude-code-haiku",
+      ];
       for (const id of presetIds) {
         const flip = await manager.detectFlip({
           modelOverride: id,
@@ -229,7 +239,12 @@ describe("runtime-flip", () => {
     });
 
     it("all presets resolve to claude-code agent", async () => {
-      const presetIds = ["claude-code", "claude-code-opus", "claude-code-sonnet", "claude-code-haiku"];
+      const presetIds = [
+        "claude-code",
+        "claude-code-opus",
+        "claude-code-sonnet",
+        "claude-code-haiku",
+      ];
       for (const id of presetIds) {
         const flip = await manager.detectFlip({
           modelOverride: id,

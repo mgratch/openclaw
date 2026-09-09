@@ -21,11 +21,10 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
-import type { AcpRuntimeEvent } from "./types.js";
-import { parseAgentSessionKey } from "../../sessions/session-key-utils.js";
 import { resolveSessionTranscriptPath } from "../../config/sessions/paths.js";
 import { logVerbose } from "../../globals.js";
+import { parseAgentSessionKey } from "../../sessions/session-key-utils.js";
+import type { AcpRuntimeEvent } from "./types.js";
 
 /**
  * 2026-04-30: Webchat session keys (e.g. `web-05005d10`) are not
@@ -103,7 +102,9 @@ export function createAcpNdjsonSidecar(
   // append will error on the first write and we'll swallow it there.
   let dirEnsured = false;
   const ensureDir = async () => {
-    if (dirEnsured) return;
+    if (dirEnsured) {
+      return;
+    }
     try {
       await mkdir(path.dirname(resolved!), { recursive: true });
       dirEnsured = true;

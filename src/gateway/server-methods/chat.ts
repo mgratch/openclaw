@@ -5,12 +5,12 @@ import { getAcpSessionManager } from "../../acp/control-plane/manager.js";
 import type { AcpPermissionDecision } from "../../acp/runtime/types.js";
 import { resolveSessionAgentId } from "../../agents/agent-scope.js";
 import { resolveThinkingDefault } from "../../agents/model-selection.js";
+import { rewriteTranscriptEntriesInSessionFile } from "../../agents/pi-embedded-runner/transcript-rewrite.js";
 import {
   isEmbeddedPiRunActive,
   isEmbeddedPiRunStreaming,
   queueEmbeddedPiMessage,
 } from "../../agents/pi-embedded.js";
-import { rewriteTranscriptEntriesInSessionFile } from "../../agents/pi-embedded-runner/transcript-rewrite.js";
 import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
 import { createReplyDispatcher } from "../../auto-reply/reply/reply-dispatcher.js";
@@ -52,12 +52,7 @@ import {
 import { stripEnvelopeFromMessage, stripEnvelopeFromMessages } from "../chat-sanitize.js";
 import { augmentChatHistoryWithCliSessionImports } from "../cli-session-history.js";
 import { ADMIN_SCOPE } from "../method-scopes.js";
-import {
-  GATEWAY_CLIENT_CAPS,
-  GATEWAY_CLIENT_MODES,
-  GATEWAY_CLIENT_NAMES,
-  hasGatewayClientCap,
-} from "../protocol/client-info.js";
+import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../protocol/client-info.js";
 import {
   ErrorCodes,
   errorShape,
@@ -549,10 +544,7 @@ function sanitizeChatHistoryContentBlock(
   // API format ({type: "image", source: {type: "base64", data: "..."}}).
   // Without this, chat.history.full can return multi-MB payloads that hang
   // the browser when parsing the WebSocket response.
-  if (
-    (type === "image" || type === "input_image") &&
-    typeof entry.data === "string"
-  ) {
+  if ((type === "image" || type === "input_image") && typeof entry.data === "string") {
     const bytes = Buffer.byteLength(entry.data, "utf8");
     delete entry.data;
     entry.omitted = true;
@@ -805,10 +797,14 @@ function truncateAbortedMessage(message: unknown): Record<string, unknown> | und
     let remaining = CHAT_HISTORY_ABORTED_MAX_CHARS;
     const truncatedBlocks: unknown[] = [];
     for (const block of copy.content) {
-      if (!block || typeof block !== "object") continue;
+      if (!block || typeof block !== "object") {
+        continue;
+      }
       const b = block as Record<string, unknown>;
       if (b.type === "text" && typeof b.text === "string") {
-        if (remaining <= 0) continue;
+        if (remaining <= 0) {
+          continue;
+        }
         const slice = (b.text as string).slice(0, remaining);
         remaining -= slice.length;
         truncatedBlocks.push({ type: "text", text: slice });
@@ -1246,7 +1242,10 @@ function nextChatSeq(context: { agentRunSeq: Map<string, number> }, runId: strin
 }
 
 function broadcastChatFinal(params: {
-  context: Pick<GatewayRequestContext, "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq">;
+  context: Pick<
+    GatewayRequestContext,
+    "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq"
+  >;
   runId: string;
   sessionKey: string;
   message?: Record<string, unknown>;
@@ -1301,7 +1300,10 @@ function broadcastSideResult(params: {
 }
 
 function broadcastChatError(params: {
-  context: Pick<GatewayRequestContext, "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq">;
+  context: Pick<
+    GatewayRequestContext,
+    "broadcast" | "broadcastToConnIds" | "nodeSendToSession" | "agentRunSeq"
+  >;
   runId: string;
   sessionKey: string;
   errorMessage?: string;
@@ -1423,12 +1425,16 @@ export const chatHandlers: GatewayRequestHandlers = {
       );
       return;
     }
-    const { sessionKey, offset: rawOffset, limit: rawLimit } = params as {
+    const {
+      sessionKey,
+      offset: rawOffset,
+      limit: rawLimit,
+    } = params as {
       sessionKey: string;
       offset?: number;
       limit?: number;
     };
-    const { cfg, storePath, entry } = loadSessionEntry(sessionKey);
+    const { storePath, entry } = loadSessionEntry(sessionKey);
     const sessionId = entry?.sessionId;
     const allMessages =
       sessionId && storePath ? readSessionMessages(sessionId, storePath, entry?.sessionFile) : [];
@@ -1630,7 +1636,13 @@ export const chatHandlers: GatewayRequestHandlers = {
     // marker injection on the model's image capability. This prevents opaque
     // media:// markers from leaking into prompts for text-only model runs.
     const rawSessionKey = p.sessionKey;
-    const { cfg, store: sessionStore, storePath: sessionStorePath, entry, canonicalKey: sessionKey } = loadSessionEntry(rawSessionKey);
+    const {
+      cfg,
+      store: sessionStore,
+      storePath: sessionStorePath,
+      entry,
+      canonicalKey: sessionKey,
+    } = loadSessionEntry(rawSessionKey);
 
     let parsedMessage = inboundMessage;
     let parsedImages: ChatImageContent[] = [];
@@ -1739,7 +1751,9 @@ export const chatHandlers: GatewayRequestHandlers = {
               `attachmentBytes=${normalizedAttachments.reduce((s, a) => s + (typeof a.content === "string" ? a.content.length : 0), 0)} ` +
               `error=${String(err)}`,
           );
-          if (stack) context.logGateway.error?.(stack);
+          if (stack) {
+            context.logGateway.error?.(stack);
+          }
         } catch {
           // never let logging break the response path
         }
@@ -2037,12 +2051,18 @@ export const chatHandlers: GatewayRequestHandlers = {
       let acpModelHint: string | undefined;
       let acpApiHint: string | undefined;
       const registerRunForConnIds = (runId: string) => {
-        if (!connId) return;
+        if (!connId) {
+          return;
+        }
         if (runId !== clientRunId) {
           context.registerToolEventRecipient(runId, connId);
         }
         for (const [activeRunId, active] of context.chatAbortControllers) {
-          if (activeRunId !== runId && activeRunId !== clientRunId && active.sessionKey === p.sessionKey) {
+          if (
+            activeRunId !== runId &&
+            activeRunId !== clientRunId &&
+            active.sessionKey === p.sessionKey
+          ) {
             context.registerToolEventRecipient(activeRunId, connId);
           }
         }
@@ -2088,7 +2108,11 @@ export const chatHandlers: GatewayRequestHandlers = {
               // late-joining clients (e.g. page refresh mid-response) receive
               // in-progress events without leaking cross-session data.
               for (const [activeRunId, active] of context.chatAbortControllers) {
-                if (activeRunId !== runId && activeRunId !== clientRunId && active.sessionKey === p.sessionKey) {
+                if (
+                  activeRunId !== runId &&
+                  activeRunId !== clientRunId &&
+                  active.sessionKey === p.sessionKey
+                ) {
                   context.registerToolEventRecipient(activeRunId, connId);
                 }
               }

@@ -163,9 +163,13 @@ const PRESET_BY_ACPX_MODEL: ReadonlyMap<string, AcpModelPreset> = new Map(
 
 /** Look up a preset by UI-facing id. Returns undefined for unknown ids. */
 export function resolveAcpModelPreset(id: string | undefined | null): AcpModelPreset | undefined {
-  if (!id) return undefined;
+  if (!id) {
+    return undefined;
+  }
   const trimmed = id.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
   return PRESET_BY_ID.get(trimmed);
 }
 
@@ -178,9 +182,13 @@ export function resolveAcpModelPreset(id: string | undefined | null): AcpModelPr
 export function resolveAcpModelPresetFlexible(
   idOrAcpxModel: string | undefined | null,
 ): AcpModelPreset | undefined {
-  if (!idOrAcpxModel) return undefined;
+  if (!idOrAcpxModel) {
+    return undefined;
+  }
   const trimmed = idOrAcpxModel.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
   return PRESET_BY_ID.get(trimmed) ?? PRESET_BY_ACPX_MODEL.get(trimmed);
 }
 

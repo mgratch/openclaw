@@ -50,14 +50,32 @@ export type EmptyFinalTurnPredicateInput = {
  * session.
  */
 export function shouldAttemptEmptyFinalTurnRetry(input: EmptyFinalTurnPredicateInput): boolean {
-  if (input.aborted) return false;
-  if (input.yieldAborted) return false;
-  if (input.promptError) return false;
-  if (input.timedOutDuringCompaction) return false;
-  if (input.clientToolCallDetected) return false;
-  if (input.yieldDetected) return false;
-  if (input.assistantTextsLength !== 0) return false;
-  if (input.toolMetasLength <= 0) return false;
-  if (input.messagesSnapshotLength <= input.prePromptMessageCount) return false;
+  if (input.aborted) {
+    return false;
+  }
+  if (input.yieldAborted) {
+    return false;
+  }
+  if (input.promptError) {
+    return false;
+  }
+  if (input.timedOutDuringCompaction) {
+    return false;
+  }
+  if (input.clientToolCallDetected) {
+    return false;
+  }
+  if (input.yieldDetected) {
+    return false;
+  }
+  if (input.assistantTextsLength !== 0) {
+    return false;
+  }
+  if (input.toolMetasLength <= 0) {
+    return false;
+  }
+  if (input.messagesSnapshotLength <= input.prePromptMessageCount) {
+    return false;
+  }
   return true;
 }

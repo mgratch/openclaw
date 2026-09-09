@@ -63,9 +63,13 @@ export function prepareReplay(input: PrepareReplayInput): ReplayPayload {
   const maxChars = input.maxChars ?? DEFAULT_MAX_CHARS;
   const cleaned: ReplayMessage[] = [];
   for (const m of input.messages) {
-    if (!m || typeof m.content !== "string") continue;
+    if (!m || typeof m.content !== "string") {
+      continue;
+    }
     const text = m.content.trim();
-    if (!text) continue;
+    if (!text) {
+      continue;
+    }
     if (m.role !== "user" && m.role !== "assistant" && m.role !== "system") {
       continue;
     }
@@ -77,7 +81,9 @@ export function prepareReplay(input: PrepareReplayInput): ReplayPayload {
   let approx = cleaned.reduce((n, m) => n + m.content.length, 0);
   while (approx > maxChars && cleaned.length > 1) {
     const dropped = cleaned.shift();
-    if (!dropped) break;
+    if (!dropped) {
+      break;
+    }
     approx -= dropped.content.length;
   }
 
@@ -157,14 +163,18 @@ export function createWarmSessionPool(options?: {
 
   return {
     put(model, sessionKey) {
-      if (!model || !sessionKey) return;
+      if (!model || !sessionKey) {
+        return;
+      }
       entries.set(model, { sessionKey, lastUsedAt: now() });
       gc();
     },
     get(model) {
       gc();
       const entry = entries.get(model);
-      if (!entry) return null;
+      if (!entry) {
+        return null;
+      }
       entry.lastUsedAt = now();
       return entry.sessionKey;
     },

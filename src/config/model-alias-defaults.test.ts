@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONTEXT_TOKENS } from "../agents/defaults.js";
-import { applyModelDefaults } from "./defaults.js";
+import { applyModelDefaults, DEFAULT_MODEL_ALIASES } from "./defaults.js";
 import type { OpenClawConfig } from "./types.js";
 
 describe("applyModelDefaults", () => {
@@ -59,20 +59,28 @@ describe("applyModelDefaults", () => {
   }
 
   it("adds default aliases when models are present", () => {
+    // Drive both the fixture and the expectation from the alias map. Hardcoding
+    // "anthropic/claude-opus-4-6" meant this test broke the moment `opus` was
+    // repointed, even though the behavior under test never changed.
+    const opusTarget = DEFAULT_MODEL_ALIASES.opus;
+    const gptTarget = DEFAULT_MODEL_ALIASES.gpt;
+    expect(opusTarget).toBeDefined();
+    expect(gptTarget).toBeDefined();
+
     const cfg = {
       agents: {
         defaults: {
           models: {
-            "anthropic/claude-opus-4-6": {},
-            "openai/gpt-5.4": {},
+            [opusTarget]: {},
+            [gptTarget]: {},
           },
         },
       },
     } satisfies OpenClawConfig;
     const next = applyModelDefaults(cfg);
 
-    expect(next.agents?.defaults?.models?.["anthropic/claude-opus-4-6"]?.alias).toBe("opus");
-    expect(next.agents?.defaults?.models?.["openai/gpt-5.4"]?.alias).toBe("gpt");
+    expect(next.agents?.defaults?.models?.[opusTarget]?.alias).toBe("opus");
+    expect(next.agents?.defaults?.models?.[gptTarget]?.alias).toBe("gpt");
   });
 
   it("does not override existing aliases", () => {

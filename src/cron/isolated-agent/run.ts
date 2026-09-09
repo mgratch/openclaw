@@ -17,6 +17,7 @@ import { resolveNestedAgentLane } from "../../agents/lanes.js";
 import { LiveSessionModelSwitchError } from "../../agents/live-model-switch.js";
 import { loadModelCatalog } from "../../agents/model-catalog.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
+import type { FallbackAttempt } from "../../agents/model-fallback.types.js";
 import { isCliProvider, resolveThinkingDefault } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
 import {
@@ -26,6 +27,7 @@ import {
 import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { deriveSessionTotalTokens, hasNonzeroUsage } from "../../agents/usage.js";
 import { ensureAgentWorkspace } from "../../agents/workspace.js";
+import { buildFallbackNotice, isMeteredDowngrade } from "../../auto-reply/fallback-state.js";
 import {
   normalizeThinkLevel,
   normalizeVerboseLevel,
@@ -458,6 +460,11 @@ export async function runCronIsolatedAgentTurn(params: {
   let runResult: Awaited<ReturnType<typeof runEmbeddedPiAgent>> | undefined;
   let fallbackProvider = liveSelection.provider;
   let fallbackModel = liveSelection.model;
+  // Captured before liveSelection is overwritten below, so a downgrade notice can
+  // name the model that was ASKED for, not the one that ended up running.
+  const selectedProvider = liveSelection.provider;
+  const selectedModel = liveSelection.model;
+  let fallbackAttempts: FallbackAttempt[] = [];
   const runStartedAt = Date.now();
   let runEndedAt = runStartedAt;
   try {
@@ -582,6 +589,7 @@ export async function runCronIsolatedAgentTurn(params: {
       runResult = fallbackResult.result;
       fallbackProvider = fallbackResult.provider;
       fallbackModel = fallbackResult.model;
+      fallbackAttempts = fallbackResult.attempts ?? [];
       liveSelection.provider = fallbackResult.provider;
       liveSelection.model = fallbackResult.model;
       runEndedAt = Date.now();
@@ -788,6 +796,24 @@ export async function runCronIsolatedAgentTurn(params: {
     payloads,
     runLevelError: finalRunResult.meta?.error,
   });
+
+  // Cron is the most unattended surface there is, so a spend downgrade has to be
+  // stated in the delivered text — nobody is watching a log. The chat path does
+  // this in agent-runner.ts; cron has no notice plumbing of its own, so prepend
+  // it to both the summary and the delivered body.
+  if (isMeteredDowngrade(fallbackAttempts)) {
+    const downgradeNotice = buildFallbackNotice({
+      selectedProvider,
+      selectedModel,
+      activeProvider: fallbackProvider,
+      activeModel: fallbackModel,
+      attempts: fallbackAttempts,
+    });
+    if (downgradeNotice) {
+      summary = summary ? `${downgradeNotice}\n\n${summary}` : downgradeNotice;
+      outputText = outputText ? `${downgradeNotice}\n\n${outputText}` : downgradeNotice;
+    }
+  }
   const deliveryBestEffort = resolveCronDeliveryBestEffort(params.job);
   const resolveRunOutcome = (params?: { delivered?: boolean; deliveryAttempted?: boolean }) =>
     withRunSession({

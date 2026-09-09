@@ -155,12 +155,19 @@ function isValidBase64(value: string): boolean {
     const ch = value.charCodeAt(i);
     if (padCount > 0) {
       // Only `=` allowed once we've seen padding, and only up to two of them.
-      if (ch !== 0x3d /* '=' */) return false;
+      if (ch !== 0x3d /* '=' */) {
+        return false;
+      }
       padCount += 1;
-      if (padCount > 2) return false;
+      if (padCount > 2) {
+        return false;
+      }
       continue;
     }
-    if (ch === 0x3d /* '=' */) { padCount = 1; continue; }
+    if (ch === 0x3d /* '=' */) {
+      padCount = 1;
+      continue;
+    }
     // A-Z, a-z, 0-9, '+', '/'
     if (
       (ch >= 0x41 && ch <= 0x5a) ||

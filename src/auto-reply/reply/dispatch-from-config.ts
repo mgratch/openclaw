@@ -19,7 +19,6 @@ import { loadSessionStore, resolveSessionStoreEntry } from "../../config/session
 import type { SessionEntry } from "../../config/sessions/types.js";
 import { readSessionMessages } from "../../gateway/session-utils.fs.js";
 import { logVerbose } from "../../globals.js";
-import { getLogger } from "../../logging/logger.js";
 import { fireAndForgetHook } from "../../hooks/fire-and-forget.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import {
@@ -36,6 +35,7 @@ import {
   logMessageQueued,
   logSessionStateChange,
 } from "../../logging/diagnostic.js";
+import { getLogger } from "../../logging/logger.js";
 import {
   buildPluginBindingDeclinedText,
   buildPluginBindingErrorText,
@@ -143,9 +143,10 @@ const resolveSessionStoreLookup = (
   try {
     // Reuse pre-loaded store from the caller (e.g. chat.send already read it)
     // instead of reading sessions.json from disk again.
-    const store = sessionStoreHint?.store && sessionStoreHint.storePath === storePath
-      ? sessionStoreHint.store
-      : loadSessionStore(storePath);
+    const store =
+      sessionStoreHint?.store && sessionStoreHint.storePath === storePath
+        ? sessionStoreHint.store
+        : loadSessionStore(storePath);
     return {
       sessionKey,
       entry: resolveSessionStoreEntry({ store, sessionKey }).existing,
@@ -666,7 +667,9 @@ export async function dispatchReplyFromConfig(params: {
                   let uiTranscriptPath: string | undefined;
                   for (const agentId of candidateAgentIds) {
                     const wsDir = resolveAgentWorkspaceDir(cfg, agentId);
-                    if (!wsDir) continue;
+                    if (!wsDir) {
+                      continue;
+                    }
                     const candidate = path.join(wsDir, "ui-transcripts", `${shortKey}.jsonl`);
                     if (fs.existsSync(candidate)) {
                       uiTranscriptPath = candidate;
@@ -678,7 +681,9 @@ export async function dispatchReplyFromConfig(params: {
                     const parsed: unknown[] = [];
                     for (const line of raw.split("\n")) {
                       const trimmed = line.trim();
-                      if (!trimmed) continue;
+                      if (!trimmed) {
+                        continue;
+                      }
                       try {
                         parsed.push(JSON.parse(trimmed));
                       } catch {
@@ -713,8 +718,7 @@ export async function dispatchReplyFromConfig(params: {
                 }
                 const msgObj = msg as Record<string, unknown>;
                 // Handle assistant messages with content array
-                const ts =
-                  typeof msgObj.timestamp === "number" ? msgObj.timestamp : undefined;
+                const ts = typeof msgObj.timestamp === "number" ? msgObj.timestamp : undefined;
                 // UI-transcript fallback stores assistant content as a plain
                 // string rather than a content-block array; accept that shape
                 // too so replay hydration works for webchat source sessions.
