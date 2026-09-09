@@ -262,7 +262,13 @@ function clampText(text: string, maxChars: number): string {
 }
 
 const BINARY_SNIFF_LENGTH = 8192;
-const BINARY_REPLACEMENT_RATIO = 0.1;
+const BINARY_REPLACEMENT_RATIO = 0.3;
+/**
+ * Below this many decoded characters the replacement ratio is noise, not
+ * signal: a 9-byte cp1252 string with one smart quote is 11% replacements but
+ * is obviously text. Short inputs fall back to the NUL check alone.
+ */
+const BINARY_RATIO_MIN_SAMPLE = 64;
 
 /**
  * Heuristic "is this actually text?" check, run *after* decoding rather than by
@@ -283,7 +289,7 @@ function looksLikeBinaryContent(
   if (!isUtf16 && buffer.subarray(0, BINARY_SNIFF_LENGTH).includes(0)) {
     return true;
   }
-  if (decoded.length === 0) {
+  if (decoded.length < BINARY_RATIO_MIN_SAMPLE) {
     return false;
   }
   const sampled = Math.min(decoded.length, BINARY_SNIFF_LENGTH);

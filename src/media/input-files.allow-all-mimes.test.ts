@@ -138,6 +138,35 @@ describe("binary content fallback", () => {
     expect(result.text).toBe("hello world");
   });
 
+  it("does not misread short legacy-encoded text as binary", async () => {
+    // Regression: cp1252 smart quotes decode to U+FFFD under UTF-8, and in a
+    // 9-byte file two of them clear any low replacement ratio. Short inputs
+    // must rely on the NUL check alone, or real prose gets thrown away.
+    const cp1252 = Buffer.from([0x48, 0x69, 0x20, 0x93, 0x74, 0x68, 0x65, 0x72, 0x94]);
+    const result = await extractFileContentFromSource({
+      source: {
+        type: "base64",
+        data: base64(cp1252),
+        mediaType: "text/plain",
+        filename: "legacy.txt",
+      },
+      limits: limits(),
+    });
+    expect(result.text).toContain("Hi");
+    expect(result.text).not.toContain("[binary file");
+  });
+
+  it("still flags a long binary payload that has no NUL bytes", async () => {
+    // The ratio test must survive: 0x80-0xff with no NULs is invalid UTF-8 and
+    // long enough to trust.
+    const blob = Buffer.from(Array.from({ length: 512 }, (_, i) => 0x80 + (i % 0x7f)));
+    const result = await extractFileContentFromSource({
+      source: { type: "base64", data: base64(blob), mediaType: "application/x-thing" },
+      limits: limits(),
+    });
+    expect(result.text).toContain("[binary file: application/x-thing,");
+  });
+
   it("keeps ordinary UTF-8 text intact", async () => {
     const text = "line one\nline two\nunicode: café 🎉\n";
     const result = await extractFileContentFromSource({

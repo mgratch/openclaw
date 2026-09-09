@@ -360,7 +360,21 @@ async function extractFileBlocks(params: {
     const forcedTextMimeResolved = forcedTextMime ?? resolveTextMimeFromName(nameHint ?? "");
     const rawMime = bufferResult?.mime ?? attachment.mime;
     const normalizedRawMime = normalizeMimeType(rawMime);
-    if (!forcedTextMimeResolved && isBinaryMediaMime(normalizedRawMime)) {
+    const rawIsRenderableMedia = Boolean(
+      normalizedRawMime?.startsWith("image/") ||
+      normalizedRawMime?.startsWith("audio/") ||
+      normalizedRawMime?.startsWith("video/"),
+    );
+    // Under allowAllMimes keep dropping real image/audio/video here (they have
+    // their own pipelines earlier in this loop), but stop discarding documents
+    // merely because they are not text-extractable — docx/xlsx/archives used to
+    // vanish silently. extractFileContentFromSource now returns a placeholder
+    // for those, so the model is told a file arrived instead of losing it.
+    if (
+      !forcedTextMimeResolved &&
+      isBinaryMediaMime(normalizedRawMime) &&
+      (rawIsRenderableMedia || !limits.allowAllMimes)
+    ) {
       continue;
     }
     const utf16Charset = resolveUtf16Charset(bufferResult?.buffer);
@@ -395,7 +409,7 @@ async function extractFileBlocks(params: {
         allowedMimes.add(mimeType);
       }
     }
-    if (!allowedMimes.has(mimeType)) {
+    if (!limits.allowAllMimes && !allowedMimes.has(mimeType)) {
       if (shouldLogVerbose()) {
         logVerbose(
           `media: file attachment skipped (unsupported mime ${mimeType}) index=${attachment.index}`,
