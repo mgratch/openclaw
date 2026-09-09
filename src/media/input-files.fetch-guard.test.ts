@@ -315,6 +315,7 @@ describe("base64 size guards", () => {
           limits: {
             allowUrl: false,
             allowedMimes: new Set(["text/plain"]),
+            allowAllMimes: false,
             maxBytes: 6,
             maxChars: 100,
             maxRedirects: 0,

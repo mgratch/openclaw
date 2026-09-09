@@ -25,6 +25,12 @@ export type InputFileLimits = {
   allowUrl: boolean;
   urlAllowlist?: string[];
   allowedMimes: Set<string>;
+  /**
+   * Set when the configured allowlist contains a wildcard ("*" or "*\/*").
+   * The MIME allowlist is then skipped entirely and unknown types are handed to
+   * the model instead of failing the request. Size limits still apply.
+   */
+  allowAllMimes: boolean;
   maxBytes: number;
   maxChars: number;
   maxRedirects: number;
@@ -50,6 +56,8 @@ export type InputImageLimits = {
   allowUrl: boolean;
   urlAllowlist?: string[];
   allowedMimes: Set<string>;
+  /** See InputFileLimits.allowAllMimes. Absent means "enforce the allowlist". */
+  allowAllMimes?: boolean;
   maxBytes: number;
   maxRedirects: number;
   timeoutMs: number;
@@ -160,10 +168,30 @@ export function normalizeMimeList(values: string[] | undefined, fallback: string
   return new Set(input.map((value) => normalizeMimeType(value)).filter(Boolean) as string[]);
 }
 
+const MIME_WILDCARDS = new Set(["*", "*/*"]);
+
+/**
+ * True when an operator has opted out of MIME policing by putting a wildcard in
+ * the allowlist. Deliberately only honors an *explicit* wildcard: an empty or
+ * absent list still means "use the defaults", so this cannot be triggered by
+ * accident. Only consults the configured list, never the fallback, so the
+ * built-in defaults can never turn themselves into allow-all.
+ */
+export function mimeListAllowsAll(values: string[] | undefined): boolean {
+  if (!values || values.length === 0) {
+    return false;
+  }
+  return values.some((value) => {
+    const normalized = normalizeMimeType(value);
+    return normalized ? MIME_WILDCARDS.has(normalized) : false;
+  });
+}
+
 export function resolveInputFileLimits(config?: InputFileLimitsConfig): InputFileLimits {
   return {
     allowUrl: config?.allowUrl ?? true,
     allowedMimes: normalizeMimeList(config?.allowedMimes, DEFAULT_INPUT_FILE_MIMES),
+    allowAllMimes: mimeListAllowsAll(config?.allowedMimes),
     maxBytes: config?.maxBytes ?? DEFAULT_INPUT_FILE_MAX_BYTES,
     maxChars: config?.maxChars ?? DEFAULT_INPUT_FILE_MAX_CHARS,
     maxRedirects: config?.maxRedirects ?? DEFAULT_INPUT_MAX_REDIRECTS,
@@ -233,6 +261,45 @@ function clampText(text: string, maxChars: number): string {
   return text.slice(0, maxChars);
 }
 
+const BINARY_SNIFF_LENGTH = 8192;
+const BINARY_REPLACEMENT_RATIO = 0.1;
+
+/**
+ * Heuristic "is this actually text?" check, run *after* decoding rather than by
+ * sniffing magic bytes: the goal is not to identify the format, only to avoid
+ * pushing a wall of U+FFFD at the model once the MIME allowlist is disabled.
+ *
+ * A NUL byte in the head is decisive for single-byte encodings, but is normal
+ * in UTF-16, so that check is skipped when the charset says UTF-16. Otherwise
+ * we fall back to how many replacement characters the decoder had to emit.
+ */
+function looksLikeBinaryContent(
+  buffer: Buffer,
+  decoded: string,
+  charset: string | undefined,
+): boolean {
+  const encoding = charset?.trim().toLowerCase() ?? "";
+  const isUtf16 = encoding.startsWith("utf-16") || encoding.startsWith("utf16");
+  if (!isUtf16 && buffer.subarray(0, BINARY_SNIFF_LENGTH).includes(0)) {
+    return true;
+  }
+  if (decoded.length === 0) {
+    return false;
+  }
+  const sampled = Math.min(decoded.length, BINARY_SNIFF_LENGTH);
+  let replacements = 0;
+  for (let index = 0; index < sampled; index++) {
+    if (decoded.charCodeAt(index) === 0xfffd) {
+      replacements++;
+    }
+  }
+  return replacements / sampled > BINARY_REPLACEMENT_RATIO;
+}
+
+function renderBinaryPlaceholder(mimeType: string, byteLength: number): string {
+  return `[binary file: ${mimeType}, ${byteLength} bytes, no text extracted]`;
+}
+
 async function normalizeInputImage(params: {
   buffer: Buffer;
   mimeType?: string;
@@ -250,7 +317,7 @@ async function normalizeInputImage(params: {
     (HEIC_INPUT_IMAGE_MIMES.has(declaredMime) && !detectedMime)
       ? (detectedMime ?? declaredMime)
       : declaredMime;
-  if (!params.limits.allowedMimes.has(sourceMime)) {
+  if (!params.limits.allowAllMimes && !params.limits.allowedMimes.has(sourceMime)) {
     throw new Error(`Unsupported image MIME type: ${sourceMime}`);
   }
 
@@ -369,14 +436,19 @@ export async function extractFileContentFromSource(params: {
     throw new Error(`File too large: ${buffer.byteLength} bytes (limit: ${limits.maxBytes} bytes)`);
   }
 
-  if (!mimeType) {
+  // With allowAllMimes the harness deliberately stops policing formats: an
+  // unknown or undeclared type is handed to the model (as text when it decodes
+  // cleanly, as a placeholder when it does not) instead of failing the request.
+  // maxBytes above is still enforced, so "allow all" is not "allow unbounded".
+  const resolvedMime = mimeType ?? (limits.allowAllMimes ? "application/octet-stream" : undefined);
+  if (!resolvedMime) {
     throw new Error("input_file missing media type");
   }
-  if (!limits.allowedMimes.has(mimeType)) {
-    throw new Error(`Unsupported file MIME type: ${mimeType}`);
+  if (!limits.allowAllMimes && !limits.allowedMimes.has(resolvedMime)) {
+    throw new Error(`Unsupported file MIME type: ${resolvedMime}`);
   }
 
-  if (mimeType === "application/pdf") {
+  if (resolvedMime === "application/pdf") {
     const extracted = await extractPdfContent({
       buffer,
       maxPages: limits.pdf.maxPages,
@@ -394,6 +466,9 @@ export async function extractFileContentFromSource(params: {
     };
   }
 
-  const text = clampText(decodeTextContent(buffer, charset), limits.maxChars);
-  return { filename, text };
+  const decoded = decodeTextContent(buffer, charset);
+  if (looksLikeBinaryContent(buffer, decoded, charset)) {
+    return { filename, text: renderBinaryPlaceholder(resolvedMime, buffer.byteLength) };
+  }
+  return { filename, text: clampText(decoded, limits.maxChars) };
 }

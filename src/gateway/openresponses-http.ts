@@ -23,6 +23,7 @@ import {
   DEFAULT_INPUT_TIMEOUT_MS,
   extractFileContentFromSource,
   extractImageContentFromSource,
+  mimeListAllowsAll,
   normalizeMimeList,
   resolveInputFileLimits,
   type InputFileLimits,
@@ -249,6 +250,7 @@ function resolveResponsesLimits(
       allowUrl: images?.allowUrl ?? true,
       urlAllowlist: normalizeInputHostnameAllowlist(images?.urlAllowlist),
       allowedMimes: normalizeMimeList(images?.allowedMimes, DEFAULT_INPUT_IMAGE_MIMES),
+      allowAllMimes: mimeListAllowsAll(images?.allowedMimes),
       maxBytes: images?.maxBytes ?? DEFAULT_INPUT_IMAGE_MAX_BYTES,
       maxRedirects: images?.maxRedirects ?? DEFAULT_INPUT_MAX_REDIRECTS,
       timeoutMs: images?.timeoutMs ?? DEFAULT_INPUT_TIMEOUT_MS,
@@ -576,41 +578,60 @@ export async function handleOpenResponsesHttpRequest(
               if (sourceType === "url") {
                 markUrlPart();
               }
-              const file = await extractFileContentFromSource({
-                source:
-                  sourceType === "url"
-                    ? {
-                        type: "url",
-                        url: source.url ?? "",
-                        mediaType: source.media_type,
-                        filename: source.filename,
-                      }
-                    : {
-                        type: "base64",
-                        data: source.data ?? "",
-                        mediaType: source.media_type,
-                        filename: source.filename,
-                      },
-                limits: limits.files,
-              });
-              if (file.text?.trim()) {
+              // 2026-09-09: scoped to this one attachment on purpose. Previously
+              // a single unreadable file rejected the whole request, discarding
+              // the user's prompt and every other attachment behind an opaque
+              // "invalid request". Degrade to a note in the file context instead
+              // so the model can say which file failed and why.
+              try {
+                const file = await extractFileContentFromSource({
+                  source:
+                    sourceType === "url"
+                      ? {
+                          type: "url",
+                          url: source.url ?? "",
+                          mediaType: source.media_type,
+                          filename: source.filename,
+                        }
+                      : {
+                          type: "base64",
+                          data: source.data ?? "",
+                          mediaType: source.media_type,
+                          filename: source.filename,
+                        },
+                  limits: limits.files,
+                });
+                if (file.text?.trim()) {
+                  fileContexts.push(
+                    renderFileContextBlock({
+                      filename: file.filename,
+                      content: file.text,
+                    }),
+                  );
+                } else if (file.images && file.images.length > 0) {
+                  fileContexts.push(
+                    renderFileContextBlock({
+                      filename: file.filename,
+                      content: "[PDF content rendered to images]",
+                      surroundContentWithNewlines: false,
+                    }),
+                  );
+                }
+                if (file.images && file.images.length > 0) {
+                  images = images.concat(file.images);
+                }
+              } catch (err) {
+                const reason = err instanceof Error ? err.message : String(err);
+                logWarn(
+                  `openresponses: input_file skipped (${source.filename ?? "unnamed"}): ${reason}`,
+                );
                 fileContexts.push(
                   renderFileContextBlock({
-                    filename: file.filename,
-                    content: file.text,
+                    filename: source.filename,
+                    fallbackName: "attachment",
+                    content: `[could not read file: ${reason}]`,
                   }),
                 );
-              } else if (file.images && file.images.length > 0) {
-                fileContexts.push(
-                  renderFileContextBlock({
-                    filename: file.filename,
-                    content: "[PDF content rendered to images]",
-                    surroundContentWithNewlines: false,
-                  }),
-                );
-              }
-              if (file.images && file.images.length > 0) {
-                images = images.concat(file.images);
               }
             }
           }
