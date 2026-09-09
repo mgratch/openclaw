@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { createOpenClawCodingTools } from "./pi-tools.js";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+// This file mocks nothing, but the unit surface runs with isolate:false, so a
+// sibling that hoists mocks over pi-tools' dependency graph (plugins/tools.js,
+// exec-approvals, ...) leaves a poisoned copy in the shared module registry and
+// this file inherits it. Reset and import lazily so it always exercises the
+// real graph regardless of who ran first.
+let createOpenClawCodingTools: typeof import("./pi-tools.js").createOpenClawCodingTools;
+
+beforeAll(async () => {
+  vi.resetModules();
+  ({ createOpenClawCodingTools } = await import("./pi-tools.js"));
+});
 
 describe("createOpenClawCodingTools message provider policy", () => {
   it.each(["voice", "VOICE", " Voice "])(

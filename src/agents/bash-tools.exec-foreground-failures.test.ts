@@ -8,7 +8,11 @@ const isWin = process.platform === "win32";
 const defaultShell = isWin
   ? undefined
   : process.env.OPENCLAW_TEST_SHELL || resolveShellFromPath("bash") || process.env.SHELL || "sh";
-const longDelayCmd = isWin ? "Start-Sleep -Milliseconds 72" : "sleep 0.072";
+// Must outlive the 0.05s timeout below by a wide margin. This was 72ms, a 22ms
+// race that the shared test lane loses under parallel load. The process is
+// killed at the timeout either way, so a long sleep costs no wall time and makes
+// the assertion independent of scheduling jitter.
+const longDelayCmd = isWin ? "Start-Sleep -Seconds 30" : "sleep 30";
 
 describe("exec foreground failures", () => {
   let envSnapshot: ReturnType<typeof captureEnv>;

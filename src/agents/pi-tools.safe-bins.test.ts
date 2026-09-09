@@ -9,11 +9,20 @@ import { captureEnv } from "../test-utils/env.js";
 
 const bundledPluginsDirSnapshot = captureEnv(["OPENCLAW_BUNDLED_PLUGINS_DIR"]);
 
-beforeAll(() => {
+// Imported lazily in beforeAll, not at top level. A top-level `await import`
+// runs at collection time, which is both too EARLY (before the env var below is
+// set) and too LATE to matter (isolate:false means a sibling may already have
+// cached pi-tools bound to the real exec-approvals, so this file's mocks are
+// ignored). Resetting then importing here fixes both orderings.
+let createOpenClawCodingTools: typeof import("./pi-tools.js").createOpenClawCodingTools;
+
+beforeAll(async () => {
   process.env.OPENCLAW_BUNDLED_PLUGINS_DIR = path.join(
     os.tmpdir(),
     "openclaw-test-no-bundled-extensions",
   );
+  vi.resetModules();
+  ({ createOpenClawCodingTools } = await import("./pi-tools.js"));
 });
 
 afterAll(() => {
@@ -76,8 +85,6 @@ vi.mock("../infra/exec-approvals.js", async (importOriginal) => {
   };
   return { ...mod, resolveExecApprovals: () => approvals };
 });
-
-const { createOpenClawCodingTools } = await import("./pi-tools.js");
 
 type ExecToolResult = {
   content: Array<{ type: string; text?: string }>;

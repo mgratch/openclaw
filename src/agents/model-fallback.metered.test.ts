@@ -2,21 +2,39 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
-import { registerAgentRunContext, resetAgentRunContextForTest } from "../infra/agent-events.js";
 import type { AuthProfileStore } from "./auth-profiles.js";
 import { saveAuthProfileStore } from "./auth-profiles.js";
 import { AUTH_STORE_VERSION } from "./auth-profiles/constants.js";
-import { requestModelApprovalDecision } from "./model-approval-request.js";
-import { runWithModelFallback } from "./model-fallback.js";
 import { makeModelFallbackCfg } from "./test-helpers/model-fallback-config-fixture.js";
 
 vi.mock("./model-approval-request.js", () => ({
   requestModelApprovalDecision: vi.fn(async () => null),
 }));
 
-const mockedRequestApproval = vi.mocked(requestModelApprovalDecision);
+// All three are bound in beforeAll from ONE freshly reset registry. Two reasons,
+// both caused by isolate:false sharing the module registry across files:
+//   1. a sibling importing model-fallback first caches it bound to the REAL
+//      approval requester, so the mock never applies and no prompt is recorded;
+//   2. agent-events holds the run-context map, so the test and the subject must
+//      read the SAME copy — otherwise the context this file registers is
+//      invisible to the gate and candidates/prompt counts drift.
+let runWithModelFallback: typeof import("./model-fallback.js").runWithModelFallback;
+let registerAgentRunContext: typeof import("../infra/agent-events.js").registerAgentRunContext;
+let resetAgentRunContextForTest: typeof import("../infra/agent-events.js").resetAgentRunContextForTest;
+let mockedRequestApproval: ReturnType<
+  typeof vi.mocked<typeof import("./model-approval-request.js").requestModelApprovalDecision>
+>;
+
+beforeAll(async () => {
+  vi.resetModules();
+  const approvalModule = await import("./model-approval-request.js");
+  mockedRequestApproval = vi.mocked(approvalModule.requestModelApprovalDecision);
+  ({ registerAgentRunContext, resetAgentRunContextForTest } =
+    await import("../infra/agent-events.js"));
+  ({ runWithModelFallback } = await import("./model-fallback.js"));
+});
 
 afterEach(() => {
   resetAgentRunContextForTest();

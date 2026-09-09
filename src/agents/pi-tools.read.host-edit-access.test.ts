@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 type CapturedEditOperations = {
   access: (absolutePath: string) => Promise<void>;
@@ -29,7 +29,16 @@ vi.mock("@mariozechner/pi-coding-agent", async (importOriginal) => {
   };
 });
 
-const { createHostWorkspaceEditTool } = await import("./pi-tools.read.js");
+// Bound in beforeAll rather than by a top-level `await import`. The unit surface
+// runs with isolate:false, so a sibling that imports pi-tools.read first caches
+// a copy bound to the REAL createEditTool; the mock above then never records
+// `operations` and the access assertions see undefined.
+let createHostWorkspaceEditTool: typeof import("./pi-tools.read.js").createHostWorkspaceEditTool;
+
+beforeAll(async () => {
+  vi.resetModules();
+  ({ createHostWorkspaceEditTool } = await import("./pi-tools.read.js"));
+});
 
 describe("createHostWorkspaceEditTool host access mapping", () => {
   let tmpDir = "";

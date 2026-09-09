@@ -25,6 +25,10 @@ let logWarn: typeof import("../logger.js").logWarn;
 
 describe("sendExecApprovalFollowupResult", () => {
   beforeAll(async () => {
+    // Drop any copy a sibling cached before binding to this file's mocks:
+    // isolate:false shares the module registry, so without this the subject can
+    // resolve against the real logger and the logWarn spy records nothing.
+    vi.resetModules();
     ({
       sendExecApprovalFollowupResult,
       MAX_EXEC_APPROVAL_FOLLOWUP_FAILURE_LOG_KEYS: maxExecApprovalFollowupFailureLogKeys,
