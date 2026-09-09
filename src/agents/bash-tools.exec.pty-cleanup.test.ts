@@ -75,13 +75,19 @@ test("exec tears down PTY resources on timeout", async () => {
     security: "full",
     ask: "off",
   });
-  await expect(
-    tool.execute("toolcall", {
-      command: "sleep 5",
-      pty: true,
-      timeout: 0.01,
-    }),
-  ).rejects.toThrow("Command timed out");
+  // A timeout is a process-level failure, so exec reports it as a structured
+  // tool result rather than throwing (8e568142f61 "extract exec outcome and
+  // tool result helpers"); only spawn/runtime errors reject, cf.
+  // bash-tools.exec.pty-fallback-failure.test.ts. This test is really about the
+  // PTY teardown that has to happen either way.
+  const result = await tool.execute("toolcall", {
+    command: "sleep 5",
+    pty: true,
+    timeout: 0.01,
+  });
+
+  expect(result.details.status).toBe("failed");
+  expect(JSON.stringify(result.content)).toContain("Command timed out");
   expect(kill).toHaveBeenCalledTimes(1);
   expect(disposeData).toHaveBeenCalledTimes(1);
   expect(disposeExit).toHaveBeenCalledTimes(1);

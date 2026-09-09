@@ -6,10 +6,14 @@ import type { AuthProfileStore } from "./auth-profiles.js";
 import { makeModelFallbackCfg } from "./test-helpers/model-fallback-config-fixture.js";
 
 // Mock auth-profiles module — must be before importing model-fallback
+// This factory must cover EVERY auth-profiles export model-fallback.ts imports.
+// A missing one does not fail at import time — it throws inside the call, which
+// then surfaces as a confusing assertion failure on an unrelated expectation.
 vi.mock("./auth-profiles.js", () => ({
   ensureAuthProfileStore: vi.fn(),
   getSoonestCooldownExpiry: vi.fn(),
   isProfileInCooldown: vi.fn(),
+  loadAuthProfileStoreForRuntime: vi.fn(),
   resolveProfilesUnavailableReason: vi.fn(),
   resolveAuthProfileOrder: vi.fn(),
 }));
@@ -33,6 +37,9 @@ let mockedResolveProfilesUnavailableReason: ReturnType<
 let mockedResolveAuthProfileOrder: ReturnType<
   typeof vi.mocked<AuthProfilesModule["resolveAuthProfileOrder"]>
 >;
+let mockedLoadAuthProfileStoreForRuntime: ReturnType<
+  typeof vi.mocked<AuthProfilesModule["loadAuthProfileStoreForRuntime"]>
+>;
 let runWithModelFallback: ModelFallbackModule["runWithModelFallback"];
 let _probeThrottleInternals: ModelFallbackModule["_probeThrottleInternals"];
 let registerLogTransport: LoggerModule["registerLogTransport"];
@@ -54,6 +61,9 @@ async function loadModelFallbackProbeModules() {
     authProfilesModule.resolveProfilesUnavailableReason,
   );
   mockedResolveAuthProfileOrder = vi.mocked(authProfilesModule.resolveAuthProfileOrder);
+  mockedLoadAuthProfileStoreForRuntime = vi.mocked(
+    authProfilesModule.loadAuthProfileStoreForRuntime,
+  );
   runWithModelFallback = modelFallbackModule.runWithModelFallback;
   _probeThrottleInternals = modelFallbackModule._probeThrottleInternals;
   registerLogTransport = loggerModule.registerLogTransport;
@@ -173,6 +183,9 @@ describe("runWithModelFallback – probe logic", () => {
       profiles: {},
     };
     mockedEnsureAuthProfileStore.mockReturnValue(fakeStore);
+    // The cooldown-probe path re-reads the store from disk mid-run; hand it the
+    // same fake so probing sees the state the rest of the test set up.
+    mockedLoadAuthProfileStoreForRuntime.mockReturnValue(fakeStore);
 
     // Default: resolveAuthProfileOrder returns profiles only for "openai" provider
     mockedResolveAuthProfileOrder.mockImplementation(({ provider }: { provider: string }) => {

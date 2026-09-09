@@ -458,7 +458,14 @@ describe("createOpenClawCodingTools", () => {
       senderIsOwner: true,
     });
 
-    expect(xaiTools.some((tool) => tool.name === "web_search")).toBe(true);
+    // Sanity-check that the compat pass returned a real tool set. This used to
+    // assert on "web_search", but that tool only exists when a bundled search
+    // PROVIDER is registered in the global plugin registry — which this test
+    // never sets up. It therefore passed only when some sibling file happened
+    // to register one first (isolate: false shares the registry), and failed in
+    // a fresh worker. "read" is core and unconditional, so the precondition is
+    // now deterministic. The real subject is the schema sweep below.
+    expect(xaiTools.some((tool) => tool.name === "read")).toBe(true);
     for (const tool of xaiTools) {
       const violations = findUnsupportedSchemaKeywords(tool.parameters, `${tool.name}.parameters`);
       expect(

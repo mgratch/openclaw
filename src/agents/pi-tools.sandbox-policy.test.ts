@@ -31,6 +31,13 @@ function listToolNames(params: {
     .toSorted();
 }
 
+// These cases used "browser" as the stand-in for a sandbox-omitted tool, but
+// browser is a plugin now (extensions/browser), so createOpenClawCodingTools
+// can never return it and the assertions could only fail. "tts" is the
+// equivalent core tool: omitted from the sandbox surface by default and
+// re-exposed through allow / alsoAllow, which is what these tests are about.
+const SANDBOX_OMITTED_CORE_TOOL = "tts";
+
 describe("pi-tools sandbox policy", () => {
   it("re-exposes omitted sandbox tools via sandbox alsoAllow", () => {
     const names = listToolNames({
@@ -71,14 +78,14 @@ describe("pi-tools sandbox policy", () => {
         tools: {
           sandbox: {
             tools: {
-              allow: ["browser"],
+              allow: [SANDBOX_OMITTED_CORE_TOOL],
             },
           },
         },
       } as OpenClawConfig,
     });
 
-    expect(names).toContain("browser");
+    expect(names).toContain(SANDBOX_OMITTED_CORE_TOOL);
   });
 
   it("prefers the resolved sandbox context policy for legacy main session aliases", () => {
@@ -94,7 +101,7 @@ describe("pi-tools sandbox policy", () => {
             tools: {
               sandbox: {
                 tools: {
-                  allow: ["browser"],
+                  allow: [SANDBOX_OMITTED_CORE_TOOL],
                   alsoAllow: ["message"],
                 },
               },
@@ -110,7 +117,7 @@ describe("pi-tools sandbox policy", () => {
       sandboxAgentId: "tavern",
     });
 
-    expect(names).toContain("browser");
+    expect(names).toContain(SANDBOX_OMITTED_CORE_TOOL);
     expect(names).toContain("message");
   });
 
@@ -127,14 +134,14 @@ describe("pi-tools sandbox policy", () => {
           sandbox: {
             tools: {
               allow: [],
-              alsoAllow: ["browser"],
+              alsoAllow: [SANDBOX_OMITTED_CORE_TOOL],
             },
           },
         },
       } as OpenClawConfig,
     });
 
-    expect(names).toContain("browser");
+    expect(names).toContain(SANDBOX_OMITTED_CORE_TOOL);
     expect(names).toContain("read");
   });
 

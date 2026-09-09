@@ -9,9 +9,14 @@ vi.mock("./bash-tools.exec-approval-followup.js", () => ({
   sendExecApprovalFollowup: mocks.sendExecApprovalFollowup,
 }));
 
-vi.mock("../logger.js", () => ({
-  logWarn: mocks.logWarn,
-}));
+// Spread the real logger and override only logWarn. A bare factory drops
+// logInfo/logError/logDebug/logSuccess, and since vitest shares the module
+// registry across files in a worker, every sibling that logs then crashes —
+// which showed up as unrelated failures in exec, pi-tools and model-fallback.
+vi.mock("../logger.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../logger.js")>();
+  return { ...actual, logWarn: mocks.logWarn };
+});
 
 let sendExecApprovalFollowupResult: typeof import("./bash-tools.exec-host-shared.js").sendExecApprovalFollowupResult;
 let maxExecApprovalFollowupFailureLogKeys: typeof import("./bash-tools.exec-host-shared.js").MAX_EXEC_APPROVAL_FOLLOWUP_FAILURE_LOG_KEYS;

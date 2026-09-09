@@ -29,10 +29,19 @@ vi.mock("../infra/shell-env.js", async (importOriginal) => {
   };
 });
 
-vi.mock("../plugins/tools.js", () => ({
-  resolvePluginTools: () => [],
-  getPluginToolMeta: () => undefined,
-}));
+// Spread the real module rather than listing exports by hand. A hand-written
+// factory silently drops anything added later (this one was missing
+// copyPluginToolMeta), and because vitest shares the module registry across
+// files in a worker, the gap poisoned every sibling that imports pi-tools —
+// surfacing as unrelated assertion failures in a dozen other files.
+vi.mock("../plugins/tools.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../plugins/tools.js")>();
+  return {
+    ...actual,
+    resolvePluginTools: () => [],
+    getPluginToolMeta: () => undefined,
+  };
+});
 
 vi.mock("../infra/exec-approvals.js", async (importOriginal) => {
   const mod = await importOriginal<typeof import("../infra/exec-approvals.js")>();
