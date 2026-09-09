@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { resolveAcpModelPreset } from "../presets.js";
 import {
-  detectRuntimeFlip,
   RuntimeFlipManager,
   recordWarmSessionForPreset,
   performRuntimeFlip,
 } from "./runtime-flip.js";
-import type { RuntimeFlipInput, RuntimeFlipContext } from "./runtime-flip.js";
+import type { RuntimeFlipContext } from "./runtime-flip.js";
 
 describe("runtime-flip", () => {
   let manager: RuntimeFlipManager;
@@ -197,7 +196,9 @@ describe("runtime-flip", () => {
     });
 
     it("evicts stale warm sessions after TTL", async () => {
-      const now = { time: 0 };
+      // (A `now` clock stub used to be declared here for controlled-time TTL
+      // testing, but createWarmSessionPool is internal so it was never wired up
+      // — see the comment below. Removed rather than left dangling.)
       const manager2 = new RuntimeFlipManager();
 
       // Manually create a manager with controlled time for testing TTL.
@@ -305,85 +306,52 @@ describe("runtime-flip", () => {
   });
 
   describe("performRuntimeFlip", () => {
-    it("generates session key in canonical agent-scoped format", async () => {
-      // Verify that spawned session keys match agent:<agentId>:acp:preset:... pattern
-      const flip: RuntimeFlipContext = {
-        preset: {
-          id: "claude-code-opus",
-          label: "Claude Code · Opus",
-          agent: "claude-code",
-          acpxModel: "claude-opus-4-6",
-        },
-        sourceSessionKey: "openai-session-123",
-      };
-
-      // Construct minimal mock params
-      const params = {
-        flipContext: flip,
-        cfg: {} as any,
-        ctx: {} as any,
-        sourceSessionKey: "openai-session-123",
-      };
-
-      // Mock acpManager to capture the sessionKey
-      let capturedSessionKey: string | null = null;
-      vi.doMock("./manager.js", () => ({
-        getAcpSessionManager: () => ({
-          initializeSession: async (opts: any) => {
-            capturedSessionKey = opts.sessionKey;
-            return { handle: { id: "mock-handle" } };
-          },
-          runTurn: async () => {
-            return {};
-          },
-        }),
-      }));
-
-      // Note: This test is partial due to mocking complexity.
-      // The actual format validation is done in the next test via string parsing.
+    // Skipped, not deleted, because the coverage genuinely does not exist and a
+    // silently-passing empty test hid that. The original body built fixtures,
+    // called vi.doMock AFTER the module was already imported (so the mock never
+    // applied), and then asserted nothing; its closing comment claimed "the
+    // actual format validation is done in the next test", but no such test
+    // exists anywhere in this file.
+    //
+    // To make it real: performRuntimeFlip returns the spawned session key, so
+    // hoist the ./manager.js mock to module scope (vi.mock, not vi.doMock) and
+    // assert the returned key matches agent:<agentId>:acp:preset:<preset>:...
+    it.skip("generates session key in canonical agent-scoped format", async () => {
+      // intentionally empty — see the note above
     });
 
     it("returns null when flipContext lacks preset or sourceSessionKey", async () => {
-      const flipWithoutPreset: RuntimeFlipContext = {
+      // `preset` is required on RuntimeFlipContext, so this deliberately builds
+      // an invalid context to exercise the guard. Cast through `unknown` rather
+      // than `any` — the point is "this shape is intentionally wrong", not
+      // "disable type checking here".
+      const flipWithoutPreset = {
         sourceSessionKey: "openai-session-123",
-      } as any;
+      } as unknown as RuntimeFlipContext;
 
-      const params = {
+      // performRuntimeFlip bails before touching cfg/ctx when the preset is
+      // missing, so empty stand-ins are safe here. Typed off the function's own
+      // parameter type rather than `any`, so a signature change breaks this.
+      type FlipParams = Parameters<typeof performRuntimeFlip>[0];
+      const params: FlipParams = {
         flipContext: flipWithoutPreset,
-        cfg: {} as any,
-        ctx: {} as any,
+        cfg: {} as FlipParams["cfg"],
+        ctx: {} as FlipParams["ctx"],
       };
 
       const result = await performRuntimeFlip(params);
       expect(result).toBeNull();
     });
 
-    it("handles zero-message source session without crashing", async () => {
-      const flip: RuntimeFlipContext = {
-        preset: {
-          id: "claude-code",
-          label: "Claude Code",
-          agent: "claude-code",
-        },
-        sourceSessionKey: "openai-session-123",
-        replayPayload: {
-          sourceSessionKey: "openai-session-123",
-          targetModel: "claude-code",
-          messages: [],
-          approxChars: 0,
-        },
-      };
-
-      const params = {
-        flipContext: flip,
-        cfg: {} as any,
-        ctx: {} as any,
-        sourceSessionKey: "openai-session-123",
-      };
-
-      // Without mocking manager, this will fail at getAcpSessionManager().
-      // The important thing is the structure doesn't crash on zero messages.
-      // Full integration test would require manager mocking.
+    // Skipped for the same reason as the session-key test above: the body built
+    // a zero-message flip context and then asserted nothing, because (per its
+    // own closing comment) it "will fail at getAcpSessionManager()" without a
+    // module-scope manager mock. It was passing purely by doing nothing.
+    //
+    // To make it real: hoist a ./manager.js mock and assert performRuntimeFlip
+    // resolves rather than throwing when replayPayload.messages is empty.
+    it.skip("handles zero-message source session without crashing", async () => {
+      // intentionally empty — see the note above
     });
 
     it("uses preset.acpxModel if provided, falls back to preset.agent", async () => {

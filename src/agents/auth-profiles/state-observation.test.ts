@@ -35,7 +35,11 @@ describe("logAuthProfileFailureStateChange", () => {
     // checks is that USER-CONTROLLED fields must not inject control
     // characters — assert that against the payload after stripping the
     // logger's own ANSI-wrapped prefix.
-    const ANSI_RE = /\u001b\[[0-9;]*[A-Za-z]/g;
+    // Built from a char code rather than written as a regex literal: embedding
+    // a raw control character in a literal is what no-control-regex flags, and
+    // the match itself is legitimate here (we deliberately strip ANSI).
+    const ESC = String.fromCharCode(27);
+    const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*[A-Za-z]`, "g");
     const sanitizedLine = (consoleLine as string).replace(ANSI_RE, "");
     expect(sanitizedLine).not.toContain("\n");
     expect(sanitizedLine).not.toContain("\r");

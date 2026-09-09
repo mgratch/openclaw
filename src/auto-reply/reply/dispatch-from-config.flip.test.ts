@@ -191,10 +191,13 @@ describe("dispatch-from-config: runtime-flip wire-up", () => {
     });
 
     it("performRuntimeFlip returns null when preset not available", async () => {
-      const flipContext: RuntimeFlipContext = {
-        preset: null as any,
+      // `preset` is required on RuntimeFlipContext, so this deliberately builds
+      // an invalid context to exercise the guard. Cast through `unknown` rather
+      // than `any` — the point is "this shape is intentionally wrong", not
+      // "disable type checking here".
+      const flipContext = {
         sourceSessionKey: "session-123",
-      };
+      } as unknown as RuntimeFlipContext;
 
       const result = await performRuntimeFlip({
         flipContext,

@@ -32,10 +32,17 @@ describe("runCronIsolatedAgentTurn auth profile propagation (#20624)", () => {
         JSON.stringify({
           version: 1,
           profiles: {
+            // Deliberately a plan-backed token, not an api_key. This suite is
+            // about authProfileId propagation, but an api_key profile now
+            // classifies as METERED, and a headless cron run with no
+            // plan-backed fallback is skipped by the spend gate — so the run
+            // fails before the propagation assertion is ever reached. That gate
+            // behavior is correct and covered in model-fallback.metered.test.ts;
+            // it just does not belong in this test's blast radius.
             "openrouter:default": {
-              type: "api_key",
+              type: "token",
               provider: "openrouter",
-              key: "sk-or-test-key-12345",
+              token: "sk-or-test-token-12345",
             },
           },
           order: {

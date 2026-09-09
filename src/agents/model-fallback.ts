@@ -668,7 +668,13 @@ async function applyMeteredApprovalGate(params: {
     return {
       kind: "skip",
       reason: "metered_unapproved_headless",
-      error: `Metered model ${params.candidate.provider}/${params.candidate.model} skipped (headless, not approved)`,
+      // Actionable on purpose: when this is the only candidate the whole run
+      // fails here, and "skipped (headless, not approved)" gives the reader no
+      // idea why a cron job that used to work now dies. Name the escape hatches.
+      error:
+        `Metered model ${params.candidate.provider}/${params.candidate.model} skipped: it bills per token ` +
+        `and no one is available to approve the spend (headless run). Add a plan-backed fallback model, ` +
+        `or approve this model once from the web UI with "don't ask again" to set meteredAutoApprove on the session.`,
     };
   }
   const decision = await requestModelApprovalDecision({
