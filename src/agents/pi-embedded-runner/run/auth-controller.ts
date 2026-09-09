@@ -10,8 +10,8 @@ import {
 import { FailoverError, resolveFailoverStatus } from "../../failover-error.js";
 import { shouldAllowCooldownProbeForReason } from "../../failover-policy.js";
 import { requestModelApprovalDecision } from "../../model-approval-request.js";
-import { getApiKeyForModel, type ResolvedProviderAuth } from "../../model-auth.js";
 import { isNonSecretApiKeyMarker } from "../../model-auth-markers.js";
+import { getApiKeyForModel, type ResolvedProviderAuth } from "../../model-auth.js";
 import { resolveMeteredAutoApprove } from "../../model-metering.js";
 import {
   classifyFailoverReason,
@@ -294,16 +294,22 @@ export function createEmbeddedRunAuthController(params: {
   let meteredCredentialApproved = false;
   let meteredCredentialDenied = false;
 
-  const throwMeteredCredentialBlocked = (
-    reason: Extract<FailoverReason, "metered_denied" | "metered_unapproved_headless">,
-    profileId?: string,
-  ): never => {
+  /** The metered-gate outcomes this controller can raise as a failover. */
+  type MeteredBlockReason = Extract<
+    FailoverReason,
+    "metered_denied" | "metered_unapproved_headless" | "metered_switch_requested"
+  >;
+
+  const METERED_BLOCK_DETAIL: Record<MeteredBlockReason, string> = {
+    metered_denied: "was not approved",
+    metered_unapproved_headless: "was skipped (headless, not approved)",
+    metered_switch_requested: "was replaced by the model you selected",
+  };
+
+  const throwMeteredCredentialBlocked = (reason: MeteredBlockReason, profileId?: string): never => {
     const provider = params.getProvider();
     const modelId = params.getModelId();
-    const detail =
-      reason === "metered_denied"
-        ? "was not approved"
-        : "was skipped (headless, not approved)";
+    const detail = METERED_BLOCK_DETAIL[reason];
     // Always a FailoverError (independent of fallbackConfigured) so the outer
     // model-fallback loop classifies the attempt as metered_* and advances;
     // resolveAuthProfileFailureReason in run.ts filters these reasons out of
@@ -368,21 +374,30 @@ export function createEmbeddedRunAuthController(params: {
       sessionKey: runCtx.sessionKey,
       runId: params.runId,
     });
-    if (decision?.kind === "approve" && !decision.switchTo) {
+    if (decision?.kind === "approve") {
       if (decision.dontAskAgain) {
         // The gateway resolve handler persists the session flag out-of-band;
         // cache it here so later reads in this run skip the store re-read.
         runCtx.meteredAutoApprove = true;
       }
-      meteredCredentialApproved = true;
       runCtx.meteredApprovalGranted = true;
+      if (decision.switchTo) {
+        // The user picked a DIFFERENT model. This controller cannot swap models
+        // mid-attempt, so park the choice on the run context and fail over: the
+        // chain-level gate in model-fallback.ts consumes it for the next
+        // candidate. Previously this branch threw the choice away and reported
+        // a deny, so the user's selection appeared to do nothing and the card
+        // came straight back.
+        runCtx.meteredApprovalSwitchTo = decision.switchTo;
+        throwMeteredCredentialBlocked("metered_switch_requested", apiKeyInfo.profileId);
+      }
+      meteredCredentialApproved = true;
       return;
     }
-    // approve+switchTo: the user picked a DIFFERENT model. Mid-attempt the
-    // auth controller cannot swap models, so treat it as a deny for this
-    // credential path — the resulting failover advances the model-fallback
-    // loop, and its chain-level gate owns switchTo handling.
+    // Deny or timeout. Record it at run scope too so the chain-level gate stops
+    // asking for every later metered candidate.
     meteredCredentialDenied = true;
+    runCtx.meteredApprovalDenied = true;
     throwMeteredCredentialBlocked("metered_denied", apiKeyInfo.profileId);
   };
 

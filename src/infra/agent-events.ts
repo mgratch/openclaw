@@ -29,6 +29,20 @@ export type AgentRunContext = {
    * or dial-time in the embedded-run auth controller) skip re-asking.
    */
   meteredApprovalGranted?: boolean;
+  /**
+   * Run-scoped metered refusal: the mirror of `meteredApprovalGranted`. Without
+   * it, "Cancel" only skipped the current candidate and every later metered
+   * candidate raised a fresh approval card, so declining looked like it did
+   * nothing. Set by whichever gate saw the refusal; both gates check it before
+   * asking again.
+   */
+  meteredApprovalDenied?: boolean;
+  /**
+   * Model the user picked instead of the gated one. The dial-time gate cannot
+   * swap models mid-attempt, so it parks the choice here and fails over; the
+   * chain-level gate consumes it (exactly once) for the next candidate.
+   */
+  meteredApprovalSwitchTo?: { provider: string; model: string };
   /** Session store path, so the gate can lazily re-read the session entry. */
   storePath?: string;
 };

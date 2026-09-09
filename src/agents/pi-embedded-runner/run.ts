@@ -368,7 +368,8 @@ export async function runEmbeddedPiAgent(
           !failoverReason ||
           failoverReason === "timeout" ||
           failoverReason === "metered_denied" ||
-          failoverReason === "metered_unapproved_headless"
+          failoverReason === "metered_unapproved_headless" ||
+          failoverReason === "metered_switch_requested"
         ) {
           return null;
         }

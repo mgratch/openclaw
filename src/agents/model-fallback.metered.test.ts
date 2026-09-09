@@ -151,6 +151,72 @@ describe("metered model approval gate", () => {
     expect(mockedRequestApproval).toHaveBeenCalledTimes(1);
   });
 
+  it("asks once when several metered candidates follow a deny", async () => {
+    // Regression: deny used to be remembered nowhere, so every later metered
+    // rung raised a fresh approval card and Cancel looked like it did nothing.
+    const meteredA = `metered-a-${crypto.randomUUID()}`;
+    const meteredB = `metered-b-${crypto.randomUUID()}`;
+    const plan = `plan-${crypto.randomUUID()}`;
+    const cfg = makeMeteredCfg({
+      metered: meteredA,
+      fallbacks: [`${meteredB}/m2`, `${plan}/m3`],
+    });
+    const store: AuthProfileStore = {
+      version: AUTH_STORE_VERSION,
+      profiles: {
+        [`${meteredA}:default`]: { type: "api_key", provider: meteredA, key: "sk-a" },
+        [`${meteredB}:default`]: { type: "api_key", provider: meteredB, key: "sk-b" },
+        [`${plan}:default`]: { type: "token", provider: plan, token: "tok-test" },
+      },
+    };
+    const runId = crypto.randomUUID();
+    registerRunContext({ runId, isControlUiVisible: true });
+    mockedRequestApproval.mockResolvedValueOnce({ kind: "deny" });
+    const run = vi.fn().mockImplementation(async (provider: string) => {
+      if (provider === plan) {
+        return "ok";
+      }
+      throw new Error(`unexpected candidate provider: ${provider}`);
+    });
+
+    const result = await withTempAuthStore(store, async (tempDir) =>
+      runWithModelFallback({ cfg, provider: meteredA, model: "m1", runId, agentDir: tempDir, run }),
+    );
+
+    expect(result.result).toBe("ok");
+    expect(run.mock.calls).toEqual([[plan, "m3"]]);
+    // The second metered rung must be skipped WITHOUT a second card.
+    expect(mockedRequestApproval).toHaveBeenCalledTimes(1);
+    expect(result.attempts[0]?.reason).toBe("metered_denied");
+    expect(result.attempts[1]?.reason).toBe("metered_denied");
+  });
+
+  it("consumes a dial-time switchTo exactly once", async () => {
+    // The auth controller cannot swap models mid-attempt, so it parks the
+    // user's choice on the run context; the chain gate must honor it for the
+    // next candidate and must not let it leak into any later one.
+    const metered = `metered-${crypto.randomUUID()}`;
+    const plan = `plan-${crypto.randomUUID()}`;
+    const cfg = makeMeteredCfg({ metered, fallbacks: [`${plan}/m2`] });
+    const store = makeMeteredPlanStore({ metered, plan });
+    const runId = crypto.randomUUID();
+    registerAgentRunContext(runId, {
+      sessionKey: "agent:main:test",
+      isControlUiVisible: true,
+      meteredApprovalSwitchTo: { provider: plan, model: "picked-by-user" },
+    });
+    const run = vi.fn().mockResolvedValueOnce("ok");
+
+    const result = await withTempAuthStore(store, async (tempDir) =>
+      runWithModelFallback({ cfg, provider: metered, model: "m1", runId, agentDir: tempDir, run }),
+    );
+
+    expect(result.result).toBe("ok");
+    expect(run.mock.calls).toEqual([[plan, "picked-by-user"]]);
+    // Parked choice is pre-confirmed on the card, so no new prompt.
+    expect(mockedRequestApproval).not.toHaveBeenCalled();
+  });
+
   it("skips the metered candidate on deny and continues to the plan fallback", async () => {
     const metered = `metered-${crypto.randomUUID()}`;
     const plan = `plan-${crypto.randomUUID()}`;

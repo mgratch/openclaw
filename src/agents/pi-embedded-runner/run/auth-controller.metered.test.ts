@@ -11,8 +11,8 @@ import type { AuthProfileStore } from "../../auth-profiles.js";
 import { AUTH_STORE_VERSION } from "../../auth-profiles/constants.js";
 import { FailoverError } from "../../failover-error.js";
 import { requestModelApprovalDecision } from "../../model-approval-request.js";
-import { getApiKeyForModel, type ResolvedProviderAuth } from "../../model-auth.js";
 import { CUSTOM_LOCAL_AUTH_MARKER } from "../../model-auth-markers.js";
+import { getApiKeyForModel, type ResolvedProviderAuth } from "../../model-auth.js";
 import type { FailoverReason } from "../../pi-embedded-helpers.js";
 import { createEmbeddedRunAuthController } from "./auth-controller.js";
 import type { RuntimeAuthState } from "./helpers.js";
@@ -217,7 +217,11 @@ describe("embedded-run auth controller metered gate", () => {
     expect(harness.authStorage.setRuntimeApiKey).toHaveBeenCalledWith("acme", "sk-env-metered");
   });
 
-  it("treats approve+switchTo as deny for this credential path (chain gate owns the switch)", async () => {
+  it("parks approve+switchTo on the run context and fails over for the chain gate", async () => {
+    // This controller cannot swap models mid-attempt, so it records the user's
+    // choice and fails over. It must NOT report a deny: the previous behavior
+    // discarded the selection, so the chain gate re-prompted and the user saw
+    // the same card again after picking a different model.
     const runId = crypto.randomUUID();
     registerRunContext(runId, { sessionKey: "agent:main:test", isControlUiVisible: true });
     mockedRequestApproval.mockResolvedValueOnce({
@@ -226,8 +230,28 @@ describe("embedded-run auth controller metered gate", () => {
     });
     const harness = makeHarness({ runId, auth: ENV_API_KEY_AUTH });
 
-    await expectFailoverReason(harness.controller.initializeAuthProfile(), "metered_denied");
+    await expectFailoverReason(
+      harness.controller.initializeAuthProfile(),
+      "metered_switch_requested",
+    );
+    // The gated credential must still never be applied.
     expect(harness.authStorage.setRuntimeApiKey).not.toHaveBeenCalled();
+    const runCtx = getAgentRunContext(runId);
+    expect(runCtx?.meteredApprovalSwitchTo).toEqual({ provider: "plan-provider", model: "m2" });
+    // The user did approve something, so the run counts as granted and must not
+    // be recorded as a refusal.
+    expect(runCtx?.meteredApprovalGranted).toBe(true);
+    expect(runCtx?.meteredApprovalDenied).toBeUndefined();
+  });
+
+  it("records a deny at run scope so the chain gate stops asking", async () => {
+    const runId = crypto.randomUUID();
+    registerRunContext(runId, { sessionKey: "agent:main:test", isControlUiVisible: true });
+    mockedRequestApproval.mockResolvedValueOnce({ kind: "deny" });
+    const harness = makeHarness({ runId, auth: ENV_API_KEY_AUTH });
+
+    await expectFailoverReason(harness.controller.initializeAuthProfile(), "metered_denied");
+    expect(getAgentRunContext(runId)?.meteredApprovalDenied).toBe(true);
   });
 
   it("passes when the chain-level gate already granted approval this run", async () => {

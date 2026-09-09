@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { resolveAcpModelPreset } from "../../acp/presets.js";
 import { loadConfig } from "../../config/config.js";
 import { mergeSessionEntryPreserveActivity, updateSessionStore } from "../../config/sessions.js";
 import {
@@ -27,12 +28,31 @@ type ParsedSwitchTo =
   | { ok: true; value: { provider: string; model: string } | undefined }
   | { ok: false };
 
-/** Parse the resolve-side `switchTo` "provider/model" string. */
+/**
+ * Parse the resolve-side `switchTo`.
+ *
+ * Accepts either a "provider/model" ref or an ACP preset id (e.g.
+ * "claude-code-opus"). The UI model picker lists presets alongside plain refs
+ * and sends the raw catalog id; preset ids carry no slash, so before this they
+ * failed validation, the UI restored the card, and the prompt silently
+ * reappeared — which is exactly the case a user hits when picking a
+ * subscription-backed model to avoid the charge. Presets resolve to their
+ * pinned model the same way bare preset rungs resolve in model-fallback.ts.
+ */
 function parseSwitchTo(raw: string | undefined): ParsedSwitchTo {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   const trimmed = raw.trim();
+  if (!trimmed.includes("/")) {
+    // A preset with no pinned model ("claude-code" = agent default) has no
+    // concrete model to dial, so it stays a hard error rather than a silent
+    // no-op that would re-prompt.
+    const preset = resolveAcpModelPreset(trimmed);
+    return preset?.acpxModel
+      ? { ok: true, value: { provider: "anthropic", model: preset.acpxModel } }
+      : { ok: false };
+  }
   const slash = trimmed.indexOf("/");
   if (slash <= 0 || slash >= trimmed.length - 1) {
     return { ok: false };
@@ -219,7 +239,7 @@ export function createModelApprovalHandlers(manager: ModelApprovalManager): Gate
           undefined,
           errorShape(
             ErrorCodes.INVALID_REQUEST,
-            "invalid switchTo: expected 'provider/model' string",
+            "invalid switchTo: expected a 'provider/model' ref or a model-pinned ACP preset id",
           ),
         );
         return;

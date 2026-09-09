@@ -31,8 +31,8 @@ import {
 import { LiveSessionModelSwitchError } from "./live-model-switch.js";
 import { requestModelApprovalDecision } from "./model-approval-request.js";
 import { logModelFallbackDecision } from "./model-fallback-observation.js";
-import { classifyProviderBilling, resolveMeteredAutoApprove } from "./model-metering.js";
 import type { FallbackAttempt, ModelCandidate } from "./model-fallback.types.js";
+import { classifyProviderBilling, resolveMeteredAutoApprove } from "./model-metering.js";
 import {
   buildConfiguredAllowlistKeys,
   buildModelAliasIndex,
@@ -630,6 +630,16 @@ async function applyMeteredApprovalGate(params: {
     // there is no UI route to ask and no channel policy to apply.
     return { kind: "proceed", candidate: params.candidate };
   }
+  // Consume a switch parked by the dial-time gate BEFORE anything else: that
+  // gate cannot swap models mid-attempt, so it records the user's choice and
+  // fails over to us. Taken exactly once so it cannot leak into later
+  // candidates, and honored regardless of billing class because the user
+  // already confirmed this exact model on the card.
+  const pendingSwitch = runCtx.meteredApprovalSwitchTo;
+  if (pendingSwitch) {
+    runCtx.meteredApprovalSwitchTo = undefined;
+    return { kind: "proceed", candidate: { ...params.candidate, ...pendingSwitch } };
+  }
   const billing = classifyProviderBilling({
     cfg: params.cfg,
     provider: params.candidate.provider,
@@ -637,6 +647,15 @@ async function applyMeteredApprovalGate(params: {
   });
   if (billing !== "metered") {
     return { kind: "proceed", candidate: params.candidate };
+  }
+  if (runCtx.meteredApprovalDenied === true) {
+    // Already declined this run. Re-asking for every later metered candidate is
+    // what made "Cancel" look like it did nothing, so skip without prompting.
+    return {
+      kind: "skip",
+      reason: "metered_denied",
+      error: `Metered model ${params.candidate.provider}/${params.candidate.model} skipped (declined earlier in this run)`,
+    };
   }
   if (runCtx.meteredApprovalGranted === true || resolveMeteredAutoApprove(runCtx)) {
     // Run-scoped approval (set by either gate) or the session-level
@@ -673,7 +692,10 @@ async function applyMeteredApprovalGate(params: {
     // NOT re-gate it — the UI already confirmed that exact model.
     return { kind: "proceed", candidate: decision.switchTo ?? params.candidate };
   }
-  // Deny, timeout, or no approval route: treat all as "not approved".
+  // Deny, timeout, or no approval route: treat all as "not approved", and
+  // remember it for the rest of the run so the next metered candidate does not
+  // raise a fresh card. Cancel has to mean "stop", not "try the next paid one".
+  runCtx.meteredApprovalDenied = true;
   return {
     kind: "skip",
     reason: "metered_denied",
