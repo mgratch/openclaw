@@ -27,5 +27,8 @@ export function collectEnabledInsecureOrDangerousFlags(cfg: OpenClawConfig): str
   if (cfg.plugins?.entries?.acpx?.config?.permissionMode === "approve-all") {
     enabledFlags.push("plugins.entries.acpx.config.permissionMode=approve-all");
   }
+  if (cfg.approvals?.autoApprove === "non-spend") {
+    enabledFlags.push("approvals.autoApprove=non-spend");
+  }
   return enabledFlags;
 }

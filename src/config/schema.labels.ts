@@ -201,6 +201,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "tools.exec.safeBinTrustedDirs": "Exec Safe Bin Trusted Dirs",
   "tools.exec.safeBinProfiles": "Exec Safe Bin Profiles",
   approvals: "Approvals",
+  "approvals.autoApprove": "Blanket Auto-Approval",
   "approvals.exec": "Exec Approval Forwarding",
   "approvals.exec.enabled": "Forward Exec Approvals",
   "approvals.exec.mode": "Approval Forwarding Mode",

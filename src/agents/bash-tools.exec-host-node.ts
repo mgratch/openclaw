@@ -62,12 +62,13 @@ export type ExecuteNodeHostCommandParams = {
 export async function executeNodeHostCommand(
   params: ExecuteNodeHostCommandParams,
 ): Promise<AgentToolResult<ExecToolDetails>> {
-  const { hostSecurity, hostAsk, askFallback } = execHostShared.resolveExecHostApprovalContext({
-    agentId: params.agentId,
-    security: params.security,
-    ask: params.ask,
-    host: "node",
-  });
+  const { hostSecurity, hostAsk, askFallback, autoApprove } =
+    execHostShared.resolveExecHostApprovalContext({
+      agentId: params.agentId,
+      security: params.security,
+      ask: params.ask,
+      host: "node",
+    });
   if (params.boundNode && params.requestedNode && params.boundNode !== params.requestedNode) {
     throw new Error(`exec node not allowed (bound to ${params.boundNode})`);
   }
@@ -205,16 +206,19 @@ export async function executeNodeHostCommand(
     );
     params.warnings.push(`⚠️ Obfuscated command detected: ${obfuscation.reasons.join("; ")}`);
   }
+  // See the gateway host: approvals.autoApprove="non-spend" clears every
+  // force-ask term, not just the security/ask policy.
   const requiresAsk =
-    requiresExecApproval({
+    !autoApprove &&
+    (requiresExecApproval({
       ask: hostAsk,
       security: hostSecurity,
       analysisOk,
       allowlistSatisfied,
       durableApprovalSatisfied,
     }) ||
-    inlineEvalHit !== null ||
-    obfuscationForcesAsk;
+      inlineEvalHit !== null ||
+      obfuscationForcesAsk);
   const invokeTimeoutMs = Math.max(
     10_000,
     (typeof params.timeoutSec === "number" ? params.timeoutSec : params.defaultTimeoutSec) * 1000 +

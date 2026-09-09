@@ -8261,6 +8261,18 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
             },
             additionalProperties: false,
           },
+          autoApprove: {
+            anyOf: [
+              {
+                type: "string",
+                const: "off",
+              },
+              {
+                type: "string",
+                const: "non-spend",
+              },
+            ],
+          },
         },
         additionalProperties: false,
       },
@@ -12409,6 +12421,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA = {
     approvals: {
       label: "Approvals",
       help: "Approval routing controls for forwarding exec and plugin approval requests to chat destinations outside the originating session. Keep these disabled unless operators need explicit out-of-band approval visibility.",
+      tags: ["advanced"],
+    },
+    "approvals.autoApprove": {
+      label: "Blanket Auto-Approval",
+      help: "Blanket approval policy (default: off). Set to non-spend to auto-approve every exec and plugin approval prompt so unattended runs cannot stall waiting for a click. Decisions that cost money are still always asked, and an explicit exec security of deny still refuses. Dangerous: any command the agent chooses will run without review.",
       tags: ["advanced"],
     },
     "approvals.exec": {

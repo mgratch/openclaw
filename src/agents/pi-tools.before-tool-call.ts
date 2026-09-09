@@ -1,3 +1,4 @@
+import { loadConfig } from "../config/config.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
 import type { SessionState } from "../logging/diagnostic-session-state.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
@@ -223,6 +224,20 @@ export async function runBeforeToolCallHook(args: {
           log.warn(`plugin onResolution callback failed: ${String(err)}`);
         }
       };
+      // approvals.autoApprove="non-spend": resolve as an immediate allow-once
+      // instead of raising a card nobody is there to click. Note this is placed
+      // AFTER the hookResult.block check above on purpose — a plugin veto is a
+      // policy decision, not a human gate, and is never auto-approved. The
+      // metered spend gate lives in the model layer and is likewise untouched.
+      if (loadConfig().approvals?.autoApprove === "non-spend") {
+        // Still fire onResolution: plugins keep state keyed on it, and skipping
+        // it would leak that state rather than merely skipping a prompt.
+        safeOnResolution(PluginApprovalResolutions.ALLOW_ONCE);
+        return {
+          blocked: false,
+          params: mergeParamsWithApprovalOverrides(params, hookResult.params),
+        };
+      }
       try {
         const requestResult = await callGatewayTool<{
           id?: string;

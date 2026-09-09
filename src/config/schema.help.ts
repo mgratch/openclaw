@@ -635,6 +635,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Debounce window in milliseconds for coalescing rapid skill file changes before reload logic runs. Increase to reduce reload churn on frequent writes, or lower for faster edit feedback.",
   approvals:
     "Approval routing controls for forwarding exec and plugin approval requests to chat destinations outside the originating session. Keep these disabled unless operators need explicit out-of-band approval visibility.",
+  "approvals.autoApprove":
+    "Blanket approval policy (default: off). Set to non-spend to auto-approve every exec and plugin approval prompt so unattended runs cannot stall waiting for a click. Decisions that cost money are still always asked, and an explicit exec security of deny still refuses. Dangerous: any command the agent chooses will run without review.",
   "approvals.exec":
     "Groups exec-approval forwarding behavior including enablement, routing mode, filters, and explicit targets. Configure here when approval prompts must reach operational channels instead of only the origin thread.",
   "approvals.exec.enabled":

@@ -7388,6 +7388,20 @@
       "hasChildren": true
     },
     {
+      "path": "approvals.autoApprove",
+      "kind": "core",
+      "type": "string",
+      "required": false,
+      "deprecated": false,
+      "sensitive": false,
+      "tags": [
+        "advanced"
+      ],
+      "label": "Blanket Auto-Approval",
+      "help": "Blanket approval policy (default: off). Set to non-spend to auto-approve every exec and plugin approval prompt so unattended runs cannot stall waiting for a click. Decisions that cost money are still always asked, and an explicit exec security of deny still refuses. Dangerous: any command the agent chooses will run without review.",
+      "hasChildren": false
+    },
+    {
       "path": "approvals.exec",
       "kind": "core",
       "type": "object",
@@ -63376,7 +63390,12 @@
       ],
       "deprecated": false,
       "sensitive": false,
-      "tags": [],
+      "tags": [
+        "access",
+        "tools"
+      ],
+      "label": "Obfuscated-Command Policy",
+      "help": "How to handle commands flagged by the obfuscation heuristic (variable-expansion chains, encoded payloads, chained heredocs). \"ask\" (default) forces explicit approval even when security=full/ask=off; \"warn\" logs and annotates but defers to the configured security/ask policy. Only relax on operator-owned single-user installs.",
       "hasChildren": false
     },
     {

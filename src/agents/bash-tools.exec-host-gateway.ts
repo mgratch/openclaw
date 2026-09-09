@@ -85,12 +85,13 @@ export type ProcessGatewayAllowlistResult = {
 export async function processGatewayAllowlist(
   params: ProcessGatewayAllowlistParams,
 ): Promise<ProcessGatewayAllowlistResult> {
-  const { approvals, hostSecurity, hostAsk, askFallback } = resolveExecHostApprovalContext({
-    agentId: params.agentId,
-    security: params.security,
-    ask: params.ask,
-    host: "gateway",
-  });
+  const { approvals, hostSecurity, hostAsk, askFallback, autoApprove } =
+    resolveExecHostApprovalContext({
+      agentId: params.agentId,
+      security: params.security,
+      ask: params.ask,
+      host: "gateway",
+    });
   const allowlistEval = evaluateShellAllowlist({
     command: params.command,
     allowlist: approvals.allowlist,
@@ -178,18 +179,22 @@ export async function processGatewayAllowlist(
     allowlistSatisfied &&
     !enforcedCommand &&
     allowlistPlanUnavailableReason !== null;
+  // approvals.autoApprove="non-spend" clears every force-ask term at once. The
+  // four extra terms below each bypass hostAsk on their own, so suppressing the
+  // policy term alone would still let an unattended run stall.
   const requiresAsk =
-    requiresExecApproval({
+    !autoApprove &&
+    (requiresExecApproval({
       ask: hostAsk,
       security: hostSecurity,
       analysisOk,
       allowlistSatisfied,
       durableApprovalSatisfied,
     }) ||
-    requiresAllowlistPlanApproval ||
-    requiresHeredocApproval ||
-    requiresInlineEvalApproval ||
-    obfuscationForcesAsk;
+      requiresAllowlistPlanApproval ||
+      requiresHeredocApproval ||
+      requiresInlineEvalApproval ||
+      obfuscationForcesAsk);
   if (requiresHeredocApproval) {
     params.warnings.push(
       "Warning: heredoc execution requires explicit approval in allowlist mode.",

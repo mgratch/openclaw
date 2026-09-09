@@ -24,7 +24,23 @@ export type ExecApprovalForwardingConfig = {
   targets?: ExecApprovalForwardTarget[];
 };
 
+/**
+ * Blanket approval policy.
+ *
+ * - "off" (default): every approval gate behaves normally.
+ * - "non-spend": approve every human-gated exec and plugin prompt automatically,
+ *   so an unattended run cannot stall waiting for a click. Deliberately does NOT
+ *   cover the metered-model spend gate: decisions that cost money are always
+ *   asked. An explicit `security: "deny"` also still wins.
+ *
+ * Named as a mode rather than a boolean so the spend carve-out is stated by the
+ * value itself, and so further policies can be added without a breaking change.
+ */
+export type ApprovalsAutoApproveMode = "off" | "non-spend";
+
 export type ApprovalsConfig = {
   exec?: ExecApprovalForwardingConfig;
   plugin?: ExecApprovalForwardingConfig;
+  /** Blanket approval policy. Default: "off". See ApprovalsAutoApproveMode. */
+  autoApprove?: ApprovalsAutoApproveMode;
 };

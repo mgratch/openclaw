@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { loadConfig } from "../config/config.js";
+import { loadConfig, type OpenClawConfig } from "../config/config.js";
 import { buildExecApprovalUnavailableReplyPayload } from "../infra/exec-approval-reply.js";
 import {
   hasConfiguredExecApprovalDmRoute,
@@ -48,6 +48,13 @@ export type ExecHostApprovalContext = {
   hostSecurity: ExecSecurity;
   hostAsk: ExecAsk;
   askFallback: ResolvedExecApprovals["agent"]["askFallback"];
+  /**
+   * `approvals.autoApprove === "non-spend"`. Hosts must OR this out of every
+   * force-ask term, not just the security/ask policy: heredoc, strict inline
+   * eval, allowlist-plan and obfuscation each bypass `hostAsk` on their own, so
+   * checking policy alone would still leave an unattended run able to stall.
+   */
+  autoApprove: boolean;
 };
 
 export type ExecApprovalPendingState = {
@@ -196,20 +203,35 @@ export function resolveExecHostApprovalContext(params: {
   security: ExecSecurity;
   ask: ExecAsk;
   host: "gateway" | "node";
+  /**
+   * Injection seam for the approvals policy. Defaults to the live config.
+   * Present so callers (and tests) can supply a config without mocking the
+   * config module, which `loadConfig` being used repo-wide makes hazardous.
+   */
+  cfg?: Pick<OpenClawConfig, "approvals">;
 }): ExecHostApprovalContext {
   const approvals = resolveExecApprovals(params.agentId, {
     security: params.security,
     ask: params.ask,
   });
-  const hostSecurity = minSecurity(params.security, approvals.agent.security);
+  const policySecurity = minSecurity(params.security, approvals.agent.security);
   // An explicit ask=off policy in exec-approvals.json must be able to suppress
   // prompts even when tool/runtime defaults are stricter (for example on-miss).
-  const hostAsk = approvals.agent.ask === "off" ? "off" : maxAsk(params.ask, approvals.agent.ask);
-  const askFallback = approvals.agent.askFallback;
-  if (hostSecurity === "deny") {
+  const policyAsk = approvals.agent.ask === "off" ? "off" : maxAsk(params.ask, approvals.agent.ask);
+  // Evaluated BEFORE autoApprove so an explicit deny stays absolute: blanket
+  // auto-approval is about not stalling on a prompt, not about overriding a
+  // deliberate "never run exec here".
+  if (policySecurity === "deny") {
     throw new Error(`exec denied: host=${params.host} security=deny`);
   }
-  return { approvals, hostSecurity, hostAsk, askFallback };
+  const autoApprove = (params.cfg ?? loadConfig()).approvals?.autoApprove === "non-spend";
+  // Resolve to the same shape a user setting security=full/ask=off would get,
+  // rather than inventing a third policy state, so downstream allowlist and
+  // enforced-command logic follows an already well-trodden path.
+  const hostSecurity: ExecSecurity = autoApprove ? "full" : policySecurity;
+  const hostAsk: ExecAsk = autoApprove ? "off" : policyAsk;
+  const askFallback = autoApprove ? "full" : approvals.agent.askFallback;
+  return { approvals, hostSecurity, hostAsk, askFallback, autoApprove };
 }
 
 export async function resolveApprovalDecisionOrUndefined(params: {

@@ -24,6 +24,7 @@ export const ApprovalsSchema = z
   .object({
     exec: ExecApprovalForwardingSchema,
     plugin: ExecApprovalForwardingSchema,
+    autoApprove: z.union([z.literal("off"), z.literal("non-spend")]).optional(),
   })
   .strict()
   .optional();
