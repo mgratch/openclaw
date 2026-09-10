@@ -8,6 +8,7 @@ import { resolveBootstrapWarningSignaturesSeen } from "../../agents/bootstrap-bu
 import { lookupContextTokens } from "../../agents/context.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
+import type { FallbackAttempt } from "../../agents/model-fallback.types.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
 import type { SessionEntry } from "../../config/sessions.js";
@@ -16,6 +17,7 @@ import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { defaultRuntime } from "../../runtime.js";
 import { isInternalMessageChannel } from "../../utils/message-channel.js";
+import { buildFallbackNotice, isMeteredDowngrade } from "../fallback-state.js";
 import { stripHeartbeatToken } from "../heartbeat.js";
 import type { OriginatingChannelType } from "../templating.js";
 import { isSilentReplyText, SILENT_REPLY_TOKEN } from "../tokens.js";
@@ -149,8 +151,9 @@ export function createFollowupRunner(params: {
           verboseLevel: queued.run.verboseLevel,
           isControlUiVisible: shouldSurfaceToControlUi,
           agentId: queued.run.agentId,
-          meteredAutoApprove: ((sessionKey ? sessionStore?.[sessionKey] : undefined) ?? sessionEntry)
-            ?.meteredAutoApprove,
+          meteredAutoApprove: (
+            (sessionKey ? sessionStore?.[sessionKey] : undefined) ?? sessionEntry
+          )?.meteredAutoApprove,
           storePath,
         });
       }
@@ -158,6 +161,7 @@ export function createFollowupRunner(params: {
       let runResult: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;
       let fallbackProvider = queued.run.provider;
       let fallbackModel = queued.run.model;
+      let fallbackAttempts: FallbackAttempt[] = [];
       let activeSessionEntry =
         (sessionKey ? sessionStore?.[sessionKey] : undefined) ?? sessionEntry;
       activeSessionEntry = await runPreflightCompactionIfNeeded({
@@ -270,6 +274,7 @@ export function createFollowupRunner(params: {
         runResult = fallbackResult.result;
         fallbackProvider = fallbackResult.provider;
         fallbackModel = fallbackResult.model;
+        fallbackAttempts = fallbackResult.attempts ?? [];
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         defaultRuntime.error?.(`Followup agent failed before reply: ${message}`);
@@ -397,6 +402,23 @@ export function createFollowupRunner(params: {
           finalPayloads.unshift({
             text: `🧹 Auto-compaction complete${suffix}.`,
           });
+        }
+      }
+
+      // A spend downgrade is reported regardless of verboseLevel — unlike the
+      // auto-compaction notice above, which is genuinely just chatter. Follow-up
+      // turns are frequently unattended, so this is the only signal that the
+      // answer came from a weaker model than the one that was asked for.
+      if (isMeteredDowngrade(fallbackAttempts)) {
+        const downgradeNotice = buildFallbackNotice({
+          selectedProvider: queued.run.provider,
+          selectedModel: queued.run.model,
+          activeProvider: fallbackProvider,
+          activeModel: fallbackModel,
+          attempts: fallbackAttempts,
+        });
+        if (downgradeNotice) {
+          finalPayloads.unshift({ text: downgradeNotice });
         }
       }
 
